@@ -26,8 +26,8 @@ func (dir *Dir) Validate() error {
 	return nil
 }
 
-func (dir Dir) Identity() string {
-	return fmt.Sprintf("Dir[%s]", dir.Target)
+func (dir Dir) Identity() (Identity, string) {
+	return Path, dir.Target
 }
 
 func (dir Dir) PreElements() []string {

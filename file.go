@@ -37,15 +37,15 @@ func walkDirs(target string) ([]string, error) {
 	ret := []string{}
 
 	for s = filepath.Dir(s); s != last; s = filepath.Dir(s) {
-		ret = append(ret, fmt.Sprintf("Dir[%s]", s))
+		ret = append(ret, fmt.Sprintf("Path[%s]", s))
 		last = s
 	}
 
 	return ret, nil
 }
 
-func (file File) Identity() string {
-	return fmt.Sprintf("File[%s]", file.Target)
+func (file File) Identity() (Identity, string) {
+	return Path, file.Target
 }
 
 func (file File) PreElements() []string {

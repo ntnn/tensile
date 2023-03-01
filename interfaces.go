@@ -1,16 +1,21 @@
-package engines
+package gorrect
 
-import "context"
+import (
+	"context"
+)
 
 // interfaces commonly used by engines
 
 type Validator interface {
-	// Validates an element.
 	Validate() error
 }
 
 type Identitier interface {
-	Identity() string
+	Identity() (Identity, string)
+}
+
+type NoIdentityClasher interface {
+	NoIdentityClash() bool
 }
 
 type Executor interface {

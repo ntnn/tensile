@@ -2,42 +2,43 @@ package engines
 
 import (
 	"context"
-	"errors"
 
+	"github.com/ntnn/gorrect"
 	"golang.org/x/exp/slog"
 )
 
 type Simple struct {
-	elements map[string]Identitier
+	elements map[string]gorrect.Identitier
 	state    *simpleState
 	log      *slog.Logger
 }
 
 func NewSimple(logger *slog.Logger) *Simple {
 	return &Simple{
-		elements: map[string]Identitier{},
+		elements: map[string]gorrect.Identitier{},
 		log:      logger,
 	}
 }
 
-func (simple *Simple) Add(elems ...Identitier) error {
+func (simple *Simple) Add(elems ...gorrect.Identitier) error {
 	for _, elem := range elems {
-		l := simple.log.With(slog.String("element", elem.Identity()))
+		ident := gorrect.FormatIdentitier(elem)
+		l := simple.log.With(slog.String("element", ident))
 
-		if validator, ok := elem.(Validator); ok {
+		if validator, ok := elem.(gorrect.Validator); ok {
 			l.Debug("validating")
 			if err := validator.Validate(); err != nil {
 				return err
 			}
 		}
 
-		if _, ok := simple.elements[elem.Identity()]; ok {
+		if _, ok := simple.elements[ident]; ok {
 			l.Error("element with same identity already exists", nil)
 			return ErrSameIdentityAlreadyRegistered
 		}
 
 		l.Debug("adding element")
-		simple.elements[elem.Identity()] = elem
+		simple.elements[ident] = elem
 	}
 	return nil
 }
@@ -52,10 +53,11 @@ func (simple Simple) Run(ctx context.Context) error {
 		}
 
 		for _, elem := range simple.elements {
-			l := simple.log.With(slog.Any("element", elem.Identity()))
+			ident := gorrect.FormatIdentitier(elem)
+			l := simple.log.With(slog.Any("element", ident))
 
 			// skip done elements
-			if _, ok := simple.state.done[elem.Identity()]; ok {
+			if _, ok := simple.state.done[ident]; ok {
 				continue
 			}
 			l.Debug("handling element")
@@ -65,9 +67,9 @@ func (simple Simple) Run(ctx context.Context) error {
 				continue
 			}
 
-			executor, ok := elem.(Executor)
+			executor, ok := elem.(gorrect.Executor)
 			if !ok {
-				simple.state.done[elem.Identity()] = true
+				simple.state.done[ident] = true
 				continue
 			}
 
@@ -76,7 +78,7 @@ func (simple Simple) Run(ctx context.Context) error {
 				return err
 			}
 
-			simple.state.done[elem.Identity()] = true
+			simple.state.done[ident] = true
 		}
 	}
 }
@@ -91,7 +93,7 @@ func (simple Simple) hasElems(elems ...string) bool {
 }
 
 func (simple Simple) preElementsDone(elem any) bool {
-	preElementer, ok := elem.(PreElementer)
+	preElementer, ok := elem.(gorrect.PreElementer)
 	if !ok {
 		return true
 	}
