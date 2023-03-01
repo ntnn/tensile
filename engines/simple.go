@@ -2,21 +2,28 @@ package engines
 
 import (
 	"context"
+	"errors"
+
+	"golang.org/x/exp/slog"
 )
 
 type Simple struct {
 	elements map[string]Identitier
 	state    *simpleState
+	log      *slog.Logger
 }
 
-func NewSimple() *Simple {
+func NewSimple(logger *slog.Logger) *Simple {
 	return &Simple{
 		elements: map[string]Identitier{},
+		log:      logger,
 	}
 }
 
 func (simple *Simple) Add(elems ...Identitier) error {
 	for _, elem := range elems {
+		l := simple.log.With(slog.String("element", elem.Identity()))
+
 		if validator, ok := elem.(Validator); ok {
 			l.Debug("validating")
 			if err := validator.Validate(); err != nil {
@@ -25,8 +32,11 @@ func (simple *Simple) Add(elems ...Identitier) error {
 		}
 
 		if _, ok := simple.elements[elem.Identity()]; ok {
+			l.Error("element with same identity already exists", nil)
 			return ErrSameIdentityAlreadyRegistered
 		}
+
+		l.Debug("adding element")
 		simple.elements[elem.Identity()] = elem
 	}
 	return nil
@@ -37,16 +47,21 @@ func (simple Simple) Run(ctx context.Context) error {
 
 	for {
 		if len(simple.state.done) == len(simple.elements) {
+			simple.log.Info("all elements are done")
 			return nil
 		}
 
 		for _, elem := range simple.elements {
+			l := simple.log.With(slog.Any("element", elem.Identity()))
+
 			// skip done elements
 			if _, ok := simple.state.done[elem.Identity()]; ok {
 				continue
 			}
+			l.Debug("handling element")
 
 			if !simple.preElementsDone(elem) {
+				l.Debug("pre elements of element are not done")
 				continue
 			}
 
@@ -56,6 +71,7 @@ func (simple Simple) Run(ctx context.Context) error {
 				continue
 			}
 
+			l.Info("executing element")
 			if err := executor.Execute(ctx); err != nil {
 				return err
 			}

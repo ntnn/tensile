@@ -5,10 +5,11 @@ import (
 	"testing"
 
 	"github.com/ntnn/gorrect"
+	"golang.org/x/exp/slog"
 )
 
 func TestSimple_Add(t *testing.T) {
-	simple := NewSimple()
+	simple := NewSimple(slog.Default())
 
 	f := &gorrect.File{
 		Target: "/a/target",
@@ -33,7 +34,7 @@ func TestSimple_Run(t *testing.T) {
 		Target: "/a",
 	}
 
-	simple := NewSimple()
+	simple := NewSimple(slog.Default())
 	if err := simple.Add(f); err != nil {
 		t.Errorf("error adding test file element: %v", err)
 		return

@@ -6,6 +6,7 @@ import (
 
 	"github.com/ntnn/gorrect"
 	"github.com/ntnn/gorrect/engines"
+	"golang.org/x/exp/slog"
 )
 
 func main() {
@@ -15,7 +16,7 @@ func main() {
 }
 
 func doMain() error {
-	simple := engines.NewSimple()
+	simple := engines.NewSimple(slog.Default())
 
 	if err := simple.Add(
 		&gorrect.Dir{
