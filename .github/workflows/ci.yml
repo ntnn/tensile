@@ -1,0 +1,19 @@
+---
+name: ci
+
+on:
+  push:
+    branches-ignore:
+      - 'dependabot/**'
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v3
+        with:
+          go-version-file: go.mod
+      - run: make check
