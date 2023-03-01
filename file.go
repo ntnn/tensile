@@ -8,20 +8,23 @@ import (
 )
 
 type File struct {
-	target string
-	dirs   []string
+	Target string
+
+	dirs []string
 }
 
-func NewFile(target string) (*File, error) {
-	dirs, err := walkDirs(target)
-	if err != nil {
-		return nil, err
+func (file *File) Validate() error {
+	if file.Target == "" {
+		return fmt.Errorf("target cannot be empty")
 	}
 
-	return &File{
-		target: target,
-		dirs:   dirs,
-	}, nil
+	dirs, err := walkDirs(file.Target)
+	if err != nil {
+		return err
+	}
+	file.dirs = dirs
+
+	return nil
 }
 
 func walkDirs(target string) ([]string, error) {
@@ -42,7 +45,7 @@ func walkDirs(target string) ([]string, error) {
 }
 
 func (file File) Identity() string {
-	return fmt.Sprintf("File[%s]", file.target)
+	return fmt.Sprintf("File[%s]", file.Target)
 }
 
 func (file File) PreElements() []string {
@@ -50,6 +53,6 @@ func (file File) PreElements() []string {
 }
 
 func (file File) Execute(ctx context.Context) error {
-	log.Printf("creating file %s", file.target)
+	log.Printf("creating file %s", file.Target)
 	return nil
 }

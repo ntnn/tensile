@@ -17,6 +17,13 @@ func NewSimple() *Simple {
 
 func (simple *Simple) Add(elems ...Identitier) error {
 	for _, elem := range elems {
+		if validator, ok := elem.(Validator); ok {
+			l.Debug("validating")
+			if err := validator.Validate(); err != nil {
+				return err
+			}
+		}
+
 		if _, ok := simple.elements[elem.Identity()]; ok {
 			return ErrSameIdentityAlreadyRegistered
 		}

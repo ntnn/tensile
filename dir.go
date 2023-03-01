@@ -7,24 +7,27 @@ import (
 )
 
 type Dir struct {
-	target string
-	dirs   []string
+	Target string
+
+	dirs []string
 }
 
-func NewDir(target string) (*Dir, error) {
-	dirs, err := walkDirs(target)
-	if err != nil {
-		return nil, err
+func (dir *Dir) Validate() error {
+	if dir.Target == "" {
+		return fmt.Errorf("target cannot be empty")
 	}
 
-	return &Dir{
-		target: target,
-		dirs:   dirs,
-	}, nil
+	dirs, err := walkDirs(dir.Target)
+	if err != nil {
+		return err
+	}
+	dir.dirs = dirs
+
+	return nil
 }
 
 func (dir Dir) Identity() string {
-	return fmt.Sprintf("Dir[%s]", dir.target)
+	return fmt.Sprintf("Dir[%s]", dir.Target)
 }
 
 func (dir Dir) PreElements() []string {
@@ -32,6 +35,6 @@ func (dir Dir) PreElements() []string {
 }
 
 func (dir Dir) Execute(ctx context.Context) error {
-	log.Printf("creating dir %s", dir.target)
+	log.Printf("creating dir %s", dir.Target)
 	return nil
 }
