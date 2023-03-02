@@ -32,9 +32,11 @@ func (simple *Simple) Add(elems ...gorrect.Identitier) error {
 			}
 		}
 
-		if _, ok := simple.elements[ident]; ok {
-			l.Error("element with same identity already exists", nil)
-			return ErrSameIdentityAlreadyRegistered
+		if baseIdentity, _ := elem.Identity(); baseIdentity != gorrect.Noop {
+			if _, ok := simple.elements[ident]; ok {
+				l.Error("element with same identity already exists", nil)
+				return ErrSameIdentityAlreadyRegistered
+			}
 		}
 
 		l.Debug("adding element")
