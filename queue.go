@@ -35,10 +35,8 @@ func (queue *Queue) add(elem Identitier) error {
 	}
 
 	ident := FormatIdentitier(elem)
-	if baseIdentity, _ := elem.Identity(); baseIdentity != Noop {
-		if _, ok := queue.elements[ident]; ok {
-			return fmt.Errorf("same identity already registered")
-		}
+	if _, ok := queue.elements[ident]; ok {
+		return fmt.Errorf("same identity already registered")
 	}
 
 	queue.elements[ident] = elem

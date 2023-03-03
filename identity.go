@@ -27,8 +27,6 @@ import "fmt"
 type Identity string
 
 const (
-	// Noop identities are used for auxiliary elements that never
-	// cause conflicts.
 	Noop    Identity = "noop"
 	Path    Identity = "path"
 	Package Identity = "package"

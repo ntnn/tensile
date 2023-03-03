@@ -31,12 +31,6 @@ func TestQueue_Add(t *testing.T) {
 			},
 			expectedErr: fmt.Errorf("same identity already registered"),
 		},
-		"two noop elements with same identity does not fail": {
-			input: []Identitier{
-				&Log{Message: "Hello, world!"},
-				&Log{Message: "Hello, world!"},
-			},
-		},
 	}
 
 	for title, cas := range cases {
