@@ -2,6 +2,7 @@ package gorrect
 
 import (
 	"context"
+	"fmt"
 )
 
 // interfaces commonly used by engines
@@ -11,7 +12,12 @@ type Validator interface {
 }
 
 type Identitier interface {
-	Identity() (Identity, string)
+	Identity() (Shape, string)
+}
+
+func FormatIdentitier(ident Identitier) string {
+	shape, name := ident.Identity()
+	return fmt.Sprintf("%s[%s]", shape, name)
 }
 
 type NoIdentityClasher interface {

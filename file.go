@@ -44,7 +44,7 @@ func walkDirs(target string) ([]string, error) {
 	return ret, nil
 }
 
-func (file File) Identity() (Identity, string) {
+func (file File) Identity() (Shape, string) {
 	return Path, file.Target
 }
 

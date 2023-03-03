@@ -18,7 +18,7 @@ func (log Log) Validate() error {
 	return nil
 }
 
-func (log Log) Identity() (Identity, string) {
+func (log Log) Identity() (Shape, string) {
 	return Noop, log.Message
 }
 

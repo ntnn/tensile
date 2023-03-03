@@ -26,7 +26,7 @@ func (dir *Dir) Validate() error {
 	return nil
 }
 
-func (dir Dir) Identity() (Identity, string) {
+func (dir Dir) Identity() (Shape, string) {
 	return Path, dir.Target
 }
 

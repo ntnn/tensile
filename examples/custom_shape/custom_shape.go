@@ -10,15 +10,15 @@ import (
 )
 
 const (
-	MyIdentity gorrect.Identity = "myidentity"
+	MyShape gorrect.Shape = "myshape"
 )
 
 type MyElement struct {
 	Message string
 }
 
-func (my MyElement) Identity() (gorrect.Identity, string) {
-	return MyIdentity, my.Message
+func (my MyElement) Identity() (gorrect.Shape, string) {
+	return MyShape, my.Message
 }
 
 func (my MyElement) Execute(ctx context.Context) error {

@@ -14,7 +14,7 @@ import (
 type AccessFacts struct {
 }
 
-func (af AccessFacts) Identity() (gorrect.Identity, string) {
+func (af AccessFacts) Identity() (gorrect.Shape, string) {
 	return gorrect.Noop, ""
 }
 
