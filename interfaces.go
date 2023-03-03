@@ -20,10 +20,6 @@ func FormatIdentitier(ident Identitier) string {
 	return fmt.Sprintf("%s[%s]", shape, name)
 }
 
-type NoIdentityClasher interface {
-	NoIdentityClash() bool
-}
-
 type Executor interface {
 	Execute(context.Context) error
 }
