@@ -18,7 +18,7 @@ func main() {
 func doMain() error {
 	simple := engines.NewSimple(slog.Default())
 
-	if err := simple.Add(
+	if err := simple.Queue.Add(
 		&gorrect.Dir{
 			Target: "/tmp",
 		},

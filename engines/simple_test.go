@@ -8,23 +8,6 @@ import (
 	"golang.org/x/exp/slog"
 )
 
-func TestSimple_Add(t *testing.T) {
-	simple := NewSimple(slog.Default())
-
-	f := &gorrect.File{
-		Target: "/a/target",
-	}
-
-	if err := simple.Add(f); err != nil {
-		t.Errorf("error adding test element: %v", err)
-		return
-	}
-
-	if err := simple.Add(f); err != ErrSameIdentityAlreadyRegistered {
-		t.Errorf("unexpected error adding the same element again: %v", err)
-	}
-}
-
 func TestSimple_Run(t *testing.T) {
 	f := &gorrect.File{
 		Target: "/a/target",
@@ -35,13 +18,8 @@ func TestSimple_Run(t *testing.T) {
 	}
 
 	simple := NewSimple(slog.Default())
-	if err := simple.Add(f); err != nil {
-		t.Errorf("error adding test file element: %v", err)
-		return
-	}
-
-	if err := simple.Add(d); err != nil {
-		t.Errorf("error adding test dir element: %v", err)
+	if err := simple.Queue.Add(f, d); err != nil {
+		t.Errorf("error adding test element: %v", err)
 		return
 	}
 
