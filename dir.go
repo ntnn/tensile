@@ -7,14 +7,22 @@ import (
 )
 
 type Dir struct {
+	Base
+
 	Target string
 
 	dirs []string
 }
 
 func (dir *Dir) Validate() error {
+	dir.Base.Shape = Path
+
 	if dir.Target == "" {
 		return fmt.Errorf("target cannot be empty")
+	}
+
+	if dir.Base.Name == "" {
+		dir.Base.Name = dir.Target
 	}
 
 	dirs, err := walkDirs(dir.Target)
@@ -24,10 +32,6 @@ func (dir *Dir) Validate() error {
 	dir.dirs = dirs
 
 	return nil
-}
-
-func (dir Dir) Identity() (Shape, string) {
-	return Path, dir.Target
 }
 
 func (dir Dir) PreElements() []string {
