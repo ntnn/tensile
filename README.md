@@ -1,13 +1,13 @@
-# gorrect your systems
+# tensile your systems
 
-gorrect is a yak shaving exercise to write a config management ecosystem
+tensile is a yak shaving exercise to write a config management ecosystem
 a la Puppet, Ansible, Chef etc.pp. in go.
 
 The existing config management solutions all have hefty pros and cons
 and require either infrastructure, hacks, wrappers and/or get very
 complicated the more complex the deployment becomes.
 
-gorrect isn't supposed to be a one-size-fits-all solution but rather
+tensile isn't supposed to be a one-size-fits-all solution but rather
 a library with which it becomes easy to implement requirements - all
 with the added benefit of Go tooling.
 
@@ -20,12 +20,12 @@ Elements are similar to resources in Puppet or modules in Ansible.
 ```go
 // A file should exist at path /an/ex/ample with the content "Hello,
 // world!"
-myFile := &gorrect.File{
+myFile := &tensile.File{
 	Target: "/an/ex/ample",
 	Content: "Hello, world!",
 }
 // A directory at path /an should exist.
-myDir := &gorrect.Dir{
+myDir := &tensile.Dir{
 	Target: "/an/ex",
 }
 ```
@@ -69,9 +69,9 @@ compliance.
 ```go
 simple := engines.NewSimple()
 
-// Assuming a module or package gorrectcis where Elements() returns
+// Assuming a module or package tensilecis where Elements() returns
 // a channel of elements.
-if err := simple.AddFrom(gorrectcis.Elements()); err != nil {
+if err := simple.AddFrom(tensilecis.Elements()); err != nil {
     log.Fatal(err)
 }
 
@@ -97,7 +97,7 @@ management or a separate host to run from.
 A flexible approach to engines allows to deploy clustered applications
 easily.
 
-Cluster members in a gorrect cluster-aware engine could authenticate
+Cluster members in a tensile cluster-aware engine could authenticate
 with each other through a pre shared key and exchange certificates for
 communication - e.g. to exchange secrets for the applications and
 services to deploy - and even manage the execution of the entire cluster

@@ -1,4 +1,4 @@
-package gorrect
+package tensile
 
 type Base struct {
 	Shape Shape

@@ -1,4 +1,4 @@
-package gorrect
+package tensile
 
 // Shape is - loosely defined - the type of resource modified by an
 // element. Together with the string returned by a Identitier it defines
@@ -8,12 +8,12 @@ package gorrect
 // same resource.
 //
 // E.g. consider two elements:
-// templated := &gorrect.Template{
+// templated := &tensile.Template{
 //   Path: "/path/to/file",
 //   ...
 // }
 //
-// lineInFile := &gorrect.LineInFile{
+// lineInFile := &tensile.LineInFile{
 //   Path: "/path/to/target",
 // }
 //

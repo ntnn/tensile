@@ -4,8 +4,8 @@ import (
 	"context"
 	"log"
 
-	"github.com/ntnn/gorrect"
-	"github.com/ntnn/gorrect/engines"
+	"github.com/ntnn/tensile"
+	"github.com/ntnn/tensile/engines"
 	"golang.org/x/exp/slog"
 )
 
@@ -19,23 +19,23 @@ func doMain() error {
 	simple := engines.NewSimple(slog.Default())
 
 	if err := simple.Queue.Add(
-		&gorrect.Dir{
+		&tensile.Dir{
 			Target: "/tmp",
 		},
-		&gorrect.Dir{
-			Target: "/tmp/gorrect",
+		&tensile.Dir{
+			Target: "/tmp/tensile",
 		},
-		&gorrect.Dir{
-			Target: "/tmp/gorrect/a",
+		&tensile.Dir{
+			Target: "/tmp/tensile/a",
 		},
-		&gorrect.Dir{
-			Target: "/tmp/gorrect/b",
+		&tensile.Dir{
+			Target: "/tmp/tensile/b",
 		},
-		&gorrect.File{
-			Target: "/tmp/gorrect/a/f",
+		&tensile.File{
+			Target: "/tmp/tensile/a/f",
 		},
-		&gorrect.File{
-			Target: "/tmp/gorrect/b/f",
+		&tensile.File{
+			Target: "/tmp/tensile/b/f",
 		},
 	); err != nil {
 		return err

@@ -1,4 +1,4 @@
-package gorrect
+package tensile
 
 import (
 	"fmt"

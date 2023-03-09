@@ -4,19 +4,19 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/ntnn/gorrect"
-	"github.com/ntnn/gorrect/facts"
+	"github.com/ntnn/tensile"
+	"github.com/ntnn/tensile/facts"
 	"golang.org/x/exp/slog"
 )
 
 type Simple struct {
-	Queue *gorrect.Queue
+	Queue *tensile.Queue
 	log   *slog.Logger
 }
 
 func NewSimple(logger *slog.Logger) *Simple {
 	return &Simple{
-		Queue: gorrect.NewQueue(),
+		Queue: tensile.NewQueue(),
 		log:   logger,
 	}
 }
@@ -45,11 +45,11 @@ func (simple Simple) Run(ctx context.Context) error {
 	ch := simple.Queue.Channel(ctx, isDone)
 
 	for elem := range ch {
-		ident := gorrect.FormatIdentitier(elem)
+		ident := tensile.FormatIdentitier(elem)
 
 		done[ident] = true
 
-		executor, ok := elem.(gorrect.Executor)
+		executor, ok := elem.(tensile.Executor)
 		if !ok {
 			continue
 		}

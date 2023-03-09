@@ -4,20 +4,20 @@ import (
 	"context"
 	"log"
 
-	"github.com/ntnn/gorrect"
-	"github.com/ntnn/gorrect/engines"
+	"github.com/ntnn/tensile"
+	"github.com/ntnn/tensile/engines"
 	"golang.org/x/exp/slog"
 )
 
 const (
-	MyShape gorrect.Shape = "myshape"
+	MyShape tensile.Shape = "myshape"
 )
 
 type MyElement struct {
 	Message string
 }
 
-func (my MyElement) Identity() (gorrect.Shape, string) {
+func (my MyElement) Identity() (tensile.Shape, string) {
 	return MyShape, my.Message
 }
 

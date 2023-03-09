@@ -5,17 +5,17 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/ntnn/gorrect"
-	"github.com/ntnn/gorrect/engines"
-	"github.com/ntnn/gorrect/facts"
+	"github.com/ntnn/tensile"
+	"github.com/ntnn/tensile/engines"
+	"github.com/ntnn/tensile/facts"
 	"golang.org/x/exp/slog"
 )
 
 type AccessFacts struct {
 }
 
-func (af AccessFacts) Identity() (gorrect.Shape, string) {
-	return gorrect.Noop, ""
+func (af AccessFacts) Identity() (tensile.Shape, string) {
+	return tensile.Noop, ""
 }
 
 func (af AccessFacts) Execute(ctx context.Context) error {
