@@ -2,10 +2,6 @@ package facts
 
 import "os"
 
-type ctxFacts string
-
-const CtxFacts ctxFacts = "ctxFacts"
-
 type Facts struct {
 	Env map[string]string
 
