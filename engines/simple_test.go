@@ -4,21 +4,21 @@ import (
 	"context"
 	"testing"
 
-	"github.com/ntnn/gorrect"
+	"github.com/ntnn/tensile/nodes"
 	"golang.org/x/exp/slog"
 )
 
 func TestSimple_Run(t *testing.T) {
-	f := &gorrect.File{
-		Target: "/a/target",
+	n1 := &nodes.Log{
+		Message: "node 1",
 	}
 
-	d := &gorrect.Dir{
-		Target: "/a",
+	n2 := &nodes.Log{
+		Message: "node 2",
 	}
 
 	simple := NewSimple(slog.Default())
-	if err := simple.Queue.Add(f, d); err != nil {
+	if err := simple.Queue.Add(n1, n2); err != nil {
 		t.Errorf("error adding test element: %v", err)
 		return
 	}

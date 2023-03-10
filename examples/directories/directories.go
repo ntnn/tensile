@@ -6,10 +6,12 @@ import (
 
 	"github.com/ntnn/tensile"
 	"github.com/ntnn/tensile/engines"
+	"github.com/ntnn/tensile/nodes"
 	"golang.org/x/exp/slog"
 )
 
 func main() {
+	tensile.SetDebugLog()
 	if err := doMain(); err != nil {
 		log.Fatal(err)
 	}
@@ -19,27 +21,27 @@ func doMain() error {
 	simple := engines.NewSimple(slog.Default())
 
 	if err := simple.Queue.Add(
-		&tensile.Dir{
+		&nodes.Dir{
 			Target: "/tmp",
 		},
-		&tensile.Dir{
+		&nodes.Dir{
 			Target: "/tmp/tensile",
 		},
-		&tensile.Dir{
+		&nodes.Dir{
 			Target: "/tmp/tensile/a",
 		},
-		&tensile.Dir{
+		&nodes.Dir{
 			Target: "/tmp/tensile/b",
 		},
-		&tensile.File{
+		&nodes.File{
 			Target: "/tmp/tensile/a/f",
 		},
-		&tensile.File{
+		&nodes.File{
 			Target: "/tmp/tensile/b/f",
 		},
 	); err != nil {
 		return err
 	}
 
-	return simple.Run(context.Background())
+	return simple.Noop(context.Background())
 }

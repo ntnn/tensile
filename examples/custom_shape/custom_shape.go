@@ -43,5 +43,5 @@ func doMain() error {
 		return err
 	}
 
-	return simple.Run(context.Background())
+	return simple.Noop(context.Background())
 }
