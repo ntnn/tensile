@@ -7,6 +7,14 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+type testNode struct {
+	Name string
+}
+
+func (t testNode) Identity() (Shape, string) {
+	return Noop, t.Name
+}
+
 func TestQueue_Add(t *testing.T) {
 	cases := map[string]struct {
 		input       []Identitier
@@ -14,20 +22,20 @@ func TestQueue_Add(t *testing.T) {
 	}{
 		"add single element": {
 			input: []Identitier{
-				&File{Target: "/example"},
+				&testNode{Name: "/example"},
 			},
 		},
 		"add multiple elements": {
 			input: []Identitier{
-				&File{Target: "/example"},
-				&File{Target: "/example1"},
-				&File{Target: "/example2"},
+				&testNode{Name: "/example"},
+				&testNode{Name: "/example1"},
+				&testNode{Name: "/example2"},
 			},
 		},
 		"two elements with same identity fails": {
 			input: []Identitier{
-				&File{Target: "/example"},
-				&File{Target: "/example"},
+				&testNode{Name: "/example"},
+				&testNode{Name: "/example"},
 			},
 			expectedErr: fmt.Errorf("same identity already registered"),
 		},
