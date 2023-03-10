@@ -1,7 +1,7 @@
-# tensile your systems
+# tensile
 
 tensile is a yak shaving exercise to write a config management ecosystem
-a la Puppet, Ansible, Chef etc.pp. in go.
+a la Puppet, Ansible, Chef etc.pp. in Go.
 
 The existing config management solutions all have hefty pros and cons
 and require either infrastructure, hacks, wrappers and/or get very
@@ -13,36 +13,57 @@ with the added benefit of Go tooling.
 
 ## Design
 
-gorrect has two major pieces: Elements and Engines.
+1. Shape
+1. Node
+1. Queue
+1. Engine
 
-Elements are similar to resources in Puppet or modules in Ansible.
+### Shape
+
+A shape is an abstract name of a type of Node, e.g. Service for
+sysV/systemd/etc.pp. services, File for files or directories, etc.pp.
+
+These are used together with a Nodes name to identify collisions.
+
+### Node
+
+A Node is an element to manage a resource like a file or to execute a command, hence similar to resources in Puppet or modules in Ansible.
 
 ```go
 // A file should exist at path /an/ex/ample with the content "Hello,
 // world!"
-myFile := &tensile.File{
+myFile := &nodes.File{
 	Target: "/an/ex/ample",
 	Content: "Hello, world!",
 }
 // A directory at path /an should exist.
-myDir := &tensile.Dir{
+myDir := &nodes.Dir{
 	Target: "/an/ex",
 }
 ```
 
-Engines are the executing part that decides in which order elements are
-realized and realizes them.
+### Queue
+
+The Queue is the only non-interchangeable part and used to queue and
+order nodes for execution.
+
+### Engine
+
+Engines manage the execution and state of nodes.
+
+Engine can be implemented differently for e.g. parallelisation or for
+used in clusters.
 
 ```go
 // The simple engine sequentally realizes all elements.
 simple := engines.NewSimple()
 
-// The elements from the previous example are added.
-// The order does not matter - the engine figures out the order as
+// The nodes from the previous example are added.
+// The order does not matter - the queue figures out the order as
 // needed.
 // If the validation of any of the passed elements fails those errors
 // will be returned.
-if err := simple.Add(myFile, myDir); err != nil {
+if err := simple.Queue.Add(myFile, myDir); err != nil {
         log.Fatal(err)
 }
 
@@ -52,9 +73,9 @@ if err := simple.Run(context.Background()); err != nil {
 }
 ```
 
-As engines work with interfaces elements can be anything that satisfies
-the relevant interfaces - and since elements are written in Go no other
-tool is needed to manage dependencies.
+As engines work with interfaces nodes can be anything that satisfies the
+relevant interfaces - and since elements are written in Go no other tool
+is needed to manage dependencies.
 
 ## Compliance
 
@@ -69,14 +90,14 @@ compliance.
 ```go
 simple := engines.NewSimple()
 
-// Assuming a module or package tensilecis where Elements() returns
-// a channel of elements.
-if err := simple.AddFrom(tensilecis.Elements()); err != nil {
+// Assuming a module or package tensilecis where Nodes() returns
+// a slice of Nodes.
+if err := simple.Add(tensilecis.Nodes()...); err != nil {
     log.Fatal(err)
 }
 
-// Add other elements to deploy applications, agents, etc.pp.
-if err := simple.Add(otherElements...); err != nil {
+// Add other nodes to deploy applications, agents, etc.pp.
+if err := simple.Add(otherNodes...); err != nil {
     log.Fatal(err)
 }
 
