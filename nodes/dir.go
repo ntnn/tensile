@@ -7,6 +7,8 @@ import (
 	"github.com/ntnn/tensile"
 )
 
+var _ tensile.Node = (*Dir)(nil)
+
 type Dir struct {
 	Target string
 
@@ -35,7 +37,7 @@ func (dir Dir) PreElements() []string {
 	return dir.dirs
 }
 
-func (dir Dir) Execute(ctx tensile.Context) error {
+func (dir Dir) Execute(ctx tensile.Context) (any, error) {
 	log.Printf("creating dir %s", dir.Target)
-	return nil
+	return nil, nil
 }

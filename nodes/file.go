@@ -13,6 +13,8 @@ import (
 	"golang.org/x/exp/slog"
 )
 
+var _ tensile.Node = (*File)(nil)
+
 type File struct {
 	Target  string
 	Content string
