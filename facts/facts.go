@@ -3,14 +3,17 @@ package facts
 import "os"
 
 type Facts struct {
-	Env map[string]string
+	Env map[string]string `json:"env"`
 
 	// Executable is the base name of the running binary.
 	// ExecutablePath is the fully qualified path of the running binary.
-	Executable, ExecutablePath string
+	Executable     string `json:"executable"`
+	ExecutablePath string `json:"executable_path"`
 
-	Workdir  string
-	Hostname string
+	Workdir  string `json:"workdir"`
+	Hostname string `json:"hostname"`
+
+	Custom map[string]any `json:"custom"`
 }
 
 func New() (*Facts, error) {
