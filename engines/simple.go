@@ -85,7 +85,7 @@ func (simple Simple) run(ctx context.Context, execute bool) error {
 
 		executor, ok := elem.(tensile.Executor)
 		if !ok {
-			log.Debug("node is not Executor")
+			log.Warn("node is not Executor")
 			continue
 		}
 
