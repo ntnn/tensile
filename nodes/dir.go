@@ -1,9 +1,10 @@
-package tensile
+package nodes
 
 import (
-	"context"
 	"fmt"
 	"log"
+
+	"github.com/ntnn/tensile"
 )
 
 type Dir struct {
@@ -27,14 +28,14 @@ func (dir *Dir) Validate() error {
 }
 
 func (dir Dir) Identity() (tensile.Shape, string) {
-	return Path, dir.Target
+	return tensile.Path, dir.Target
 }
 
 func (dir Dir) PreElements() []string {
 	return dir.dirs
 }
 
-func (dir Dir) Execute(ctx context.Context) error {
+func (dir Dir) Execute(ctx tensile.Context) error {
 	log.Printf("creating dir %s", dir.Target)
 	return nil
 }
