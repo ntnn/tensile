@@ -43,7 +43,7 @@ func TestQueue_Add(t *testing.T) {
 
 	for title, cas := range cases {
 		t.Run(title, func(t *testing.T) {
-			assert.Equal(t, cas.expectedErr, NewQueue().Add(cas.input...))
+			assert.Equal(t, cas.expectedErr, NewQueue(nil).Add(cas.input...))
 		})
 	}
 }

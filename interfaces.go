@@ -2,11 +2,13 @@ package tensile
 
 import (
 	"fmt"
+
+	"github.com/ntnn/tensile/facts"
 )
 
 // interfaces commonly used in tensile
 
-// Node is a collection of interface a node _should_ adhere to.
+// Node is a collection of interfaces a node _should_ adhere to.
 type Node interface {
 	Validator
 	Executor
@@ -48,4 +50,12 @@ type PreElementer interface {
 	// PreElements returns the identity of elements that should be
 	// executed before this element.
 	PreElements() []string
+}
+
+// NodeGenerator can generate more nodes for a Queue to collect.
+//
+// This is primarily useful to have a single Noop node that then
+// dynamically generates more nodes based on the facts of the system.
+type NodeGenerator interface {
+	Nodes(*facts.Facts) (chan Identitier, chan error, error)
 }

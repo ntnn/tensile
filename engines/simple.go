@@ -11,14 +11,21 @@ import (
 
 type Simple struct {
 	Queue *tensile.Queue
+	Facts *facts.Facts
 	log   *slog.Logger
 }
 
-func NewSimple(logger *slog.Logger) *Simple {
-	return &Simple{
-		Queue: tensile.NewQueue(),
-		log:   logger,
+func NewSimple(logger *slog.Logger) (*Simple, error) {
+	f, err := facts.New()
+	if err != nil {
+		return nil, fmt.Errorf("engines: error preparing facts: %w", err)
 	}
+
+	return &Simple{
+		Queue: tensile.NewQueue(f),
+		Facts: f,
+		log:   logger,
+	}, nil
 }
 
 func (simple Simple) Noop(ctx context.Context) error {
@@ -31,15 +38,11 @@ func (simple Simple) Run(ctx context.Context) error {
 
 func (simple Simple) run(ctx context.Context, execute bool) error {
 	simple.log.Info("getting facts")
-	f, err := facts.New()
-	if err != nil {
-		return fmt.Errorf("engines: error preparing facts: %w", err)
-	}
 
 	c, err := tensile.NewContext(
 		ctx,
 		nil,
-		f,
+		simple.Facts,
 	)
 	if err != nil {
 		return fmt.Errorf("engines: error creating tensile.Context: %w", err)

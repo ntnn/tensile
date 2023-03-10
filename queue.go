@@ -2,18 +2,23 @@ package tensile
 
 import (
 	"context"
+	"errors"
 	"fmt"
+
+	"github.com/ntnn/tensile/facts"
 )
 
 type Queue struct {
 	elements map[string]Identitier
+	facts    *facts.Facts
 
 	QueueChannelLength int
 }
 
-func NewQueue() *Queue {
+func NewQueue(facts *facts.Facts) *Queue {
 	q := new(Queue)
 	q.elements = map[string]Identitier{}
+	q.facts = facts
 	q.QueueChannelLength = 100
 	return q
 }
@@ -39,8 +44,34 @@ func (queue *Queue) add(elem Identitier) error {
 		return fmt.Errorf("same identity already registered")
 	}
 
+	if generator, ok := elem.(NodeGenerator); ok {
+		if err := queue.addFrom(generator); err != nil {
+			return err
+		}
+	}
+
 	queue.elements[ident] = elem
 	return nil
+}
+
+func (queue Queue) addFrom(generator NodeGenerator) error {
+	ch, errCh, err := generator.Nodes(queue.facts)
+	if err != nil {
+		return fmt.Errorf("direct error from generator: %w", err)
+	}
+
+	errs := []error{}
+	for node := range ch {
+		if err := queue.add(node); err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	for err := range errCh {
+		errs = append(errs, err)
+	}
+
+	return errors.Join(errs...)
 }
 
 func (queue Queue) Channel(ctx context.Context, isDone func(idents ...string) bool) chan Identitier {

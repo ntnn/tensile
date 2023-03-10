@@ -37,7 +37,10 @@ func main() {
 }
 
 func doMain() error {
-	simple := engines.NewSimple(slog.Default())
+	simple, err := engines.NewSimple(slog.Default())
+	if err != nil {
+		return err
+	}
 
 	if err := simple.Queue.Add(&AccessFacts{}); err != nil {
 		return err

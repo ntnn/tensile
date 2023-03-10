@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/ntnn/tensile/nodes"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/slog"
 )
 
@@ -17,13 +18,10 @@ func TestSimple_Run(t *testing.T) {
 		Message: "node 2",
 	}
 
-	simple := NewSimple(slog.Default())
-	if err := simple.Queue.Add(n1, n2); err != nil {
-		t.Errorf("error adding test element: %v", err)
-		return
-	}
+	simple, err := NewSimple(slog.Default())
+	require.Nil(t, err)
 
-	if err := simple.Run(context.Background()); err != nil {
-		t.Errorf("error in execution: %v", err)
-	}
+	require.Nil(t, simple.Queue.Add(n1, n2))
+
+	require.Nil(t, simple.Run(context.Background()))
 }
