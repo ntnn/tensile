@@ -2,33 +2,35 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 
 	"github.com/ntnn/tensile"
 	"github.com/ntnn/tensile/engines"
-	"github.com/ntnn/tensile/facts"
 	"golang.org/x/exp/slog"
 )
+
+var _ tensile.Node = (*AccessFacts)(nil)
 
 type AccessFacts struct {
 }
 
 func (af AccessFacts) Identity() (tensile.Shape, string) {
-	return tensile.Noop, ""
+	return tensile.Noop, "log hostname from facts"
 }
 
-func (af AccessFacts) Execute(ctx context.Context) error {
-	f, ok := ctx.Value(facts.CtxFacts).(*facts.Facts)
-	if !ok {
-		return fmt.Errorf("unable to retrieve facts from context")
-	}
-
-	log.Printf("value of hostname in facts: %q", f.Hostname)
+func (af AccessFacts) Validate() error {
 	return nil
 }
 
+func (af AccessFacts) Execute(ctx tensile.Context) (any, error) {
+	ctx.Logger(af).Info("hostname from facts",
+		slog.String("hostname", ctx.Facts().Hostname),
+	)
+	return nil, nil
+}
+
 func main() {
+	tensile.SetDebugLog()
 	if err := doMain(); err != nil {
 		log.Fatal(err)
 	}
@@ -41,5 +43,5 @@ func doMain() error {
 		return err
 	}
 
-	return simple.Noop(context.Background())
+	return simple.Run(context.Background())
 }

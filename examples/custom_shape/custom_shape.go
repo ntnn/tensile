@@ -19,6 +19,8 @@ const (
 )
 
 // Two nodes utilizing the custom shape.
+var _ tensile.Node = (*MyNodeA)(nil)
+
 type MyNodeA struct {
 	Message string
 }
@@ -27,10 +29,16 @@ func (my MyNodeA) Identity() (tensile.Shape, string) {
 	return MyShape, my.Message
 }
 
-func (my MyNodeA) Execute(ctx tensile.Context) error {
-	ctx.Logger(my).Info(my.Message)
+func (my MyNodeA) Validate() error {
 	return nil
 }
+
+func (my MyNodeA) Execute(ctx tensile.Context) (any, error) {
+	ctx.Logger(my).Info(my.Message)
+	return nil, nil
+}
+
+var _ tensile.Node = (*MyNodeB)(nil)
 
 type MyNodeB struct {
 	Message   string
@@ -41,12 +49,17 @@ func (my MyNodeB) Identity() (tensile.Shape, string) {
 	return MyShape, my.Message
 }
 
-func (my MyNodeB) Execute(ctx tensile.Context) error {
-	ctx.Logger(my).Info(my.Message, slog.Time("timestamp", my.Timestamp))
+func (my MyNodeB) Validate() error {
 	return nil
 }
 
+func (my MyNodeB) Execute(ctx tensile.Context) (any, error) {
+	ctx.Logger(my).Info(my.Message, slog.Time("timestamp", my.Timestamp))
+	return nil, nil
+}
+
 func main() {
+	tensile.SetDebugLog()
 	if err := doMain(); err != nil {
 		log.Fatal(err)
 	}
