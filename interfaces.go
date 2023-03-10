@@ -6,6 +6,12 @@ import (
 
 // interfaces commonly used in tensile
 
+// Node is a collection of interface a node _should_ adhere to.
+type Node interface {
+	Validator
+	Executor
+}
+
 // Validator validates an element when adding it to a queue.
 // The error will be returned by the queue if validation fails.
 //
