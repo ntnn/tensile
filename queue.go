@@ -40,8 +40,11 @@ func (queue *Queue) add(node Identitier) error {
 	}
 
 	ident := FormatIdentitier(node)
-	if _, ok := queue.nodes[ident]; ok {
-		return fmt.Errorf("same identity already registered")
+	if existing, ok := queue.nodes[ident]; ok {
+		if err := isCollisionBoth(existing, node); err != nil {
+			return fmt.Errorf("same identity already registered, collision check: %w", err)
+		}
+		return nil
 	}
 
 	queue.nodes[ident] = node
@@ -73,6 +76,31 @@ func (queue Queue) addFrom(generator NodeGenerator) error {
 	}
 
 	return errors.Join(errs...)
+}
+
+var (
+	ErrIsCollisionerNotImplemented = fmt.Errorf("nodes do not implement IsCollisioner interface")
+)
+
+func isCollisionBoth(a, b Identitier) error {
+	if err := isCollision(a, b); err != ErrIsCollisionerNotImplemented {
+		return err
+	}
+
+	if err := isCollision(b, a); err != ErrIsCollisionerNotImplemented {
+		return err
+	}
+
+	return ErrIsCollisionerNotImplemented
+}
+
+func isCollision(a, b Identitier) error {
+	isCollisioner, ok := a.(IsCollisioner)
+	if !ok {
+		return ErrIsCollisionerNotImplemented
+	}
+
+	return isCollisioner.IsCollision(b)
 }
 
 func (queue Queue) Channel(ctx context.Context, isDone func(idents ...string) bool) chan Identitier {
