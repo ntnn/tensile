@@ -9,48 +9,49 @@ import (
 )
 
 type Queue struct {
-	elements map[string]Identitier
-	facts    facts.Facts
+	nodes map[string]Identitier
+	facts facts.Facts
 
 	QueueChannelLength int
 }
 
 func NewQueue(facts facts.Facts) *Queue {
 	q := new(Queue)
-	q.elements = map[string]Identitier{}
+	q.nodes = map[string]Identitier{}
 	q.facts = facts
 	q.QueueChannelLength = 100
 	return q
 }
 
-func (queue *Queue) Add(elems ...Identitier) error {
-	for _, elem := range elems {
-		if err := queue.add(elem); err != nil {
+func (queue *Queue) Add(nodes ...Identitier) error {
+	for _, node := range nodes {
+		if err := queue.add(node); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (queue *Queue) add(elem Identitier) error {
-	if validator, ok := elem.(Validator); ok {
+func (queue *Queue) add(node Identitier) error {
+	if validator, ok := node.(Validator); ok {
 		if err := validator.Validate(); err != nil {
 			return err
 		}
 	}
 
-	ident := FormatIdentitier(elem)
-	if _, ok := queue.elements[ident]; ok {
+	ident := FormatIdentitier(node)
+	if _, ok := queue.nodes[ident]; ok {
 		return fmt.Errorf("same identity already registered")
 	}
 
-	if generator, ok := elem.(NodeGenerator); ok {
+	queue.nodes[ident] = node
+
+	if generator, ok := node.(NodeGenerator); ok {
 		if err := queue.addFrom(generator); err != nil {
 			return err
 		}
 	}
 
-	queue.elements[ident] = elem
 	return nil
 }
 
@@ -83,11 +84,11 @@ func (queue Queue) Channel(ctx context.Context, isDone func(idents ...string) bo
 		sent := map[string]bool{}
 
 		for {
-			if len(sent) == len(queue.elements) {
+			if len(sent) == len(queue.nodes) {
 				return
 			}
 
-			for _, elem := range queue.elements {
+			for _, elem := range queue.nodes {
 				if err := ctx.Err(); err != nil {
 					return
 				}
@@ -104,7 +105,7 @@ func (queue Queue) Channel(ctx context.Context, isDone func(idents ...string) bo
 					for _, pre := range preElementer.PreElements() {
 						// filter elements that do not exist in the
 						// queue
-						if _, ok := queue.elements[pre]; !ok {
+						if _, ok := queue.nodes[pre]; !ok {
 							continue
 						}
 						checkPres = append(checkPres, pre)
