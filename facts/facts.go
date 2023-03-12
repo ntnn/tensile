@@ -1,9 +1,20 @@
 package facts
 
-import "os"
+import (
+	"fmt"
+	"os"
+	"runtime"
+)
 
 type Facts struct {
 	Env map[string]string `json:"env"`
+
+	// GOARCH from runtime
+	GOARCH string `json:"goarch"`
+	// GOOS from runtime
+	GOOS string `json:"goos"`
+
+	OSRelease OSRelease `json:"os_release"`
 
 	// Executable is the base name of the running binary.
 	// ExecutablePath is the fully qualified path of the running binary.
@@ -16,21 +27,30 @@ type Facts struct {
 	Custom map[string]any `json:"custom"`
 }
 
-func New() (*Facts, error) {
-	f := new(Facts)
+func New() (Facts, error) {
+	f := Facts{}
+
+	f.GOARCH = runtime.GOARCH
+	f.GOOS = runtime.GOOS
+
+	rel, err := NewOSRelease()
+	if err != nil {
+		return Facts{}, fmt.Errorf("error getting OSRelease: %w", err)
+	}
+	f.OSRelease = rel
 
 	f.Env = Env()
 
 	if err := f.executable(); err != nil {
-		return nil, err
+		return Facts{}, err
 	}
 
 	if err := f.workdir(); err != nil {
-		return nil, err
+		return Facts{}, err
 	}
 
 	if err := f.hostname(); err != nil {
-		return nil, err
+		return Facts{}, err
 	}
 
 	return f, nil

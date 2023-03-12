@@ -11,7 +11,7 @@ import (
 
 type Simple struct {
 	Queue *tensile.Queue
-	Facts *facts.Facts
+	Facts facts.Facts
 	log   *slog.Logger
 }
 

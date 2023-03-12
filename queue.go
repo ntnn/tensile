@@ -10,12 +10,12 @@ import (
 
 type Queue struct {
 	elements map[string]Identitier
-	facts    *facts.Facts
+	facts    facts.Facts
 
 	QueueChannelLength int
 }
 
-func NewQueue(facts *facts.Facts) *Queue {
+func NewQueue(facts facts.Facts) *Queue {
 	q := new(Queue)
 	q.elements = map[string]Identitier{}
 	q.facts = facts

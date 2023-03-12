@@ -12,7 +12,7 @@ type Context interface {
 	Context() context.Context
 	Logger(Identitier) *slog.Logger
 	Result(Shape, string) (any, bool, error)
-	Facts() *facts.Facts
+	Facts() facts.Facts
 }
 
 var _ Context = (*TContext)(nil)
@@ -20,10 +20,10 @@ var _ Context = (*TContext)(nil)
 type TContext struct {
 	ctx    context.Context
 	logger *slog.Logger
-	facts  *facts.Facts
+	facts  facts.Facts
 }
 
-func NewContext(ctx context.Context, logger *slog.Logger, facts *facts.Facts) (*TContext, error) {
+func NewContext(ctx context.Context, logger *slog.Logger, facts facts.Facts) (*TContext, error) {
 	c := new(TContext)
 
 	c.ctx = ctx
@@ -54,6 +54,6 @@ func (ec TContext) Result(shape Shape, name string) (any, bool, error) {
 	return nil, false, fmt.Errorf("not implemented")
 }
 
-func (ec TContext) Facts() *facts.Facts {
+func (ec TContext) Facts() facts.Facts {
 	return ec.facts
 }

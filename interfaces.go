@@ -57,5 +57,5 @@ type PreElementer interface {
 // This is primarily useful to have a single Noop node that then
 // dynamically generates more nodes based on the facts of the system.
 type NodeGenerator interface {
-	Nodes(*facts.Facts) (chan Identitier, chan error, error)
+	Nodes(facts.Facts) (chan Identitier, chan error, error)
 }
