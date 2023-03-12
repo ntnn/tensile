@@ -38,6 +38,15 @@ func FormatIdentitierParts(shape Shape, name string) string {
 	return fmt.Sprintf("%s[%s]", shape, name)
 }
 
+// IsCollisioner is used to detect wether two nodes with the same
+// identity cause a collision.
+type IsCollisioner interface {
+	// IsCollision receives another node and should return an error if they
+	// are colliding.
+	// See the Package node for an example.
+	IsCollision(other Identitier) error
+}
+
 type NeedsExecutioner interface {
 	NeedsExecution(Context) (bool, error)
 }
