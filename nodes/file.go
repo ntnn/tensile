@@ -50,7 +50,7 @@ func walkDirs(target string) ([]string, error) {
 	ret := []string{}
 
 	for s = filepath.Dir(s); s != last; s = filepath.Dir(s) {
-		ret = append(ret, fmt.Sprintf("Path[%s]", s))
+		ret = append(ret, tensile.FormatIdentitierParts(tensile.Path, s))
 		last = s
 	}
 
