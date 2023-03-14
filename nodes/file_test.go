@@ -5,44 +5,37 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/ntnn/tensile"
 	"github.com/stretchr/testify/require"
 )
 
 func TestFile_Validate(t *testing.T) {
-	cases := map[string]struct {
-		input, expect *File
-	}{
-		"/": {
-			input: &File{
-				Target: "/",
-			},
-			expect: &File{
-				Target: "/",
-				dirs:   []string{},
-			},
-		},
-		"/a/b/c": {
-			input: &File{
-				Target: "/a/b/c",
-			},
-			expect: &File{
-				Target: "/a/b/c",
-				dirs: []string{
-					"Path[/a/b]",
-					"Path[/a]",
-					"Path[/]",
-				},
-			},
-		},
-	}
+	f := new(File)
+	f.Target = "/"
+	require.Nil(t, f.Validate())
+	require.Equal(t, []string{}, f.dirs)
 
-	for title, cas := range cases {
-		t.Run(title, func(t *testing.T) {
-			assert.Nil(t, cas.input.Validate())
-			assert.Equal(t, cas.expect, cas.input)
-		})
-	}
+	f2 := new(File)
+	f2.Target = "/a/b/c"
+	require.Nil(t, f2.Validate())
+	require.Equal(t,
+		[]string{
+			tensile.FormatIdentitierParts(tensile.Path, filepath.FromSlash("/a/b")),
+			tensile.FormatIdentitierParts(tensile.Path, filepath.FromSlash("/a")),
+			tensile.FormatIdentitierParts(tensile.Path, filepath.FromSlash("/")),
+		},
+		f2.dirs,
+	)
+
+	f3 := new(File)
+	f3.Target = "/a"
+	require.Nil(t, f3.Validate())
+	require.Equal(t,
+		[]string{
+			tensile.FormatIdentitierParts(tensile.Path, filepath.FromSlash("/")),
+		},
+		f3.dirs,
+	)
 }
 
 func TestFile_NeedsExecution(t *testing.T) {

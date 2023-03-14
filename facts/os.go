@@ -3,6 +3,9 @@ package facts
 // OSRelease is filled from the os-release file where available. On
 // hosts without an equivalent file a best effort is done to fill the
 // same fields.
+//
+// Linux data is read from os-release if available.
+// Windows data is taken from systeminfo.exe.
 type OSRelease struct {
 	Name       string `osrel:"NAME" json:"name"`
 	PrettyName string `osrel:"PRETTY_NAME" json:"pretty_name"`

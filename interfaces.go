@@ -31,6 +31,10 @@ type Identitier interface {
 // FormatIdentitier formats the identity of an Identitier.
 func FormatIdentitier(ident Identitier) string {
 	shape, name := ident.Identity()
+	return FormatIdentitierParts(shape, name)
+}
+
+func FormatIdentitierParts(shape Shape, name string) string {
 	return fmt.Sprintf("%s[%s]", shape, name)
 }
 
