@@ -37,20 +37,16 @@ func (file *File) Validate() error {
 }
 
 func walkDirs(target string) ([]string, error) {
-	s, err := filepath.Abs(target)
-	if err != nil {
-		return nil, err
-	}
-
-	if s == "/" {
-		return []string{}, nil
-	}
-
-	var last string
+	last := filepath.FromSlash(target)
 	ret := []string{}
 
-	for s = filepath.Dir(s); s != last; s = filepath.Dir(s) {
-		ret = append(ret, fmt.Sprintf("Path[%s]", s))
+	for s := filepath.Dir(target); s != last; s = filepath.Dir(s) {
+		// 1. target=/ -> no dependency
+		// 2. target=/a -> []string{"/"}
+		if s == target || s == last || s == filepath.VolumeName(s) {
+			break
+		}
+		ret = append(ret, tensile.FormatIdentitierParts(tensile.Path, s))
 		last = s
 	}
 
@@ -110,6 +106,7 @@ func (file File) Execute(ctx tensile.Context) (any, error) {
 	if err != nil {
 		return nil, fmt.Errorf("tensile: error opening and truncating target %q: %w", file.Target, err)
 	}
+	defer f.Close()
 
 	if _, err := f.WriteString(file.Content); err != nil {
 		return nil, fmt.Errorf("tensile: error writing content to target %q: %w", file.Target, err)
