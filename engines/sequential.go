@@ -3,6 +3,7 @@ package engines
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/ntnn/tensile"
 	"github.com/ntnn/tensile/facts"
@@ -48,10 +49,10 @@ func (seq Sequential) run(ctx context.Context, execute bool) error {
 		return fmt.Errorf("engines: error creating tensile.Context: %w", err)
 	}
 
-	done := map[string]bool{}
+	done := new(sync.Map)
 	isDone := func(idents ...string) bool {
 		for _, ident := range idents {
-			if _, ok := done[ident]; !ok {
+			if _, ok := done.Load(ident); !ok {
 				return false
 			}
 		}
@@ -67,7 +68,7 @@ func (seq Sequential) run(ctx context.Context, execute bool) error {
 	for elem := range ch {
 		ident := tensile.FormatIdentitier(elem)
 
-		done[ident] = true
+		done.Store(ident, true)
 
 		log := seq.log.With(slog.String("node", ident))
 
