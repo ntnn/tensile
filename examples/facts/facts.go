@@ -7,6 +7,9 @@ import (
 	"github.com/ntnn/tensile"
 	"github.com/ntnn/tensile/engines"
 	"golang.org/x/exp/slog"
+
+	// set debug logging
+	_ "github.com/ntnn/tensile/testutils"
 )
 
 var _ tensile.Node = (*AccessFacts)(nil)
@@ -30,7 +33,6 @@ func (af AccessFacts) Execute(ctx tensile.Context) (any, error) {
 }
 
 func main() {
-	tensile.SetDebugLog()
 	if err := doMain(); err != nil {
 		log.Fatal(err)
 	}

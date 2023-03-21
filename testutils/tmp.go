@@ -1,18 +1,10 @@
-package nodes
+package testutils
 
 import (
 	"fmt"
 	"os"
 	"testing"
-
-	"github.com/ntnn/tensile"
-	"github.com/ntnn/tensile/facts"
-	"github.com/stretchr/testify/require"
 )
-
-func init() {
-	tensile.SetDebugLog()
-}
 
 // TempDir created a temporary directory and returns the path an
 // a function to remove the directory.
@@ -29,10 +21,4 @@ func TempDir(t *testing.T) (string, func(), error) {
 	}
 
 	return s, fn, nil
-}
-
-func Context(t *testing.T) tensile.Context {
-	ctx, err := tensile.NewContext(nil, nil, facts.Facts{})
-	require.Nil(t, err)
-	return ctx
 }

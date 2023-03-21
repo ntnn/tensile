@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/ntnn/tensile"
+	"github.com/ntnn/tensile/testutils"
 	"github.com/stretchr/testify/require"
 )
 
@@ -39,7 +40,7 @@ func TestFile_Validate(t *testing.T) {
 }
 
 func TestFile_NeedsExecution(t *testing.T) {
-	tempdir, rm, err := TempDir(t)
+	tempdir, rm, err := testutils.TempDir(t)
 	require.Nil(t, err)
 	defer rm()
 
@@ -52,7 +53,7 @@ func TestFile_NeedsExecution(t *testing.T) {
 	require.Nil(t, f.Validate())
 
 	// file does not exist, hence needs creation
-	shouldNeedExecution, err := f.NeedsExecution(Context(t))
+	shouldNeedExecution, err := f.NeedsExecution(testutils.Context(t))
 	require.Nil(t, err)
 	require.True(t, shouldNeedExecution)
 
@@ -62,13 +63,13 @@ func TestFile_NeedsExecution(t *testing.T) {
 	require.Nil(t, err)
 	require.Nil(t, testf.Close())
 
-	shouldNotNeedExecution, err := f.NeedsExecution(Context(t))
+	shouldNotNeedExecution, err := f.NeedsExecution(testutils.Context(t))
 	require.Nil(t, err)
 	require.False(t, shouldNotNeedExecution)
 }
 
 func TestFile_Execute(t *testing.T) {
-	tempdir, rm, err := TempDir(t)
+	tempdir, rm, err := testutils.TempDir(t)
 	require.Nil(t, err)
 	defer rm()
 
@@ -80,7 +81,7 @@ func TestFile_Execute(t *testing.T) {
 	}
 	require.Nil(t, f.Validate())
 
-	_, err = f.Execute(Context(t))
+	_, err = f.Execute(testutils.Context(t))
 	require.Nil(t, err)
 
 	b, err := os.ReadFile(target)

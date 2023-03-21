@@ -1,7 +1,4 @@
 package engines
 
-import "github.com/ntnn/tensile"
-
-func init() {
-	tensile.SetDebugLog()
-}
+// enable debug loggin
+import _ "github.com/ntnn/tensile/testutils"

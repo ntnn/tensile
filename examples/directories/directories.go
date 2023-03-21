@@ -4,13 +4,14 @@ import (
 	"context"
 	"log"
 
-	"github.com/ntnn/tensile"
 	"github.com/ntnn/tensile/engines"
 	"github.com/ntnn/tensile/nodes"
+
+	// set debug logging
+	_ "github.com/ntnn/tensile/testutils"
 )
 
 func main() {
-	tensile.SetDebugLog()
 	if err := doMain(); err != nil {
 		log.Fatal(err)
 	}
