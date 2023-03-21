@@ -9,40 +9,40 @@ import (
 	"golang.org/x/exp/slog"
 )
 
-type Simple struct {
+type Sequential struct {
 	Queue *tensile.Queue
 	Facts facts.Facts
 	log   *slog.Logger
 }
 
-func NewSimple(logger *slog.Logger) (*Simple, error) {
+func NewSequential(logger *slog.Logger) (*Sequential, error) {
 	f, err := facts.New()
 	if err != nil {
 		return nil, fmt.Errorf("engines: error preparing facts: %w", err)
 	}
 
-	return &Simple{
+	return &Sequential{
 		Queue: tensile.NewQueue(f),
 		Facts: f,
 		log:   logger,
 	}, nil
 }
 
-func (simple Simple) Noop(ctx context.Context) error {
-	return simple.run(ctx, false)
+func (seq Sequential) Noop(ctx context.Context) error {
+	return seq.run(ctx, false)
 }
 
-func (simple Simple) Run(ctx context.Context) error {
-	return simple.run(ctx, true)
+func (seq Sequential) Run(ctx context.Context) error {
+	return seq.run(ctx, true)
 }
 
-func (simple Simple) run(ctx context.Context, execute bool) error {
-	simple.log.Info("getting facts")
+func (seq Sequential) run(ctx context.Context, execute bool) error {
+	seq.log.Info("getting facts")
 
 	c, err := tensile.NewContext(
 		ctx,
 		nil,
-		simple.Facts,
+		seq.Facts,
 	)
 	if err != nil {
 		return fmt.Errorf("engines: error creating tensile.Context: %w", err)
@@ -61,15 +61,15 @@ func (simple Simple) run(ctx context.Context, execute bool) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	simple.log.Info("channeling nodes from queue")
-	ch := simple.Queue.Channel(ctx, isDone)
+	seq.log.Info("channeling nodes from queue")
+	ch := seq.Queue.Channel(ctx, isDone)
 
 	for elem := range ch {
 		ident := tensile.FormatIdentitier(elem)
 
 		done[ident] = true
 
-		log := simple.log.With(slog.String("node", ident))
+		log := seq.log.With(slog.String("node", ident))
 
 		log.Debug("handling node")
 

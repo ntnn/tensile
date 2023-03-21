@@ -66,12 +66,12 @@ func main() {
 }
 
 func doMain() error {
-	simple, err := engines.NewSimple(slog.Default())
+	seq, err := engines.NewSequential(slog.Default())
 	if err != nil {
 		return err
 	}
 
-	if err := simple.Queue.Add(
+	if err := seq.Queue.Add(
 		&MyNodeA{
 			Message: "Hello, world!",
 		},
@@ -86,5 +86,5 @@ func doMain() error {
 		return err
 	}
 
-	return simple.Noop(context.Background())
+	return seq.Noop(context.Background())
 }
