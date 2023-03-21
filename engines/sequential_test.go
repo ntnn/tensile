@@ -6,7 +6,6 @@ import (
 
 	"github.com/ntnn/tensile/nodes"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/exp/slog"
 )
 
 func TestSequential_Run(t *testing.T) {
@@ -18,10 +17,10 @@ func TestSequential_Run(t *testing.T) {
 		Message: "node 2",
 	}
 
-	seq, err := NewSequential(slog.Default())
+	seq, err := NewSequential(nil)
 	require.Nil(t, err)
 
-	require.Nil(t, seq.Queue.Add(n1, n2))
+	require.Nil(t, seq.Config.Queue.Add(n1, n2))
 
 	require.Nil(t, seq.Run(context.Background()))
 }

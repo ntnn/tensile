@@ -6,26 +6,24 @@ import (
 	"sync"
 
 	"github.com/ntnn/tensile"
-	"github.com/ntnn/tensile/facts"
 	"golang.org/x/exp/slog"
 )
 
 type Sequential struct {
-	Queue *tensile.Queue
-	Facts facts.Facts
-	log   *slog.Logger
+	Config *Config
 }
 
-func NewSequential(logger *slog.Logger) (*Sequential, error) {
-	f, err := facts.New()
-	if err != nil {
-		return nil, fmt.Errorf("engines: error preparing facts: %w", err)
+func NewSequential(config *Config) (*Sequential, error) {
+	if config == nil {
+		var err error
+		config, err = NewConfig()
+		if err != nil {
+			return nil, fmt.Errorf("engines: error in default config: %w", err)
+		}
 	}
 
 	return &Sequential{
-		Queue: tensile.NewQueue(f),
-		Facts: f,
-		log:   logger,
+		Config: config,
 	}, nil
 }
 
@@ -38,12 +36,12 @@ func (seq Sequential) Run(ctx context.Context) error {
 }
 
 func (seq Sequential) run(ctx context.Context, execute bool) error {
-	seq.log.Info("getting facts")
+	seq.Config.Log.Info("getting facts")
 
 	c, err := tensile.NewContext(
 		ctx,
 		nil,
-		seq.Facts,
+		seq.Config.Facts,
 	)
 	if err != nil {
 		return fmt.Errorf("engines: error creating tensile.Context: %w", err)
@@ -62,16 +60,15 @@ func (seq Sequential) run(ctx context.Context, execute bool) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	seq.log.Info("channeling nodes from queue")
-	ch := seq.Queue.Channel(ctx, isDone)
+	seq.Config.Log.Info("channeling nodes from queue")
+	ch := seq.Config.Queue.Channel(ctx, isDone)
 
 	for elem := range ch {
 		ident := tensile.FormatIdentitier(elem)
 
 		done.Store(ident, true)
 
-		log := seq.log.With(slog.String("node", ident))
-
+		log := seq.Config.Log.With(slog.String("node", ident))
 		log.Debug("handling node")
 
 		if needsExecutioner, ok := elem.(tensile.NeedsExecutioner); ok {

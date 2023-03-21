@@ -37,12 +37,12 @@ func main() {
 }
 
 func doMain() error {
-	seq, err := engines.NewSequential(slog.Default())
+	seq, err := engines.NewSequential(nil)
 	if err != nil {
 		return err
 	}
 
-	if err := seq.Queue.Add(&AccessFacts{}); err != nil {
+	if err := seq.Config.Queue.Add(&AccessFacts{}); err != nil {
 		return err
 	}
 
