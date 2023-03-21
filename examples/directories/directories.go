@@ -7,7 +7,6 @@ import (
 	"github.com/ntnn/tensile"
 	"github.com/ntnn/tensile/engines"
 	"github.com/ntnn/tensile/nodes"
-	"golang.org/x/exp/slog"
 )
 
 func main() {
@@ -18,12 +17,12 @@ func main() {
 }
 
 func doMain() error {
-	seq, err := engines.NewSequential(slog.Default())
+	seq, err := engines.NewSequential(nil)
 	if err != nil {
 		return err
 	}
 
-	if err := seq.Queue.Add(
+	if err := seq.Config.Queue.Add(
 		&nodes.Dir{
 			Target: "/tmp",
 		},

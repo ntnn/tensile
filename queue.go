@@ -2,23 +2,18 @@ package tensile
 
 import (
 	"context"
-	"errors"
 	"fmt"
-
-	"github.com/ntnn/tensile/facts"
 )
 
 type Queue struct {
 	nodes map[string]Identitier
-	facts facts.Facts
 
 	QueueChannelLength int
 }
 
-func NewQueue(facts facts.Facts) *Queue {
+func NewQueue() *Queue {
 	q := new(Queue)
 	q.nodes = map[string]Identitier{}
-	q.facts = facts
 	q.QueueChannelLength = 100
 	return q
 }
@@ -59,23 +54,18 @@ func (queue *Queue) add(node Identitier) error {
 }
 
 func (queue Queue) addFrom(generator NodeGenerator) error {
-	ch, errCh, err := generator.Nodes(queue.facts)
+	nodes, err := generator.Nodes()
 	if err != nil {
 		return fmt.Errorf("direct error from generator: %w", err)
 	}
 
-	errs := []error{}
-	for node := range ch {
+	for _, node := range nodes {
 		if err := queue.add(node); err != nil {
-			errs = append(errs, err)
+			return fmt.Errorf("error adding node %q: %w", node, err)
 		}
 	}
 
-	for err := range errCh {
-		errs = append(errs, err)
-	}
-
-	return errors.Join(errs...)
+	return nil
 }
 
 var (

@@ -3,7 +3,6 @@ package tensile
 import (
 	"testing"
 
-	"github.com/ntnn/tensile/facts"
 	"github.com/stretchr/testify/require"
 )
 
@@ -28,7 +27,7 @@ func (t testNodeCollisioner) IsCollision(other Identitier) error {
 }
 
 func TestQueue_Add(t *testing.T) {
-	q := NewQueue(facts.Facts{})
+	q := NewQueue()
 
 	// Adding nodes
 	require.Nil(t, q.Add(&testNode{Name: "Hello, world!"}))
