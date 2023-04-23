@@ -1,26 +1,16 @@
 package tensile
 
-import "fmt"
-
-type Shaper interface {
-	Shape() Shape
-}
-
-type Identifier interface {
-	Identifier() string
-}
-
 type Node interface {
-	Shaper
-	Identifier
+	Shape() Shape
+	Identifier() string
 }
 
 type NodeWrapper struct {
 	Node Node
 }
 
-func NodeWrap(node Node) *NodeWrapper {
-	return &NodeWrapper{
+func NodeWrap(node Node) NodeWrapper {
+	return NodeWrapper{
 		Node: node,
 	}
 }
@@ -30,7 +20,7 @@ func (nw NodeWrapper) Identity() (Shape, string) {
 }
 
 func (nw NodeWrapper) String() string {
-	return fmt.Sprintf("%s[%s]", nw.Node.Shape(), nw.Node.Identifier())
+	return FormatIdentity(nw.Node.Shape(), nw.Node.Identifier())
 }
 
 // Validator validates an element when adding it to a queue.
@@ -63,8 +53,29 @@ func (nw NodeWrapper) IsCollision(other NodeWrapper) error {
 		return isCollisioner.IsCollision(other.Node)
 	}
 
-	// TODO default implementation
-	return nil
+	return ErrIsCollisionerNotImplemented
+}
+
+type AfterNoder interface {
+	AfterNodes(Context) []string
+}
+
+func (nw NodeWrapper) AfterNodes(ctx Context) []string {
+	if afterNoder, ok := nw.Node.(AfterNoder); ok {
+		return afterNoder.AfterNodes(ctx)
+	}
+	return []string{}
+}
+
+type BeforeNoder interface {
+	BeforeNodes() []string
+}
+
+func (nw NodeWrapper) BeforeNodes() []string {
+	if afterNoder, ok := nw.Node.(BeforeNoder); ok {
+		return afterNoder.BeforeNodes()
+	}
+	return []string{}
 }
 
 type NeedsExecutioner interface {
