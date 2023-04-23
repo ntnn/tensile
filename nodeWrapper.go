@@ -1,18 +1,40 @@
 package tensile
 
+import (
+	"errors"
+)
+
 type Node interface {
 	Shape() Shape
 	Identifier() string
 }
 
+var _ Node = (*NodeWrapper)(nil)
+
+// NodeWrapper wraps around nodes to provide some common functionality.
 type NodeWrapper struct {
 	Node Node
+
+	Before, After []string
 }
 
 func NodeWrap(node Node) NodeWrapper {
+	// Ensure a node wrapper is not wrapped
+	if nw, ok := node.(*NodeWrapper); ok {
+		return *nw
+	}
+
 	return NodeWrapper{
 		Node: node,
 	}
+}
+
+func (nw NodeWrapper) Shape() Shape {
+	return nw.Node.Shape()
+}
+
+func (nw NodeWrapper) Identifier() string {
+	return nw.Node.Identifier()
 }
 
 func (nw NodeWrapper) Identity() (Shape, string) {
@@ -32,7 +54,12 @@ type Validator interface {
 	Validate() error
 }
 
+var ErrNodeIsNil = errors.New("tensile: node in wrapper is nil")
+
 func (nw NodeWrapper) Validate() error {
+	if nw.Node == nil {
+		return ErrNodeIsNil
+	}
 	if validator, ok := nw.Node.(Validator); ok {
 		return validator.Validate()
 	}
@@ -60,11 +87,12 @@ type AfterNoder interface {
 	AfterNodes(Context) []string
 }
 
-func (nw NodeWrapper) AfterNodes(ctx Context) []string {
+func (nw NodeWrapper) AfterNodes() []string {
+	after := nw.After
 	if afterNoder, ok := nw.Node.(AfterNoder); ok {
-		return afterNoder.AfterNodes(ctx)
+		after = append(after, afterNoder.AfterNodes()...)
 	}
-	return []string{}
+	return after
 }
 
 type BeforeNoder interface {
@@ -72,10 +100,11 @@ type BeforeNoder interface {
 }
 
 func (nw NodeWrapper) BeforeNodes() []string {
-	if afterNoder, ok := nw.Node.(BeforeNoder); ok {
-		return afterNoder.BeforeNodes()
+	before := nw.Before
+	if beforeNoder, ok := nw.Node.(BeforeNoder); ok {
+		before = append(before, beforeNoder.BeforeNodes()...)
 	}
-	return []string{}
+	return before
 }
 
 type NeedsExecutioner interface {
@@ -89,11 +118,7 @@ func (nw NodeWrapper) NeedsExecution(ctx Context) (bool, error) {
 	return true, nil
 }
 
-// Executor executes the node.
 type Executor interface {
-	// Execute executes the node.
-	// The return value can be a struct to be utilized by other
-	// elements.
 	Execute(Context) (any, error)
 }
 
