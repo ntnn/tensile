@@ -29,8 +29,12 @@ func (dir *Dir) Validate() error {
 	return nil
 }
 
-func (dir Dir) Identity() (tensile.Shape, string) {
-	return tensile.Path, dir.Target
+func (dir Dir) Shape() tensile.Shape {
+	return tensile.Path
+}
+
+func (dir Dir) Identifier() string {
+	return dir.Target
 }
 
 func (dir Dir) PreElements() []string {

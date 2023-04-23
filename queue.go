@@ -6,19 +6,19 @@ import (
 )
 
 type Queue struct {
-	nodes map[string]Identitier
+	nodes map[string]NodeWrapper
 
 	QueueChannelLength int
 }
 
 func NewQueue() *Queue {
 	q := new(Queue)
-	q.nodes = map[string]Identitier{}
+	q.nodes = map[string]NodeWrapper{}
 	q.QueueChannelLength = 100
 	return q
 }
 
-func (queue *Queue) Add(nodes ...Identitier) error {
+func (queue *Queue) Add(nodes ...Node) error {
 	for _, node := range nodes {
 		if err := queue.add(node); err != nil {
 			return err
@@ -27,22 +27,29 @@ func (queue *Queue) Add(nodes ...Identitier) error {
 	return nil
 }
 
-func (queue *Queue) add(node Identitier) error {
-	if validator, ok := node.(Validator); ok {
-		if err := validator.Validate(); err != nil {
-			return err
-		}
+// NodeGenerator can return more nodes for a Queue to collect.
+//
+// This is primarily useful to have a single Noop node that dynamically
+// generates more nodes based on configuration.
+type NodeGenerator interface {
+	Nodes() ([]Node, error)
+}
+
+func (queue *Queue) add(node Node) error {
+	nw := NodeWrap(node)
+
+	if err := nw.Validate(); err != nil {
+		return err
 	}
 
-	ident := FormatIdentitier(node)
-	if existing, ok := queue.nodes[ident]; ok {
-		if err := isCollisionBoth(existing, node); err != nil {
+	if existing, ok := queue.nodes[nw.String()]; ok {
+		if err := isCollisionBoth(existing, nw); err != nil {
 			return fmt.Errorf("same identity already registered, collision check: %w", err)
 		}
 		return nil
 	}
 
-	queue.nodes[ident] = node
+	queue.nodes[nw.String()] = nw
 
 	if generator, ok := node.(NodeGenerator); ok {
 		if err := queue.addFrom(generator); err != nil {
@@ -72,29 +79,20 @@ var (
 	ErrIsCollisionerNotImplemented = fmt.Errorf("nodes do not implement IsCollisioner interface")
 )
 
-func isCollisionBoth(a, b Identitier) error {
-	if err := isCollision(a, b); err != ErrIsCollisionerNotImplemented {
+func isCollisionBoth(a, b NodeWrapper) error {
+	if err := a.IsCollision(b); err != ErrIsCollisionerNotImplemented {
 		return err
 	}
 
-	if err := isCollision(b, a); err != ErrIsCollisionerNotImplemented {
+	if err := b.IsCollision(a); err != ErrIsCollisionerNotImplemented {
 		return err
 	}
 
 	return ErrIsCollisionerNotImplemented
 }
 
-func isCollision(a, b Identitier) error {
-	isCollisioner, ok := a.(IsCollisioner)
-	if !ok {
-		return ErrIsCollisionerNotImplemented
-	}
-
-	return isCollisioner.IsCollision(b)
-}
-
-func (queue Queue) Channel(ctx context.Context, isDone func(idents ...string) bool) chan Identitier {
-	ch := make(chan Identitier, queue.QueueChannelLength)
+func (queue Queue) Channel(ctx context.Context, isDone func(idents ...string) bool) chan NodeWrapper {
+	ch := make(chan NodeWrapper, queue.QueueChannelLength)
 
 	go func() {
 		defer close(ch)
@@ -106,37 +104,28 @@ func (queue Queue) Channel(ctx context.Context, isDone func(idents ...string) bo
 				return
 			}
 
-			for _, elem := range queue.nodes {
+			for _, nw := range queue.nodes {
 				if err := ctx.Err(); err != nil {
 					return
 				}
 
-				ident := FormatIdentitier(elem)
-
-				if _, ok := sent[ident]; ok {
+				if _, ok := sent[nw.String()]; ok {
 					continue
 				}
 
-				if preElementer, ok := elem.(PreElementer); ok {
-					// collect which pre elements need to be checked
-					checkPres := []string{}
-					for _, pre := range preElementer.PreElements() {
-						// filter elements that do not exist in the
-						// queue
-						if _, ok := queue.nodes[pre]; !ok {
-							continue
-						}
-						checkPres = append(checkPres, pre)
-					}
-
-					// check pre elements
-					if !isDone(checkPres...) {
+				// collect which pre elements need to be checked
+				checkPres := []string{}
+				for _, before := range nw.BeforeNodes() {
+					// filter elements that do not exist in the
+					// queue
+					if _, ok := queue.nodes[before]; !ok {
 						continue
 					}
+					checkPres = append(checkPres, before)
 				}
 
-				ch <- elem
-				sent[ident] = true
+				ch <- nw
+				sent[nw.String()] = true
 			}
 		}
 	}()

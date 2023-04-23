@@ -14,8 +14,12 @@ var _ tensile.Node = (*AccessFacts)(nil)
 type AccessFacts struct {
 }
 
-func (af AccessFacts) Identity() (tensile.Shape, string) {
-	return tensile.Noop, "log hostname from facts"
+func (af AccessFacts) Shape() tensile.Shape {
+	return tensile.Noop
+}
+
+func (af AccessFacts) Identifier() string {
+	return "log hostname from facts"
 }
 
 func (af AccessFacts) Validate() error {
@@ -23,7 +27,7 @@ func (af AccessFacts) Validate() error {
 }
 
 func (af AccessFacts) Execute(ctx tensile.Context) (any, error) {
-	ctx.Logger(af).Info("hostname from facts",
+	ctx.Logger().Info("hostname from facts",
 		slog.String("hostname", ctx.Facts().Hostname),
 	)
 	return nil, nil

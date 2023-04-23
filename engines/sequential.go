@@ -63,32 +63,21 @@ func (seq Sequential) run(ctx context.Context, execute bool) error {
 	seq.Config.Log.Info("channeling nodes from queue")
 	ch := seq.Config.Queue.Channel(ctx, isDone)
 
-	for elem := range ch {
-		ident := tensile.FormatIdentitier(elem)
+	for nw := range ch {
+		done.Store(nw.String(), true)
 
-		done.Store(ident, true)
-
-		log := seq.Config.Log.With(slog.String("node", ident))
+		log := seq.Config.Log.With(slog.String("node", nw.String()))
 		log.Debug("handling node")
 
-		if needsExecutioner, ok := elem.(tensile.NeedsExecutioner); ok {
-			log.Debug("node is NeedsExecutioner, checking need")
-			needsExecution, err := needsExecutioner.NeedsExecution(c)
-			if err != nil {
-				return err
-			}
-			if !needsExecution {
-				log.Debug("node is NeedsExecutioner, no execution need")
-				continue
-			}
-			log.Debug("node is NeedsExecutioner, needs execution")
+		needsExecution, err := nw.NeedsExecution(c)
+		if err != nil {
+			return err
 		}
-
-		executor, ok := elem.(tensile.Executor)
-		if !ok {
-			log.Warn("node is not Executor")
+		if !needsExecution {
+			log.Debug("node does not need execution")
 			continue
 		}
+		log.Debug("node needs execution")
 
 		if !execute {
 			log.Debug("would execute node")
@@ -97,7 +86,7 @@ func (seq Sequential) run(ctx context.Context, execute bool) error {
 
 		// TODO handle result
 		log.Debug("executing")
-		if _, err := executor.Execute(c); err != nil {
+		if _, err := nw.Execute(c); err != nil {
 			return err
 		}
 	}

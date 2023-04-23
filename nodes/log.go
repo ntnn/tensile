@@ -21,8 +21,12 @@ func (log *Log) Validate() error {
 	return nil
 }
 
-func (log Log) Identity() (tensile.Shape, string) {
-	return tensile.Noop, log.Message
+func (log Log) Shape() tensile.Shape {
+	return tensile.Noop
+}
+
+func (log Log) Identifier() string {
+	return log.Message
 }
 
 func (log Log) Execute(ctx tensile.Context) (any, error) {
