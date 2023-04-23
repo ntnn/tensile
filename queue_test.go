@@ -10,19 +10,27 @@ type testNode struct {
 	Name string
 }
 
-func (t testNode) Identity() (Shape, string) {
-	return Noop, t.Name
+func (t testNode) Shape() Shape {
+	return Noop
+}
+
+func (t testNode) Identifier() string {
+	return t.Name
 }
 
 type testNodeCollisioner struct {
 	Name string
 }
 
-func (t testNodeCollisioner) Identity() (Shape, string) {
-	return Noop, t.Name
+func (t testNodeCollisioner) Shape() Shape {
+	return Noop
 }
 
-func (t testNodeCollisioner) IsCollision(other Identitier) error {
+func (t testNodeCollisioner) Identifier() string {
+	return t.Name
+}
+
+func (t testNodeCollisioner) IsCollision(other Node) error {
 	return nil
 }
 

@@ -46,15 +46,19 @@ func walkDirs(target string) ([]string, error) {
 		if s == target || s == last || s == filepath.VolumeName(s) {
 			break
 		}
-		ret = append(ret, tensile.FormatIdentitierParts(tensile.Path, s))
+		ret = append(ret, tensile.FormatIdentity(tensile.Path, s))
 		last = s
 	}
 
 	return ret, nil
 }
 
-func (file File) Identity() (tensile.Shape, string) {
-	return tensile.Path, file.Target
+func (file File) Shape() tensile.Shape {
+	return tensile.Path
+}
+
+func (file File) Identifier() string {
+	return file.Target
 }
 
 func (file File) PreElements() []string {
@@ -93,7 +97,7 @@ func (file File) NeedsExecution(ctx tensile.Context) (bool, error) {
 
 	sourceHash := file.sourceHash()
 
-	ctx.Logger(file).Debug("comparing hashes",
+	ctx.Logger().Debug("comparing hashes",
 		slog.Any("source", sourceHash),
 		slog.Any("target", targetHash),
 	)

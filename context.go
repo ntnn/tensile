@@ -8,9 +8,10 @@ import (
 	"golang.org/x/exp/slog"
 )
 
+// TODO context should be initialized by the engine, then passed to node wrappers to fill out with e.g. the correct logger
 type Context interface {
 	Context() context.Context
-	Logger(Identitier) *slog.Logger
+	Logger() *slog.Logger
 	Result(Shape, string) (any, bool, error)
 	Facts() facts.Facts
 }
@@ -46,8 +47,9 @@ func (ec TContext) Context() context.Context {
 	return ec.ctx
 }
 
-func (ec TContext) Logger(ident Identitier) *slog.Logger {
-	return ec.logger.With(slog.String("identity", FormatIdentitier(ident)))
+func (ec TContext) Logger() *slog.Logger {
+	return ec.logger
+	// return ec.logger.With(slog.String("identity", FormatIdentitier(ident)))
 }
 
 func (ec TContext) Result(shape Shape, name string) (any, bool, error) {
