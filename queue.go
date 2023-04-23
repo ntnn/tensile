@@ -2,6 +2,7 @@ package tensile
 
 import (
 	"context"
+	"errors"
 	"fmt"
 )
 
@@ -80,15 +81,15 @@ var (
 )
 
 func isCollisionBoth(a, b NodeWrapper) error {
-	if err := a.IsCollision(b); err != ErrIsCollisionerNotImplemented {
+	if err := a.IsCollision(b); err != nil && !errors.Is(err, ErrIsCollisionerNotImplemented) {
 		return err
 	}
 
-	if err := b.IsCollision(a); err != ErrIsCollisionerNotImplemented {
+	if err := b.IsCollision(a); err != nil && !errors.Is(err, ErrIsCollisionerNotImplemented) {
 		return err
 	}
 
-	return ErrIsCollisionerNotImplemented
+	return nil
 }
 
 func (queue Queue) Channel(ctx context.Context, isDone func(idents ...string) bool) chan NodeWrapper {
