@@ -84,7 +84,8 @@ func (nw NodeWrapper) IsCollision(other NodeWrapper) error {
 }
 
 type AfterNoder interface {
-	AfterNodes(Context) []string
+	// AfterNodes lists nodes after which this node must be executed if they exist.
+	AfterNodes() []string
 }
 
 func (nw NodeWrapper) AfterNodes() []string {
@@ -96,6 +97,7 @@ func (nw NodeWrapper) AfterNodes() []string {
 }
 
 type BeforeNoder interface {
+	// BeforeNodes lists nodes before which this node must be executed if they exist.
 	BeforeNodes() []string
 }
 
