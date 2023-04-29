@@ -3,7 +3,6 @@ package engines
 import (
 	"context"
 	"fmt"
-	"sync"
 
 	"github.com/ntnn/tensile"
 	"golang.org/x/exp/slog"
@@ -47,25 +46,13 @@ func (seq Sequential) run(ctx context.Context, execute bool) error {
 		return fmt.Errorf("engines: error creating tensile.Context: %w", err)
 	}
 
-	done := new(sync.Map)
-	isDone := func(idents ...string) bool {
-		for _, ident := range idents {
-			if _, ok := done.Load(ident); !ok {
-				return false
-			}
-		}
-		return true
-	}
-
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	seq.Config.Log.Info("channeling nodes from queue")
-	ch := seq.Config.Queue.Channel(ctx, isDone)
+	ch, errCh := seq.Config.Queue.Channel(ctx)
 
 	for nw := range ch {
-		done.Store(nw.String(), true)
-
 		log := seq.Config.Log.With(slog.String("node", nw.String()))
 		log.Debug("handling node")
 
@@ -89,6 +76,9 @@ func (seq Sequential) run(ctx context.Context, execute bool) error {
 		if _, err := nw.Execute(c); err != nil {
 			return err
 		}
+	}
+	if err := <-errCh; err != nil {
+		return err
 	}
 
 	return nil
