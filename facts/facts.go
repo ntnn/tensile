@@ -53,6 +53,15 @@ func New() (Facts, error) {
 		return Facts{}, err
 	}
 
+	f.Custom = map[string]any{}
+	for key, fn := range customFactsGatherers {
+		data, err := fn()
+		if err != nil {
+			return Facts{}, fmt.Errorf("error in CustomFactsGatherer %q: %w", key, err)
+		}
+		f.Custom[key] = data
+	}
+
 	return f, nil
 }
 
