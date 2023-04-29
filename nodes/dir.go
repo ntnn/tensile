@@ -37,7 +37,9 @@ func (dir Dir) Identifier() string {
 	return dir.Target
 }
 
-func (dir Dir) PreElements() []string {
+var _ tensile.AfterNoder = (*Dir)(nil)
+
+func (dir Dir) AfterNodes() []string {
 	return dir.dirs
 }
 
