@@ -20,9 +20,9 @@ func TestFile_Validate(t *testing.T) {
 	require.Nil(t, f2.Validate())
 	require.Equal(t,
 		[]string{
-			tensile.FormatIdentitierParts(tensile.Path, filepath.FromSlash("/a/b")),
-			tensile.FormatIdentitierParts(tensile.Path, filepath.FromSlash("/a")),
-			tensile.FormatIdentitierParts(tensile.Path, filepath.FromSlash("/")),
+			tensile.FormatIdentity(tensile.Path, filepath.FromSlash("/a/b")),
+			tensile.FormatIdentity(tensile.Path, filepath.FromSlash("/a")),
+			tensile.FormatIdentity(tensile.Path, filepath.FromSlash("/")),
 		},
 		f2.dirs,
 	)
@@ -32,7 +32,7 @@ func TestFile_Validate(t *testing.T) {
 	require.Nil(t, f3.Validate())
 	require.Equal(t,
 		[]string{
-			tensile.FormatIdentitierParts(tensile.Path, filepath.FromSlash("/")),
+			tensile.FormatIdentity(tensile.Path, filepath.FromSlash("/")),
 		},
 		f3.dirs,
 	)

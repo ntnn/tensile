@@ -3,7 +3,6 @@ package engines
 import (
 	"context"
 	"fmt"
-	"sync"
 
 	"github.com/ntnn/tensile"
 	"golang.org/x/exp/slog"
@@ -47,48 +46,25 @@ func (seq Sequential) run(ctx context.Context, execute bool) error {
 		return fmt.Errorf("engines: error creating tensile.Context: %w", err)
 	}
 
-	done := new(sync.Map)
-	isDone := func(idents ...string) bool {
-		for _, ident := range idents {
-			if _, ok := done.Load(ident); !ok {
-				return false
-			}
-		}
-		return true
-	}
-
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	seq.Config.Log.Info("channeling nodes from queue")
-	ch := seq.Config.Queue.Channel(ctx, isDone)
+	ch, errCh := seq.Config.Queue.Channel(ctx)
 
-	for elem := range ch {
-		ident := tensile.FormatIdentitier(elem)
-
-		done.Store(ident, true)
-
-		log := seq.Config.Log.With(slog.String("node", ident))
+	for nw := range ch {
+		log := seq.Config.Log.With(slog.String("node", nw.String()))
 		log.Debug("handling node")
 
-		if needsExecutioner, ok := elem.(tensile.NeedsExecutioner); ok {
-			log.Debug("node is NeedsExecutioner, checking need")
-			needsExecution, err := needsExecutioner.NeedsExecution(c)
-			if err != nil {
-				return err
-			}
-			if !needsExecution {
-				log.Debug("node is NeedsExecutioner, no execution need")
-				continue
-			}
-			log.Debug("node is NeedsExecutioner, needs execution")
+		needsExecution, err := nw.NeedsExecution(c)
+		if err != nil {
+			return err
 		}
-
-		executor, ok := elem.(tensile.Executor)
-		if !ok {
-			log.Warn("node is not Executor")
+		if !needsExecution {
+			log.Debug("node does not need execution")
 			continue
 		}
+		log.Debug("node needs execution")
 
 		if !execute {
 			log.Debug("would execute node")
@@ -97,9 +73,12 @@ func (seq Sequential) run(ctx context.Context, execute bool) error {
 
 		// TODO handle result
 		log.Debug("executing")
-		if _, err := executor.Execute(c); err != nil {
+		if _, err := nw.Execute(c); err != nil {
 			return err
 		}
+	}
+	if err := <-errCh; err != nil {
+		return err
 	}
 
 	return nil

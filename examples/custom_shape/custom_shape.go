@@ -25,8 +25,12 @@ type MyNodeA struct {
 	Message string
 }
 
-func (my MyNodeA) Identity() (tensile.Shape, string) {
-	return MyShape, my.Message
+func (my MyNodeA) Shape() tensile.Shape {
+	return MyShape
+}
+
+func (my MyNodeA) Identifier() string {
+	return my.Message
 }
 
 func (my MyNodeA) Validate() error {
@@ -34,7 +38,7 @@ func (my MyNodeA) Validate() error {
 }
 
 func (my MyNodeA) Execute(ctx tensile.Context) (any, error) {
-	ctx.Logger(my).Info(my.Message)
+	ctx.Logger().Info(my.Message)
 	return nil, nil
 }
 
@@ -45,8 +49,12 @@ type MyNodeB struct {
 	Timestamp time.Time
 }
 
-func (my MyNodeB) Identity() (tensile.Shape, string) {
-	return MyShape, my.Message
+func (my MyNodeB) Shape() tensile.Shape {
+	return MyShape
+}
+
+func (my MyNodeB) Identifier() string {
+	return my.Message
 }
 
 func (my MyNodeB) Validate() error {
@@ -54,7 +62,7 @@ func (my MyNodeB) Validate() error {
 }
 
 func (my MyNodeB) Execute(ctx tensile.Context) (any, error) {
-	ctx.Logger(my).Info(my.Message, slog.Time("timestamp", my.Timestamp))
+	ctx.Logger().Info(my.Message, slog.Time("timestamp", my.Timestamp))
 	return nil, nil
 }
 
