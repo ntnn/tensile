@@ -61,7 +61,9 @@ func (file File) Identifier() string {
 	return file.Target
 }
 
-func (file File) PreElements() []string {
+var _ tensile.AfterNoder = (*File)(nil)
+
+func (file File) AfterNodes() []string {
 	return file.dirs
 }
 
