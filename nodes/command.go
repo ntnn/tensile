@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 
 	"golang.org/x/exp/slog"
 
@@ -108,7 +109,10 @@ func (sh Command) Execute(ctx tensile.Context) (any, error) {
 	)
 	cmd := exec.CommandContext(ctx.Context(), binPath, arguments...)
 
+	wg := &sync.WaitGroup{}
+
 	if len(sh.Input) > 0 {
+		wg.Add(1)
 		stdinPipe, err := cmd.StdinPipe()
 		if err != nil {
 			return nil, fmt.Errorf("nodes: error getting stdin pipe: %w", err)
@@ -116,6 +120,7 @@ func (sh Command) Execute(ctx tensile.Context) (any, error) {
 
 		go func() {
 			defer stdinPipe.Close()
+			defer wg.Done()
 			for _, line := range sh.Input {
 				if _, err := stdinPipe.Write([]byte(line + "\n")); err != nil {
 					// TODO
@@ -131,7 +136,9 @@ func (sh Command) Execute(ctx tensile.Context) (any, error) {
 	if err != nil {
 		return nil, fmt.Errorf("nodes: error getting stdout pipe: %w", err)
 	}
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		if _, err := io.Copy(stdout, stdoutPipe); err != nil {
 			// TODO
 		}
@@ -143,7 +150,9 @@ func (sh Command) Execute(ctx tensile.Context) (any, error) {
 	if err != nil {
 		return nil, fmt.Errorf("nodes: error getting stderr pipe: %w", err)
 	}
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		if _, err := io.Copy(stderr, stderrPipe); err != nil {
 			// TODO
 		}
@@ -151,6 +160,8 @@ func (sh Command) Execute(ctx tensile.Context) (any, error) {
 	}()
 
 	makeOutput := func(msg string, err error) (*CommandOutput, error) {
+		wg.Wait()
+
 		out := &CommandOutput{
 			Result: cmd.ProcessState.ExitCode(),
 			Stdout: stdout.String(),
