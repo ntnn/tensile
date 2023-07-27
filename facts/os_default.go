@@ -11,6 +11,8 @@ import (
 	"strings"
 )
 
+const ProbablyContainer = "probably-container"
+
 func NewOSRelease() (OSRelease, error) {
 	rel, err := newOSReleaseFile()
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
@@ -20,7 +22,13 @@ func NewOSRelease() (OSRelease, error) {
 		return rel, nil
 	}
 
-	return OSRelease{}, fmt.Errorf("exhausted all options")
+	// not returning an error - the various container envrionments are
+	// too difficult to reliably detect.
+	// Instead OSRelease.Name and .ID are set to ProbablyContainer.
+	return OSRelease{
+		Name: ProbablyContainer,
+		ID:   ProbablyContainer,
+	}, nil
 }
 
 func newOSReleaseFile() (OSRelease, error) {
