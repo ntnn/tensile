@@ -16,7 +16,7 @@ func SetDebugLog() {
 		// in tests set a custom handler on debug level as default
 		handlerOpts := new(slog.HandlerOptions)
 		handlerOpts.Level = slog.LevelDebug
-		handler := handlerOpts.NewTextHandler(os.Stderr)
+		handler := slog.NewTextHandler(os.Stderr, handlerOpts)
 		logger := slog.New(handler)
 		slog.SetDefault(logger)
 	})
