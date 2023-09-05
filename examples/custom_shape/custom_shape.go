@@ -3,11 +3,11 @@ package main
 import (
 	"context"
 	"log"
+	"log/slog"
 	"time"
 
 	"github.com/ntnn/tensile"
 	"github.com/ntnn/tensile/engines"
-	"golang.org/x/exp/slog"
 )
 
 const (

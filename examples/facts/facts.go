@@ -3,10 +3,10 @@ package main
 import (
 	"context"
 	"log"
+	"log/slog"
 
 	"github.com/ntnn/tensile"
 	"github.com/ntnn/tensile/engines"
-	"golang.org/x/exp/slog"
 )
 
 var _ tensile.Node = (*AccessFacts)(nil)

@@ -8,14 +8,15 @@ package tensile
 // same resource.
 //
 // E.g. consider two elements:
-// templated := &tensile.Template{
-//   Path: "/path/to/file",
-//   ...
-// }
 //
-// lineInFile := &tensile.LineInFile{
-//   Path: "/path/to/target",
-// }
+//	templated := &tensile.Template{
+//	  Path: "/path/to/file",
+//	  ...
+//	}
+//
+//	lineInFile := &tensile.LineInFile{
+//	  Path: "/path/to/target",
+//	}
 //
 // Both would have the identity path[/path/to/target] and would create
 // an error when adding to a queue.

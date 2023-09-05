@@ -3,9 +3,9 @@ package engines
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/ntnn/tensile"
-	"golang.org/x/exp/slog"
 )
 
 type Sequential struct {

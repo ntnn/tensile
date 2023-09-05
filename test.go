@@ -1,10 +1,9 @@
 package tensile
 
 import (
+	"log/slog"
 	"os"
 	"sync"
-
-	"golang.org/x/exp/slog"
 )
 
 var setDebugLog sync.Once
