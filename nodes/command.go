@@ -4,12 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"os/exec"
 	"strings"
 	"sync"
-
-	"golang.org/x/exp/slog"
 
 	"github.com/ntnn/tensile"
 )

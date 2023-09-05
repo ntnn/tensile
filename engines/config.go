@@ -2,10 +2,10 @@ package engines
 
 import (
 	"fmt"
+	"log/slog"
 
 	"github.com/ntnn/tensile"
 	"github.com/ntnn/tensile/facts"
-	"golang.org/x/exp/slog"
 )
 
 // Common config for all engines.

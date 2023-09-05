@@ -1,8 +1,9 @@
 package nodes
 
 import (
+	"log/slog"
+
 	"github.com/ntnn/tensile"
-	"golang.org/x/exp/slog"
 )
 
 var _ tensile.Node = (*Log)(nil)

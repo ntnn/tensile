@@ -3,9 +3,9 @@ package tensile
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/ntnn/tensile/facts"
-	"golang.org/x/exp/slog"
 )
 
 // TODO context should be initialized by the engine, then passed to node wrappers to fill out with e.g. the correct logger

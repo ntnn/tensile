@@ -6,11 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 
 	"github.com/ntnn/tensile"
-	"golang.org/x/exp/slog"
 )
 
 var _ tensile.Node = (*File)(nil)
