@@ -12,7 +12,7 @@ var _ tensile.Node = (*Dir)(nil)
 type Dir struct {
 	Target string
 
-	dirs []string
+	parentDirs *ParentDirs
 }
 
 func (dir *Dir) Validate() error {
@@ -20,11 +20,9 @@ func (dir *Dir) Validate() error {
 		return fmt.Errorf("target cannot be empty")
 	}
 
-	dirs, err := walkDirs(dir.Target)
-	if err != nil {
-		return err
+	if dir.parentDirs == nil {
+		dir.parentDirs = NewParentDirs(dir.Target)
 	}
-	dir.dirs = dirs
 
 	return nil
 }
@@ -40,7 +38,7 @@ func (dir Dir) Identifier() string {
 var _ tensile.AfterNoder = (*Dir)(nil)
 
 func (dir Dir) AfterNodes() []string {
-	return dir.dirs
+	return dir.parentDirs.AfterNodes()
 }
 
 func (dir Dir) Execute(ctx tensile.Context) (any, error) {

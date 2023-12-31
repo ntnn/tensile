@@ -13,7 +13,7 @@ func TestFile_Validate(t *testing.T) {
 	f := new(File)
 	f.Target = "/"
 	require.Nil(t, f.Validate())
-	require.Equal(t, []string{}, f.dirs)
+	require.Equal(t, []string{}, f.parentDirs.ParentDirs)
 
 	f2 := new(File)
 	f2.Target = "/a/b/c"
@@ -24,7 +24,7 @@ func TestFile_Validate(t *testing.T) {
 			tensile.FormatIdentity(tensile.Path, filepath.FromSlash("/a")),
 			tensile.FormatIdentity(tensile.Path, filepath.FromSlash("/")),
 		},
-		f2.dirs,
+		f2.parentDirs.ParentDirs,
 	)
 
 	f3 := new(File)
@@ -34,7 +34,7 @@ func TestFile_Validate(t *testing.T) {
 		[]string{
 			tensile.FormatIdentity(tensile.Path, filepath.FromSlash("/")),
 		},
-		f3.dirs,
+		f3.parentDirs.ParentDirs,
 	)
 }
 
