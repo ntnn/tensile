@@ -8,7 +8,6 @@ import (
 	"io"
 	"log/slog"
 	"os"
-	"path/filepath"
 
 	"github.com/ntnn/tensile"
 )
@@ -19,7 +18,7 @@ type File struct {
 	Target  string
 	Content string
 
-	dirs []string
+	parentDirs *ParentDirs
 }
 
 func (file *File) Validate() error {
@@ -27,30 +26,11 @@ func (file *File) Validate() error {
 		return fmt.Errorf("target cannot be empty")
 	}
 
-	dirs, err := walkDirs(file.Target)
-	if err != nil {
-		return err
+	if file.parentDirs == nil {
+		file.parentDirs = NewParentDirs(file.Target)
 	}
-	file.dirs = dirs
 
 	return nil
-}
-
-func walkDirs(target string) ([]string, error) {
-	last := filepath.FromSlash(target)
-	ret := []string{}
-
-	for s := filepath.Dir(target); s != last; s = filepath.Dir(s) {
-		// 1. target=/ -> no dependency
-		// 2. target=/a -> []string{"/"}
-		if s == target || s == last || s == filepath.VolumeName(s) {
-			break
-		}
-		ret = append(ret, tensile.FormatIdentity(tensile.Path, s))
-		last = s
-	}
-
-	return ret, nil
 }
 
 func (file File) Shape() tensile.Shape {
@@ -64,7 +44,7 @@ func (file File) Identifier() string {
 var _ tensile.AfterNoder = (*File)(nil)
 
 func (file File) AfterNodes() []string {
-	return file.dirs
+	return file.parentDirs.AfterNodes()
 }
 
 func (file File) sourceHash() []byte {
