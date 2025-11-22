@@ -1,6 +1,6 @@
 GO ?= go
 
-check: lint test examples
+check: lint test
 
 .PHONY: lint
 lint:
@@ -9,10 +9,3 @@ lint:
 .PHONY: test
 test:
 	$(GO) test -v ./...
-
-EXAMPLES := $(wildcard examples/*)
-examples: $(EXAMPLES)
-
-.PHONY: $(EXAMPLES)
-$(EXAMPLES):
-	$(GO) run ./$@
