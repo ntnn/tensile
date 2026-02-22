@@ -32,18 +32,21 @@ func (q *Queue) Enqueue(node *tensile.Node) error {
 
 // Build returns the nodes in the queue in the order they should be
 // executed. If there is a cycle in the graph, an error is returned.
-func (q *Queue) Build() ([]*tensile.Node, error) {
+func (q *Queue) Build() (*Work, error) {
 	// Add all nodes to the graph first
 	directed := simple.NewDirectedGraph()
 	for _, node := range q.nodes {
 		directed.AddNode(node)
 	}
 
+	work := &Work{}
+
 	// Build a map of provided values to the IDs of nodes that provide them
 	providedValues, err := q.buildProviders()
 	if err != nil {
 		return nil, fmt.Errorf("failed to build providers: %w", err)
 	}
+	work.providedValues = providedValues
 
 	// Iterate over all nodes and check if any dependency they declare
 	// is provided by another node. If so add an edge from the provider
@@ -79,8 +82,9 @@ func (q *Queue) Build() ([]*tensile.Node, error) {
 	for i, node := range sorted {
 		ret[i] = node.(*tensile.Node)
 	}
+	work.order = ret
 
-	return ret, nil
+	return work, nil
 }
 
 // buildProviders builds a map of provided values to the IDs of the
