@@ -40,3 +40,43 @@ func hash(input any) (int64, error) {
 func (n *Node) ID() int64 {
 	return n.id
 }
+
+func (n *Node) Validate() error {
+	validator, ok := n.wrapped.(Validator)
+	if !ok {
+		return nil
+	}
+	return validator.Validate()
+}
+
+func (n *Node) Provides() ([]string, error) {
+	provider, ok := n.wrapped.(Provider)
+	if !ok {
+		return nil, nil
+	}
+	return provider.Provides()
+}
+
+func (n *Node) DependsOn() ([]string, error) {
+	depender, ok := n.wrapped.(Depender)
+	if !ok {
+		return nil, nil
+	}
+	return depender.DependsOn()
+}
+
+func (n *Node) NeedsExecution() (bool, error) {
+	executor, ok := n.wrapped.(Executor)
+	if !ok {
+		return false, nil
+	}
+	return executor.NeedsExecution()
+}
+
+func (n *Node) Execute() error {
+	executor, ok := n.wrapped.(Executor)
+	if !ok {
+		return nil
+	}
+	return executor.Execute()
+}
