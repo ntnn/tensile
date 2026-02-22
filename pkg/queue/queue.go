@@ -19,6 +19,10 @@ func New() *Queue {
 }
 
 func (q *Queue) Enqueue(node *tensile.Node) error {
+	if err := node.Validate(); err != nil {
+		return fmt.Errorf("validation failed for node with ID %d: %w", node.ID(), err)
+	}
+
 	if _, exists := q.nodes[node.ID()]; exists {
 		return fmt.Errorf("node with ID %d already exists in the queue", node.ID())
 	}
@@ -29,12 +33,39 @@ func (q *Queue) Enqueue(node *tensile.Node) error {
 // Build returns the nodes in the queue in the order they should be
 // executed. If there is a cycle in the graph, an error is returned.
 func (q *Queue) Build() ([]*tensile.Node, error) {
+	// Add all nodes to the graph first
 	directed := simple.NewDirectedGraph()
 	for _, node := range q.nodes {
 		directed.AddNode(node)
 	}
 
-	// TODO add edges based on node dependencies
+	// Build a map of provided values to the IDs of nodes that provide them
+	providedValues, err := q.buildProviders()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build providers: %w", err)
+	}
+
+	// Iterate over all nodes and check if any dependency they declare
+	// is provided by another node. If so add an edge from the provider
+	// to the depender.
+	for _, node := range q.nodes {
+		dependencies, err := node.DependsOn()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get dependencies for node with ID %d: %w", node.ID(), err)
+		}
+
+		for _, dep := range dependencies {
+			providers, ok := providedValues[dep]
+			if !ok {
+				// dependencies are not required, nodes are giving
+				// every possible value they can depend on
+				continue
+			}
+			for _, providerId := range providers {
+				directed.SetEdge(directed.NewEdge(directed.Node(providerId), node))
+			}
+		}
+	}
 
 	sorted, err := topo.Sort(directed)
 	if err != nil {
@@ -49,5 +80,21 @@ func (q *Queue) Build() ([]*tensile.Node, error) {
 		ret[i] = node.(*tensile.Node)
 	}
 
+	return ret, nil
+}
+
+// buildProviders builds a map of provided values to the IDs of the
+// nodes that provider them.
+func (q *Queue) buildProviders() (map[string][]int64, error) {
+	ret := make(map[string][]int64)
+	for _, node := range q.nodes {
+		provides, err := node.Provides()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get provides for node with ID %d: %w", node.ID(), err)
+		}
+		for _, p := range provides {
+			ret[p] = append(ret[p], node.ID())
+		}
+	}
 	return ret, nil
 }
