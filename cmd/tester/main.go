@@ -18,14 +18,21 @@ func main() {
 func run() error {
 	q := queue.New()
 
-	if err := q.Enqueue(
-		&tensilestd.Print{
-			Message: "Hello, %s!",
-			Args:    []any{"world"},
-		},
-	); err != nil {
+	print1 := &tensilestd.Print{
+		Message: "Hello, %s!",
+		Args:    []any{"world"},
+	}
+
+	print2 := &tensilestd.Print{
+		Message: "The answer is %d.",
+		Args:    []any{42},
+	}
+
+	if err := q.Enqueue(print1, print2); err != nil {
 		return err
 	}
+
+	q.Depends(print1, print2)
 
 	work, err := q.Build()
 	if err != nil {
@@ -35,7 +42,7 @@ func run() error {
 	seq := engine.NewSequential(
 		work,
 		engine.Options{
-			Noop: true,
+			Noop: false,
 		},
 	)
 
