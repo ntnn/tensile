@@ -4,12 +4,14 @@ import (
 	"fmt"
 
 	"github.com/ntnn/tensile"
+	"gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/simple"
 	"gonum.org/v1/gonum/graph/topo"
 )
 
 type Queue struct {
-	nodes map[int64]*tensile.Node
+	nodes      map[int64]*tensile.Node
+	extraEdges []graph.Edge
 }
 
 func New() *Queue {
@@ -18,15 +20,23 @@ func New() *Queue {
 	}
 }
 
+func asTensileNode(in any) (*tensile.Node, error) {
+	asserted, ok := in.(*tensile.Node)
+	if ok {
+		return asserted, nil
+	}
+	tensiled, err := tensile.NewNode(in)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create node for input: %w", err)
+	}
+	return tensiled, nil
+}
+
 func (q *Queue) Enqueue(nodes ...any) error {
 	for _, node := range nodes {
-		tensileNode, ok := node.(*tensile.Node)
-		if !ok {
-			var err error
-			tensileNode, err = tensile.NewNode(node)
-			if err != nil {
-				return fmt.Errorf("failed to create node for input: %w", err)
-			}
+		tensileNode, err := asTensileNode(node)
+		if err != nil {
+			return err
 		}
 
 		if err := q.enqueue(tensileNode); err != nil {
@@ -45,6 +55,31 @@ func (q *Queue) enqueue(node *tensile.Node) error {
 		return fmt.Errorf("node with ID %d already exists in the queue", node.ID())
 	}
 	q.nodes[node.ID()] = node
+	return nil
+}
+
+// Depends adds a dependency from node to each of the nodes in
+// dependsOn. If any of the nodes in dependsOn are not in the queue, an
+// error is returned.
+func (q *Queue) Depends(node any, dependsOn ...any) error {
+	tensileNode, err := asTensileNode(node)
+	if err != nil {
+		return err
+	}
+	if _, exists := q.nodes[tensileNode.ID()]; !exists {
+		return fmt.Errorf("node with ID %d is not in the queue", tensileNode.ID())
+	}
+
+	for _, dep := range dependsOn {
+		tensileDep, err := asTensileNode(dep)
+		if err != nil {
+			return err
+		}
+		if _, exists := q.nodes[tensileDep.ID()]; !exists {
+			return fmt.Errorf("dependency node with ID %d is not in the queue", tensileDep.ID())
+		}
+		q.extraEdges = append(q.extraEdges, simple.Edge{F: tensileDep, T: tensileNode})
+	}
 	return nil
 }
 
@@ -87,6 +122,11 @@ func (q *Queue) Build() (*Work, error) {
 				directed.SetEdge(directed.NewEdge(directed.Node(providerId), node))
 			}
 		}
+	}
+
+	// Add any extra edges that were added via Depends.
+	for _, edge := range q.extraEdges {
+		directed.SetEdge(edge)
 	}
 
 	sorted, err := topo.Sort(directed)
