@@ -39,7 +39,8 @@ func (q *Queue) Build() (*Work, error) {
 		directed.AddNode(node)
 	}
 
-	work := &Work{}
+	work := new(Work)
+	work.done = make(map[int64]struct{})
 
 	// Build a map of provided values to the IDs of nodes that provide them
 	providedValues, err := q.buildProviders()
