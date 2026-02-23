@@ -18,7 +18,25 @@ func New() *Queue {
 	}
 }
 
-func (q *Queue) Enqueue(node *tensile.Node) error {
+func (q *Queue) Enqueue(nodes ...any) error {
+	for _, node := range nodes {
+		tensileNode, ok := node.(*tensile.Node)
+		if !ok {
+			var err error
+			tensileNode, err = tensile.NewNode(node)
+			if err != nil {
+				return fmt.Errorf("failed to create node for input: %w", err)
+			}
+		}
+
+		if err := q.enqueue(tensileNode); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (q *Queue) enqueue(node *tensile.Node) error {
 	if err := node.Validate(); err != nil {
 		return fmt.Errorf("validation failed for node with ID %d: %w", node.ID(), err)
 	}
