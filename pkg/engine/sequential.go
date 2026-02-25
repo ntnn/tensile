@@ -32,9 +32,9 @@ func (s *Sequential) Summary() *Summary {
 
 // Execute executes the nodes in the work queue.
 func (s *Sequential) Execute() error {
-	s.opts.Logger.Info("starting sequential engine")
+	s.opts.Logger.Info("starting engine")
 	for {
-		s.opts.Logger.Info("getting next node from work queue")
+		s.opts.Logger.Debug("getting next node from work queue")
 		node, done := s.work.Get()
 		if done {
 			s.opts.Logger.Info("all nodes are done, stopping")
@@ -53,13 +53,13 @@ func (s *Sequential) executeNode(node *tensile.Node) error {
 		return fmt.Errorf("failed to check if node with ID %d needs execution: %w", node.ID(), err)
 	}
 	if !needsExecution {
-		s.opts.Logger.Info(fmt.Sprintf("node with ID %d does not need execution, marking as done", node.ID()))
+		s.opts.Logger.Debug(fmt.Sprintf("node with ID %d does not need execution, marking as done", node.ID()))
 		s.work.MarkDone(node)
 		return nil
 	}
 
 	if s.opts.Noop {
-		s.opts.Logger.Info(fmt.Sprintf("noop is enabled, skipping execution of node with ID %d", node.ID()))
+		s.opts.Logger.Debug(fmt.Sprintf("noop is enabled, skipping execution of node with ID %d", node.ID()))
 		s.work.MarkDone(node)
 		s.summary.NodesExecuted++
 		return nil
@@ -69,7 +69,7 @@ func (s *Sequential) executeNode(node *tensile.Node) error {
 		return fmt.Errorf("failed to execute node with ID %d: %w", node.ID(), err)
 	}
 
-	s.opts.Logger.Info(fmt.Sprintf("successfully executed node with ID %d", node.ID()))
+	s.opts.Logger.Debug(fmt.Sprintf("successfully executed node with ID %d", node.ID()))
 	s.work.MarkDone(node)
 	s.summary.NodesExecuted++
 	return nil
