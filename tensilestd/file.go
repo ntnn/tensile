@@ -3,6 +3,7 @@ package tensilestd
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 )
 
 type File struct {
@@ -23,9 +24,23 @@ func (f *File) Provides() ([]string, error) {
 	return []string{f.Path}, nil
 }
 
+// parentDirs returns a list of all parent directories.
+// It does not handle relative paths.
+func parentDirs(p string) []string {
+	ret := []string{}
+	previous := ""
+	for {
+		previous = p
+		p = filepath.Dir(p)
+		if previous == p {
+			return ret
+		}
+		ret = append(ret, p)
+	}
+}
+
 func (f *File) DependsOn() ([]string, error) {
-	// TODO parent dirs
-	return []string{}, nil
+	return parentDirs(f.Path), nil
 }
 
 func (f *File) NeedsExecution() (bool, error) {

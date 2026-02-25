@@ -9,8 +9,7 @@ type Chown struct {
 }
 
 func (c Chown) DependsOn() []string {
-	// TODO parent dirs
-	return []string{}
+	return parentDirs(c.Path)
 }
 
 func (c Chown) NeedsExecution() (bool, error) {

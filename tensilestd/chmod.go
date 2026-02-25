@@ -8,8 +8,7 @@ type Chmod struct {
 }
 
 func (c Chmod) DependsOn() []string {
-	// TODO parent dirs
-	return []string{}
+	return parentDirs(c.Path)
 }
 
 func (c Chmod) NeedsExecution() (bool, error) {
