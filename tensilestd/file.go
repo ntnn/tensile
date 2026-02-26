@@ -8,7 +8,7 @@ import (
 	"github.com/ntnn/tensile"
 )
 
-var FileShape = tensile.Shape("File")
+var FileRef = tensile.Ref("File")
 
 type File struct {
 	Chmod
@@ -25,7 +25,7 @@ func (f *File) Validate() error {
 }
 
 func (f *File) Provides() ([]tensile.NodeRef, error) {
-	return []tensile.NodeRef{FileShape.AsRef(f.Path)}, nil
+	return []tensile.NodeRef{FileRef.To(f.Path)}, nil
 }
 
 // parentDirs returns a list of all parent directories.
@@ -44,7 +44,7 @@ func parentDirs(p string) []string {
 }
 
 func (f *File) DependsOn() ([]tensile.NodeRef, error) {
-	return DirShape.AsRefs(parentDirs(f.Path)), nil
+	return DirRef.ToMany(parentDirs(f.Path)), nil
 }
 
 func (f *File) NeedsExecution() (bool, error) {

@@ -2,7 +2,7 @@ package tensilestd
 
 import "github.com/ntnn/tensile"
 
-var DirShape = tensile.Shape("Dir")
+var DirRef = tensile.Ref("Dir")
 
 type Dir struct {
 	Path string
@@ -11,7 +11,7 @@ type Dir struct {
 }
 
 func (d *Dir) NodeRef() tensile.NodeRef {
-	return DirShape.AsRef(d.Path)
+	return DirRef.To(d.Path)
 }
 
 func (d *Dir) Validate() error {
