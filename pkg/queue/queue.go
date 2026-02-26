@@ -95,12 +95,12 @@ func (q *Queue) Build() (*Work, error) {
 	work := new(Work)
 	work.done = make(map[int64]struct{})
 
-	// Build a map of provided values to the IDs of nodes that provide them
-	providedValues, err := q.buildProviders()
+	// Build a map of provided node refs to the IDs of nodes that provide them
+	providedRefs, err := q.buildProvidedRefs()
 	if err != nil {
 		return nil, fmt.Errorf("failed to build providers: %w", err)
 	}
-	work.providedValues = providedValues
+	work.providedRefs = providedRefs
 
 	// Iterate over all nodes and check if any dependency they declare
 	// is provided by another node. If so add an edge from the provider
@@ -112,7 +112,7 @@ func (q *Queue) Build() (*Work, error) {
 		}
 
 		for _, dep := range dependencies {
-			providers, ok := providedValues[dep]
+			providers, ok := providedRefs[dep]
 			if !ok {
 				// dependencies are not required, nodes are giving
 				// every possible value they can depend on
@@ -146,9 +146,9 @@ func (q *Queue) Build() (*Work, error) {
 	return work, nil
 }
 
-// buildProviders builds a map of provided values to the IDs of the
-// nodes that provider them.
-func (q *Queue) buildProviders() (map[tensile.NodeRef][]int64, error) {
+// buildProvidedRefs builds a map of provided refs to the IDs of the
+// nodes that provide them.
+func (q *Queue) buildProvidedRefs() (map[tensile.NodeRef][]int64, error) {
 	ret := make(map[tensile.NodeRef][]int64)
 	for _, node := range q.nodes {
 		provides, err := node.Provides()
@@ -156,7 +156,11 @@ func (q *Queue) buildProviders() (map[tensile.NodeRef][]int64, error) {
 			return nil, fmt.Errorf("failed to get provides for node with ID %d: %w", node.ID(), err)
 		}
 		for _, p := range provides {
-			ret[p] = append(ret[p], node.ID())
+			if ret[p] == nil {
+				ret[p] = []int64{node.ID()}
+			} else {
+				ret[p] = append(ret[p], node.ID())
+			}
 		}
 	}
 	return ret, nil

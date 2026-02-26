@@ -9,7 +9,7 @@ import (
 
 // Work is the result of building a queue.
 type Work struct {
-	providedValues map[tensile.NodeRef][]int64
+	providedRefs map[tensile.NodeRef][]int64
 
 	lock  sync.Mutex
 	done  map[int64]struct{}
@@ -49,7 +49,7 @@ func (w *Work) isReady(node *tensile.Node) (bool, error) {
 	}
 
 	for _, dep := range dependencies {
-		providers, exists := w.providedValues[dep]
+		providers, exists := w.providedRefs[dep]
 		if !exists {
 			// The dependency is not provided by any node, skip
 			continue
