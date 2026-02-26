@@ -1,14 +1,23 @@
 package tensilestd
 
-import "os"
+import (
+	"os"
+
+	"github.com/ntnn/tensile"
+)
+
+var _ tensile.Depender = (*Chmod)(nil)
+var _ tensile.Executor = (*Chmod)(nil)
+
+const ChmodRef = tensile.Ref("Chmod")
 
 type Chmod struct {
 	Path     string
 	FileMode os.FileMode
 }
 
-func (c Chmod) DependsOn() []string {
-	return parentDirs(c.Path)
+func (c Chmod) DependsOn() ([]tensile.NodeRef, error) {
+	return DirRef.ToMany(parentDirs(c.Path)), nil
 }
 
 func (c Chmod) NeedsExecution() (bool, error) {

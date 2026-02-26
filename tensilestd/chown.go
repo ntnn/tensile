@@ -1,6 +1,15 @@
 package tensilestd
 
-import "os"
+import (
+	"os"
+
+	"github.com/ntnn/tensile"
+)
+
+var _ tensile.Depender = (*Chown)(nil)
+var _ tensile.Executor = (*Chown)(nil)
+
+const ChownRef = tensile.Ref("Chown")
 
 type Chown struct {
 	Path  string
@@ -8,8 +17,8 @@ type Chown struct {
 	Group string
 }
 
-func (c Chown) DependsOn() []string {
-	return parentDirs(c.Path)
+func (c Chown) DependsOn() ([]tensile.NodeRef, error) {
+	return DirRef.ToMany(parentDirs(c.Path)), nil
 }
 
 func (c Chown) NeedsExecution() (bool, error) {

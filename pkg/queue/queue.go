@@ -148,8 +148,8 @@ func (q *Queue) Build() (*Work, error) {
 
 // buildProviders builds a map of provided values to the IDs of the
 // nodes that provider them.
-func (q *Queue) buildProviders() (map[string][]int64, error) {
-	ret := make(map[string][]int64)
+func (q *Queue) buildProviders() (map[tensile.NodeRef][]int64, error) {
+	ret := make(map[tensile.NodeRef][]int64)
 	for _, node := range q.nodes {
 		provides, err := node.Provides()
 		if err != nil {

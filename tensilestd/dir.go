@@ -2,16 +2,17 @@ package tensilestd
 
 import "github.com/ntnn/tensile"
 
-var DirRef = tensile.Ref("Dir")
+var _ tensile.Validator = (*Dir)(nil)
+var _ tensile.Provider = (*Dir)(nil)
+var _ tensile.Depender = (*Dir)(nil)
+var _ tensile.Executor = (*Dir)(nil)
+
+const DirRef = tensile.Ref("Dir")
 
 type Dir struct {
 	Path string
 	Chmod
 	Chown
-}
-
-func (d *Dir) NodeRef() tensile.NodeRef {
-	return DirRef.To(d.Path)
 }
 
 func (d *Dir) Validate() error {
@@ -20,12 +21,12 @@ func (d *Dir) Validate() error {
 	return nil
 }
 
-func (d *Dir) Provides() ([]string, error) {
-	return nil, nil
+func (d *Dir) Provides() ([]tensile.NodeRef, error) {
+	return []tensile.NodeRef{DirRef.To(d.Path)}, nil
 }
 
-func (d *Dir) DependsOn() ([]string, error) {
-	return parentDirs(d.Path), nil
+func (d *Dir) DependsOn() ([]tensile.NodeRef, error) {
+	return DirRef.ToMany(parentDirs(d.Path)), nil
 }
 
 func (d *Dir) NeedsExecution() (bool, error) {

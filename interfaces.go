@@ -5,11 +5,11 @@ type Validator interface {
 }
 
 type Provider interface {
-	Provides() ([]string, error)
+	Provides() ([]NodeRef, error)
 }
 
 type Depender interface {
-	DependsOn() ([]string, error)
+	DependsOn() ([]NodeRef, error)
 }
 
 type Executor interface {

@@ -49,7 +49,7 @@ func (n *Node) Validate() error {
 	return validator.Validate()
 }
 
-func (n *Node) Provides() ([]string, error) {
+func (n *Node) Provides() ([]NodeRef, error) {
 	provider, ok := n.wrapped.(Provider)
 	if !ok {
 		return nil, nil
@@ -57,7 +57,7 @@ func (n *Node) Provides() ([]string, error) {
 	return provider.Provides()
 }
 
-func (n *Node) DependsOn() ([]string, error) {
+func (n *Node) DependsOn() ([]NodeRef, error) {
 	depender, ok := n.wrapped.(Depender)
 	if !ok {
 		return nil, nil

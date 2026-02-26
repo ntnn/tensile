@@ -9,7 +9,7 @@ import (
 
 // Work is the result of building a queue.
 type Work struct {
-	providedValues map[string][]int64
+	providedValues map[tensile.NodeRef][]int64
 
 	lock  sync.Mutex
 	done  map[int64]struct{}

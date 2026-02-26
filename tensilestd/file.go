@@ -8,14 +8,18 @@ import (
 	"github.com/ntnn/tensile"
 )
 
-var FileRef = tensile.Ref("File")
+var _ tensile.Validator = (*File)(nil)
+var _ tensile.Provider = (*File)(nil)
+var _ tensile.Depender = (*File)(nil)
+var _ tensile.Executor = (*File)(nil)
+
+const FileRef = tensile.Ref("File")
 
 type File struct {
-	Chmod
-	Chown
-
 	Path    string
 	Content string
+	Chmod
+	Chown
 }
 
 func (f *File) Validate() error {
