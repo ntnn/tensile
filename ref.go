@@ -22,5 +22,5 @@ type NodeRef struct {
 }
 
 func (n NodeRef) String() string {
-	return fmt.Sprintf("%s[%v]", n.Ref, n.Value)
+	return fmt.Sprintf("%s<%v>", n.Ref, n.Value)
 }
