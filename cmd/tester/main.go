@@ -1,8 +1,10 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
+	"log/slog"
 
 	"github.com/ntnn/tensile/pkg/engine"
 	"github.com/ntnn/tensile/pkg/queue"
@@ -16,7 +18,15 @@ func main() {
 }
 
 func run() error {
+	fDebug := false
+	flag.BoolVar(&fDebug, "debug", false, "enable debug logging")
+	flag.Parse()
+
 	q := queue.New()
+
+	if fDebug {
+		slog.SetLogLoggerLevel(slog.LevelDebug)
+	}
 
 	print1 := &tensilestd.Print{
 		Message: "Hello, %s!",
