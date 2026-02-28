@@ -12,6 +12,10 @@ type Node struct {
 }
 
 func NewNode(input any) (*Node, error) {
+	if node, ok := input.(*Node); ok {
+		return node, nil
+	}
+
 	n := new(Node)
 	n.wrapped = input
 
