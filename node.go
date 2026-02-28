@@ -41,12 +41,14 @@ func (n *Node) ID() int64 {
 	return n.id
 }
 
-func (n *Node) Validate() error {
-	validator, ok := n.wrapped.(Validator)
-	if !ok {
-		return nil
+func (n *Node) Validate(ctx Context) error {
+	if validator, ok := n.wrapped.(ValidatorCtx); ok {
+		return validator.Validate(ctx)
 	}
-	return validator.Validate()
+	if validator, ok := n.wrapped.(Validator); ok {
+		return validator.Validate(ctx)
+	}
+	return nil
 }
 
 func (n *Node) Provides() ([]NodeRef, error) {
@@ -65,18 +67,22 @@ func (n *Node) DependsOn() ([]NodeRef, error) {
 	return depender.DependsOn()
 }
 
-func (n *Node) NeedsExecution() (bool, error) {
-	executor, ok := n.wrapped.(Executor)
-	if !ok {
-		return false, nil
+func (n *Node) NeedsExecution(ctx Context) (bool, error) {
+	if executor, ok := n.wrapped.(ExecutorCtx); ok {
+		return executor.NeedsExecution(ctx)
 	}
-	return executor.NeedsExecution()
+	if executor, ok := n.wrapped.(Executor); ok {
+		return executor.NeedsExecution(ctx)
+	}
+	return true, nil
 }
 
-func (n *Node) Execute() error {
-	executor, ok := n.wrapped.(Executor)
-	if !ok {
-		return nil
+func (n *Node) Execute(ctx Context) error {
+	if executor, ok := n.wrapped.(ExecutorCtx); ok {
+		return executor.Execute(ctx)
 	}
-	return executor.Execute()
+	if executor, ok := n.wrapped.(Executor); ok {
+		return executor.Execute(ctx)
+	}
+	return nil
 }
