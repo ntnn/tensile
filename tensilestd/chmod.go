@@ -1,6 +1,7 @@
 package tensilestd
 
 import (
+	"context"
 	"os"
 
 	"github.com/ntnn/tensile"
@@ -20,7 +21,7 @@ func (c Chmod) DependsOn() ([]tensile.NodeRef, error) {
 	return DirRef.ToMany(parentDirs(c.Path)), nil
 }
 
-func (c Chmod) NeedsExecution() (bool, error) {
+func (c Chmod) NeedsExecution(_ context.Context) (bool, error) {
 	info, err := os.Stat(c.Path)
 	if err != nil {
 		return false, err
@@ -28,6 +29,6 @@ func (c Chmod) NeedsExecution() (bool, error) {
 	return info.Mode() != c.FileMode, nil
 }
 
-func (c Chmod) Execute() error {
+func (c Chmod) Execute(_ context.Context) error {
 	return os.Chmod(c.Path, c.FileMode)
 }

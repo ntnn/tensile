@@ -31,7 +31,7 @@ func (s *Sequential) Summary() *Summary {
 }
 
 // Execute executes the nodes in the work queue.
-func (s *Sequential) Execute() error {
+func (s *Sequential) Execute(ctx tensile.Context) error {
 	s.opts.Logger.Info("starting engine")
 	for {
 		s.opts.Logger.Debug("getting next node from work queue")
@@ -41,14 +41,18 @@ func (s *Sequential) Execute() error {
 			return nil
 		}
 
-		if err := s.executeNode(node); err != nil {
+		if err := s.executeNode(ctx, node); err != nil {
 			return err
 		}
 	}
 }
 
-func (s *Sequential) executeNode(node *tensile.Node) error {
-	needsExecution, err := node.NeedsExecution()
+func (s *Sequential) executeNode(ctx tensile.Context, node *tensile.Node) error {
+	if err := node.Validate(ctx); err != nil {
+		return fmt.Errorf("node validation failed: %w", err)
+	}
+
+	needsExecution, err := node.NeedsExecution(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to check if node with ID %d needs execution: %w", node.ID(), err)
 	}
@@ -65,7 +69,7 @@ func (s *Sequential) executeNode(node *tensile.Node) error {
 		return nil
 	}
 
-	if err := node.Execute(); err != nil {
+	if err := node.Execute(ctx); err != nil {
 		return fmt.Errorf("failed to execute node with ID %d: %w", node.ID(), err)
 	}
 

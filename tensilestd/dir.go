@@ -1,6 +1,10 @@
 package tensilestd
 
-import "github.com/ntnn/tensile"
+import (
+	"context"
+
+	"github.com/ntnn/tensile"
+)
 
 var _ tensile.Validator = (*Dir)(nil)
 var _ tensile.Provider = (*Dir)(nil)
@@ -15,7 +19,7 @@ type Dir struct {
 	Chown
 }
 
-func (d *Dir) Validate() error {
+func (d *Dir) Validate(_ context.Context) error {
 	d.Chmod.Path = d.Path
 	d.Chown.Path = d.Path
 	return nil
@@ -29,10 +33,10 @@ func (d *Dir) DependsOn() ([]tensile.NodeRef, error) {
 	return DirRef.ToMany(parentDirs(d.Path)), nil
 }
 
-func (d *Dir) NeedsExecution() (bool, error) {
+func (d *Dir) NeedsExecution(_ context.Context) (bool, error) {
 	return false, nil
 }
 
-func (d *Dir) Execute() error {
+func (d *Dir) Execute(_ context.Context) error {
 	return nil
 }

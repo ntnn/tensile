@@ -6,25 +6,33 @@ import (
 	"github.com/ntnn/tensile"
 )
 
-var _ tensile.Validator = (*Aggregate)(nil)
+var _ tensile.ValidatorCtx = (*Aggregate)(nil)
 var _ tensile.Provider = (*Aggregate)(nil)
 var _ tensile.Depender = (*Aggregate)(nil)
-var _ tensile.Executor = (*Aggregate)(nil)
+var _ tensile.ExecutorCtx = (*Aggregate)(nil)
 
 const AggregateRef = tensile.Ref("Aggregate")
 
 type Aggregate struct {
-	Contained []any
+	contained []*tensile.Node
 }
 
-func (a *Aggregate) Validate() error {
-	for i, c := range a.Contained {
-		validator, ok := c.(tensile.Validator)
-		if !ok {
-			continue
+func NewAggregate(raw ...any) (*Aggregate, error) {
+	nodes := make([]*tensile.Node, len(raw))
+	for i, r := range raw {
+		node, err := tensile.NewNode(r)
+		if err != nil {
+			return nil, fmt.Errorf("error transforming input %d %q to a tensile node: %w", i, r, err)
 		}
-		if err := validator.Validate(); err != nil {
-			return fmt.Errorf("error in .Validate of %d %q: %w", i, c, err)
+		nodes[i] = node
+	}
+	return &Aggregate{contained: nodes}, nil
+}
+
+func (a *Aggregate) Validate(ctx tensile.Context) error {
+	for i, node := range a.contained {
+		if err := node.Validate(ctx); err != nil {
+			return fmt.Errorf("error in .Validate of %d %q: %w", i, node, err)
 		}
 	}
 	return nil
@@ -32,14 +40,10 @@ func (a *Aggregate) Validate() error {
 
 func (a *Aggregate) Provides() ([]tensile.NodeRef, error) {
 	refs := []tensile.NodeRef{}
-	for i, c := range a.Contained {
-		provider, ok := c.(tensile.Provider)
-		if !ok {
-			continue
-		}
-		cRefs, err := provider.Provides()
+	for i, node := range a.contained {
+		cRefs, err := node.Provides()
 		if err != nil {
-			return nil, fmt.Errorf("error in .Provides of %d %q: %w", i, c, err)
+			return nil, fmt.Errorf("error in .Provides of %d %q: %w", i, node, err)
 		}
 		refs = append(refs, cRefs...)
 	}
@@ -48,29 +52,21 @@ func (a *Aggregate) Provides() ([]tensile.NodeRef, error) {
 
 func (a *Aggregate) DependsOn() ([]tensile.NodeRef, error) {
 	refs := []tensile.NodeRef{}
-	for i, c := range a.Contained {
-		depender, ok := c.(tensile.Depender)
-		if !ok {
-			continue
-		}
-		cRefs, err := depender.DependsOn()
+	for i, node := range a.contained {
+		cRefs, err := node.DependsOn()
 		if err != nil {
-			return nil, fmt.Errorf("error in .DependsOn of %d %q: %w", i, c, err)
+			return nil, fmt.Errorf("error in .DependsOn of %d %q: %w", i, node, err)
 		}
 		refs = append(refs, cRefs...)
 	}
 	return refs, nil
 }
 
-func (a *Aggregate) NeedsExecution() (bool, error) {
-	for i, c := range a.Contained {
-		executor, ok := c.(tensile.Executor)
-		if !ok {
-			continue
-		}
-		needsExecution, err := executor.NeedsExecution()
+func (a *Aggregate) NeedsExecution(ctx tensile.Context) (bool, error) {
+	for i, node := range a.contained {
+		needsExecution, err := node.NeedsExecution(ctx)
 		if err != nil {
-			return false, fmt.Errorf("error in .NeedsExecution of %d %q: %w", i, c, err)
+			return false, fmt.Errorf("error in .NeedsExecution of %d %q: %w", i, node, err)
 		}
 		if needsExecution {
 			return true, nil
@@ -79,21 +75,17 @@ func (a *Aggregate) NeedsExecution() (bool, error) {
 	return false, nil
 }
 
-func (a *Aggregate) Execute() error {
-	for i, c := range a.Contained {
-		executor, ok := c.(tensile.Executor)
-		if !ok {
-			continue
-		}
-		needsExecution, err := executor.NeedsExecution()
+func (a *Aggregate) Execute(ctx tensile.Context) error {
+	for i, node := range a.contained {
+		needsExecution, err := node.NeedsExecution(ctx)
 		if err != nil {
-			return fmt.Errorf("error in .NeedsExecution of %d %q: %w", i, c, err)
+			return fmt.Errorf("error in .NeedsExecution of %d %q: %w", i, node, err)
 		}
 		if !needsExecution {
 			continue
 		}
-		if err := executor.Execute(); err != nil {
-			return fmt.Errorf("error in .Execute of %d %q: %w", i, c, err)
+		if err := node.Execute(ctx); err != nil {
+			return fmt.Errorf("error in .Execute of %d %q: %w", i, node, err)
 		}
 	}
 	return nil
