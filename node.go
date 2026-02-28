@@ -6,11 +6,13 @@ import (
 	"hash/fnv"
 )
 
+// Node is a single step to be executed by an engine.
 type Node struct {
 	wrapped any
 	id      int64
 }
 
+// NewNode takes any value and transforms it into a [Node].
 func NewNode(input any) (*Node, error) {
 	if node, ok := input.(*Node); ok {
 		return node, nil
@@ -38,13 +40,15 @@ func hash(input any) (int64, error) {
 	if _, err := h.Write(b); err != nil {
 		return 0, fmt.Errorf("failed to write to hash: %w", err)
 	}
-	return int64(h.Sum64()), nil
+	return int64(h.Sum64()), nil //nolint:gosec
 }
 
+// ID returns a hash of the node.
 func (n *Node) ID() int64 {
 	return n.id
 }
 
+// Validate calls .Validate on the wrapped node if it implements it.
 func (n *Node) Validate(ctx Context) error {
 	if validator, ok := n.wrapped.(ValidatorCtx); ok {
 		return validator.Validate(ctx)
@@ -55,6 +59,7 @@ func (n *Node) Validate(ctx Context) error {
 	return nil
 }
 
+// Provides calls .Provides on the wrapped node if it implements it.
 func (n *Node) Provides() ([]NodeRef, error) {
 	provider, ok := n.wrapped.(Provider)
 	if !ok {
@@ -63,6 +68,7 @@ func (n *Node) Provides() ([]NodeRef, error) {
 	return provider.Provides()
 }
 
+// DependsOn calls .DependsOn on the wrapped node if it implements it.
 func (n *Node) DependsOn() ([]NodeRef, error) {
 	depender, ok := n.wrapped.(Depender)
 	if !ok {
@@ -71,6 +77,7 @@ func (n *Node) DependsOn() ([]NodeRef, error) {
 	return depender.DependsOn()
 }
 
+// NeedsExecution calls .NeedsExecution on the wrapped node if it implements it.
 func (n *Node) NeedsExecution(ctx Context) (bool, error) {
 	if executor, ok := n.wrapped.(ExecutorCtx); ok {
 		return executor.NeedsExecution(ctx)
@@ -81,6 +88,7 @@ func (n *Node) NeedsExecution(ctx Context) (bool, error) {
 	return true, nil
 }
 
+// Execute calls .Execute on the wrapped node if it implements it.
 func (n *Node) Execute(ctx Context) error {
 	if executor, ok := n.wrapped.(ExecutorCtx); ok {
 		return executor.Execute(ctx)

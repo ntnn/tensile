@@ -12,8 +12,10 @@ var _ tensile.Provider = (*File)(nil)
 var _ tensile.Depender = (*File)(nil)
 var _ tensile.ExecutorCtx = (*File)(nil)
 
+// FileRef is the reference type for files.
 const FileRef = tensile.Ref("File")
 
+// File manages file creation with ownership and permissions.
 type File struct {
 	*Aggregate
 
@@ -24,6 +26,7 @@ type File struct {
 	Content  string
 }
 
+// Validate implements [tensile.Validator].
 func (f *File) Validate(ctx tensile.Context) error {
 	agg, err := NewAggregate(
 		Chmod{Path: f.Path, FileMode: f.FileMode},
@@ -41,7 +44,7 @@ func (f *File) Validate(ctx tensile.Context) error {
 // It does not handle relative paths.
 func parentDirs(p string) []string {
 	ret := []string{}
-	previous := ""
+	var previous string
 	for {
 		previous = p
 		p = filepath.Dir(p)

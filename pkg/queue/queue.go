@@ -9,11 +9,14 @@ import (
 	"gonum.org/v1/gonum/graph/topo"
 )
 
+// Queue aggregates [tensile.Node] and then orders them based on their
+// dependencies for execution.
 type Queue struct {
 	nodes      map[int64]*tensile.Node
 	extraEdges []graph.Edge
 }
 
+// New returns a new [Queue].
 func New() *Queue {
 	return &Queue{
 		nodes: make(map[int64]*tensile.Node),
@@ -32,6 +35,7 @@ func asTensileNode(in any) (*tensile.Node, error) {
 	return tensiled, nil
 }
 
+// Enqueue adds a value as a [tensile.Node] to the queue.
 func (q *Queue) Enqueue(nodes ...any) error {
 	for _, node := range nodes {
 		tensileNode, err := asTensileNode(node)
@@ -81,7 +85,7 @@ func (q *Queue) Depends(node any, dependsOn ...any) error {
 
 // Build returns the nodes in the queue in the order they should be
 // executed. If there is a cycle in the graph, an error is returned.
-func (q *Queue) Build() (*Work, error) {
+func (q *Queue) Build() (*Work, error) { //nolint:cyclop
 	// Add all nodes to the graph first
 	directed := simple.NewDirectedGraph()
 	for _, node := range q.nodes {
@@ -114,8 +118,8 @@ func (q *Queue) Build() (*Work, error) {
 				// every possible value they can depend on
 				continue
 			}
-			for _, providerId := range providers {
-				directed.SetEdge(directed.NewEdge(directed.Node(providerId), node))
+			for _, providerID := range providers {
+				directed.SetEdge(directed.NewEdge(directed.Node(providerID), node))
 			}
 		}
 	}

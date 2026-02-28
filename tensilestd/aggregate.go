@@ -11,12 +11,17 @@ var _ tensile.Provider = (*Aggregate)(nil)
 var _ tensile.Depender = (*Aggregate)(nil)
 var _ tensile.ExecutorCtx = (*Aggregate)(nil)
 
+// AggregateRef is the reference type for aggregates.
 const AggregateRef = tensile.Ref("Aggregate")
 
+// Aggregate is a utility node that can chain multiple other nodes.
+// For example uses see e.g. the [File] node.
 type Aggregate struct {
 	contained []*tensile.Node
 }
 
+// NewAggregate eturns a new [Aggregate]. The values may be
+// [tensile.Node], if they are not they will be converted.
 func NewAggregate(raw ...any) (*Aggregate, error) {
 	nodes := make([]*tensile.Node, len(raw))
 	for i, r := range raw {
@@ -29,6 +34,7 @@ func NewAggregate(raw ...any) (*Aggregate, error) {
 	return &Aggregate{contained: nodes}, nil
 }
 
+// Validate implements [tensile.Validator].
 func (a *Aggregate) Validate(ctx tensile.Context) error {
 	for i, node := range a.contained {
 		if err := node.Validate(ctx); err != nil {
@@ -38,6 +44,7 @@ func (a *Aggregate) Validate(ctx tensile.Context) error {
 	return nil
 }
 
+// Provides implements [tensile.Provides].
 func (a *Aggregate) Provides() ([]tensile.NodeRef, error) {
 	refs := []tensile.NodeRef{}
 	for i, node := range a.contained {
@@ -50,6 +57,7 @@ func (a *Aggregate) Provides() ([]tensile.NodeRef, error) {
 	return refs, nil
 }
 
+// DependsOn implements [tensile.DependsOn].
 func (a *Aggregate) DependsOn() ([]tensile.NodeRef, error) {
 	refs := []tensile.NodeRef{}
 	for i, node := range a.contained {
@@ -62,6 +70,7 @@ func (a *Aggregate) DependsOn() ([]tensile.NodeRef, error) {
 	return refs, nil
 }
 
+// NeedsExecution implements [tensile.ExecutorCtx].
 func (a *Aggregate) NeedsExecution(ctx tensile.Context) (bool, error) {
 	for i, node := range a.contained {
 		needsExecution, err := node.NeedsExecution(ctx)
@@ -75,6 +84,7 @@ func (a *Aggregate) NeedsExecution(ctx tensile.Context) (bool, error) {
 	return false, nil
 }
 
+// Execute implements [tensile.ExecutorCtx].
 func (a *Aggregate) Execute(ctx tensile.Context) error {
 	for i, node := range a.contained {
 		needsExecution, err := node.NeedsExecution(ctx)

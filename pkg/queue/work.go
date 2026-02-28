@@ -54,8 +54,8 @@ func (w *Work) isReady(node *tensile.Node) (bool, error) {
 			// The dependency is not provided by any node, skip
 			continue
 		}
-		for _, providerId := range providers {
-			if _, done := w.done[providerId]; !done {
+		for _, providerID := range providers {
+			if _, done := w.done[providerID]; !done {
 				// The provider of the dependency is not done, so this node is not ready
 				return false, nil
 			}

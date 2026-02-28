@@ -12,6 +12,7 @@ type Options struct {
 	Noop bool
 }
 
+// WithDefaults returns a Options with default values.
 func (o Options) WithDefaults() Options {
 	if o.Logger == nil {
 		o.Logger = slog.Default()

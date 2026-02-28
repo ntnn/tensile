@@ -17,7 +17,7 @@ type Sequential struct {
 	summary *Summary
 }
 
-// quential creates a new Sequential execution engine.
+// NewSequential creates a new Sequential execution engine.
 func NewSequential(work *queue.Work, opts Options) *Sequential {
 	s := new(Sequential)
 	s.opts = opts.WithDefaults()
@@ -26,7 +26,9 @@ func NewSequential(work *queue.Work, opts Options) *Sequential {
 	return s
 }
 
+// Summary returns the summary of the current execution state.
 func (s *Sequential) Summary() *Summary {
+	// TODO add a lock for the summary
 	return s.summary
 }
 

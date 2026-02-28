@@ -1,3 +1,4 @@
+// A quick command to test things.
 package main
 
 import (
@@ -44,7 +45,9 @@ func run() error {
 		return err
 	}
 
-	q.Depends(print1, print2)
+	if err := q.Depends(print1, print2); err != nil {
+		return err
+	}
 
 	work, err := q.Build()
 	if err != nil {
