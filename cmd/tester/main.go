@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
 	"log/slog"
 
+	"github.com/ntnn/tensile"
 	"github.com/ntnn/tensile/pkg/engine"
 	"github.com/ntnn/tensile/pkg/queue"
 	"github.com/ntnn/tensile/tensilestd"
@@ -56,7 +58,8 @@ func run() error {
 		},
 	)
 
-	if err := seq.Execute(); err != nil {
+	tCtx := tensile.NewContext(context.Background())
+	if err := seq.Execute(tCtx); err != nil {
 		return err
 	}
 

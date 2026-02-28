@@ -1,6 +1,7 @@
 package tensilestd
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -22,7 +23,7 @@ type File struct {
 	Chown
 }
 
-func (f *File) Validate() error {
+func (f *File) Validate(_ context.Context) error {
 	f.Chmod.Path = f.Path
 	f.Chown.Path = f.Path
 	return nil
@@ -51,8 +52,8 @@ func (f *File) DependsOn() ([]tensile.NodeRef, error) {
 	return DirRef.ToMany(parentDirs(f.Path)), nil
 }
 
-func (f *File) NeedsExecution() (bool, error) {
-	chmodNeeded, err := f.Chmod.NeedsExecution()
+func (f *File) NeedsExecution(ctx context.Context) (bool, error) {
+	chmodNeeded, err := f.Chmod.NeedsExecution(ctx)
 	if err != nil {
 		return false, fmt.Errorf("error checking chmod: %w", err)
 	}
@@ -60,7 +61,7 @@ func (f *File) NeedsExecution() (bool, error) {
 		return true, nil
 	}
 
-	chownNeeded, err := f.Chown.NeedsExecution()
+	chownNeeded, err := f.Chown.NeedsExecution(ctx)
 	if err != nil {
 		return false, fmt.Errorf("error checking chown: %w", err)
 	}
@@ -77,7 +78,7 @@ func (f *File) NeedsExecution() (bool, error) {
 	return info.Size() != int64(len(f.Content)), nil
 }
 
-func (f *File) Execute() error {
+func (f *File) Execute(ctx context.Context) error {
 	fd, err := os.Create(f.Path)
 	if err != nil {
 		return fmt.Errorf("error creating file: %w", err)
@@ -88,11 +89,11 @@ func (f *File) Execute() error {
 		return fmt.Errorf("error writing to file: %w", err)
 	}
 
-	if err := f.Chmod.Execute(); err != nil {
+	if err := f.Chmod.Execute(ctx); err != nil {
 		return fmt.Errorf("error setting file permissions: %w", err)
 	}
 
-	if err := f.Chown.Execute(); err != nil {
+	if err := f.Chown.Execute(ctx); err != nil {
 		return fmt.Errorf("error setting file ownership: %w", err)
 	}
 

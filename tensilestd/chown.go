@@ -1,6 +1,7 @@
 package tensilestd
 
 import (
+	"context"
 	"os"
 
 	"github.com/ntnn/tensile"
@@ -21,13 +22,13 @@ func (c Chown) DependsOn() ([]tensile.NodeRef, error) {
 	return DirRef.ToMany(parentDirs(c.Path)), nil
 }
 
-func (c Chown) NeedsExecution() (bool, error) {
+func (c Chown) NeedsExecution(_ context.Context) (bool, error) {
 	// TODO resolve owner and group names to numeric IDs
 	// TODO check if the current owner and group match the desired ones
 	return true, nil
 }
 
-func (c Chown) Execute() error {
+func (c Chown) Execute(_ context.Context) error {
 	// TODO resolve owner and group names to numeric IDs
 	return os.Chown(c.Path, -1, -1)
 }
