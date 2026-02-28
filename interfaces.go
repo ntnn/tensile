@@ -1,7 +1,13 @@
 package tensile
 
+import "context"
+
 type Validator interface {
-	Validate() error
+	Validate(context.Context) error
+}
+
+type ValidatorCtx interface {
+	Validate(Context) error
 }
 
 type Provider interface {
@@ -13,6 +19,11 @@ type Depender interface {
 }
 
 type Executor interface {
-	NeedsExecution() (bool, error)
-	Execute() error
+	NeedsExecution(context.Context) (bool, error)
+	Execute(context.Context) error
+}
+
+type ExecutorCtx interface {
+	NeedsExecution(Context) (bool, error)
+	Execute(Context) error
 }
