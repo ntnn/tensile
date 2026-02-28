@@ -1,6 +1,8 @@
 package tensilestd
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -8,24 +10,35 @@ import (
 )
 
 func TestParentDirs(t *testing.T) {
+	// Use a root that works on any OS (e.g. "/" on Unix, "C:\" on Windows).
+	root := filepath.VolumeName(os.TempDir()) + string(filepath.Separator)
+
 	tests := map[string]struct {
 		input    string
 		expected []string
 	}{
 		"absolute path with multiple levels": {
-			input:    "/home/user/projects/file.txt",
-			expected: []string{"/home/user/projects", "/home/user", "/home", "/"},
+			input: filepath.Join(root, "home", "user", "projects", "file.txt"),
+			expected: []string{
+				filepath.Join(root, "home", "user", "projects"),
+				filepath.Join(root, "home", "user"),
+				filepath.Join(root, "home"),
+				root,
+			},
 		},
 		"two level absolute path": {
-			input:    "/home/file.txt",
-			expected: []string{"/home", "/"},
+			input: filepath.Join(root, "home", "file.txt"),
+			expected: []string{
+				filepath.Join(root, "home"),
+				root,
+			},
 		},
 		"one level absolute path": {
-			input:    "/file.txt",
-			expected: []string{"/"},
+			input:    filepath.Join(root, "file.txt"),
+			expected: []string{root},
 		},
 		"root directory": {
-			input:    "/",
+			input:    root,
 			expected: []string{},
 		},
 	}
