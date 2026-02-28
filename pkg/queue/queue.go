@@ -47,10 +47,6 @@ func (q *Queue) Enqueue(nodes ...any) error {
 }
 
 func (q *Queue) enqueue(node *tensile.Node) error {
-	if err := node.Validate(); err != nil {
-		return fmt.Errorf("validation failed for node with ID %d: %w", node.ID(), err)
-	}
-
 	if _, exists := q.nodes[node.ID()]; exists {
 		return fmt.Errorf("node with ID %d already exists in the queue", node.ID())
 	}
