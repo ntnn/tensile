@@ -10,6 +10,8 @@ import (
 )
 
 func TestParentDirs(t *testing.T) {
+	t.Parallel()
+
 	// Use a root that works on any OS (e.g. "/" on Unix, "C:\" on Windows).
 	root := filepath.VolumeName(os.TempDir()) + string(filepath.Separator)
 
@@ -45,6 +47,7 @@ func TestParentDirs(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			result := parentDirs(tc.input)
 			require.NotNil(t, result, "result should not be nil")
 			assert.Equal(t, tc.expected, result, "parentDirs should return the correct parent directories")
