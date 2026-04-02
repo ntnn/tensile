@@ -1,15 +1,16 @@
 package tensilestd
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/ntnn/tensile"
 )
 
-var _ tensile.ValidatorCtx = (*Aggregate)(nil)
+var _ tensile.Validator = (*Aggregate)(nil)
 var _ tensile.Provider = (*Aggregate)(nil)
 var _ tensile.Depender = (*Aggregate)(nil)
-var _ tensile.ExecutorCtx = (*Aggregate)(nil)
+var _ tensile.Executor = (*Aggregate)(nil)
 
 // AggregateRef is the reference type for aggregates.
 const AggregateRef = tensile.Ref("Aggregate")
@@ -35,7 +36,7 @@ func NewAggregate(raw ...any) (*Aggregate, error) {
 }
 
 // Validate implements [tensile.Validator].
-func (a *Aggregate) Validate(ctx tensile.Context) error {
+func (a *Aggregate) Validate(ctx context.Context) error {
 	for i, node := range a.contained {
 		if err := node.Validate(ctx); err != nil {
 			return fmt.Errorf("error in .Validate of %d %q: %w", i, node, err)
@@ -70,8 +71,8 @@ func (a *Aggregate) DependsOn() ([]tensile.NodeRef, error) {
 	return refs, nil
 }
 
-// NeedsExecution implements [tensile.ExecutorCtx].
-func (a *Aggregate) NeedsExecution(ctx tensile.Context) (bool, error) {
+// NeedsExecution implements [tensile.Executor].
+func (a *Aggregate) NeedsExecution(ctx context.Context) (bool, error) {
 	for i, node := range a.contained {
 		needsExecution, err := node.NeedsExecution(ctx)
 		if err != nil {
@@ -84,8 +85,8 @@ func (a *Aggregate) NeedsExecution(ctx tensile.Context) (bool, error) {
 	return false, nil
 }
 
-// Execute implements [tensile.ExecutorCtx].
-func (a *Aggregate) Execute(ctx tensile.Context) error {
+// Execute implements [tensile.Executor].
+func (a *Aggregate) Execute(ctx context.Context) error {
 	for i, node := range a.contained {
 		needsExecution, err := node.NeedsExecution(ctx)
 		if err != nil {
