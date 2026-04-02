@@ -1,6 +1,7 @@
 package tensile
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"hash/fnv"
@@ -49,10 +50,7 @@ func (n *Node) ID() int64 {
 }
 
 // Validate calls .Validate on the wrapped node if it implements it.
-func (n *Node) Validate(ctx Context) error {
-	if validator, ok := n.wrapped.(ValidatorCtx); ok {
-		return validator.Validate(ctx)
-	}
+func (n *Node) Validate(ctx context.Context) error {
 	if validator, ok := n.wrapped.(Validator); ok {
 		return validator.Validate(ctx)
 	}
@@ -78,10 +76,7 @@ func (n *Node) DependsOn() ([]NodeRef, error) {
 }
 
 // NeedsExecution calls .NeedsExecution on the wrapped node if it implements it.
-func (n *Node) NeedsExecution(ctx Context) (bool, error) {
-	if executor, ok := n.wrapped.(ExecutorCtx); ok {
-		return executor.NeedsExecution(ctx)
-	}
+func (n *Node) NeedsExecution(ctx context.Context) (bool, error) {
 	if executor, ok := n.wrapped.(Executor); ok {
 		return executor.NeedsExecution(ctx)
 	}
@@ -89,10 +84,7 @@ func (n *Node) NeedsExecution(ctx Context) (bool, error) {
 }
 
 // Execute calls .Execute on the wrapped node if it implements it.
-func (n *Node) Execute(ctx Context) error {
-	if executor, ok := n.wrapped.(ExecutorCtx); ok {
-		return executor.Execute(ctx)
-	}
+func (n *Node) Execute(ctx context.Context) error {
 	if executor, ok := n.wrapped.(Executor); ok {
 		return executor.Execute(ctx)
 	}

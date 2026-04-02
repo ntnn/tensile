@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/ntnn/tensile"
@@ -33,7 +34,7 @@ func (s *Sequential) Summary() *Summary {
 }
 
 // Execute executes the nodes in the work queue.
-func (s *Sequential) Execute(ctx tensile.Context) error {
+func (s *Sequential) Execute(ctx context.Context) error {
 	s.opts.Logger.Info("starting engine")
 	for {
 		s.opts.Logger.Debug("getting next node from work queue")
@@ -49,7 +50,7 @@ func (s *Sequential) Execute(ctx tensile.Context) error {
 	}
 }
 
-func (s *Sequential) executeNode(ctx tensile.Context, node *tensile.Node) error {
+func (s *Sequential) executeNode(ctx context.Context, node *tensile.Node) error {
 	if err := node.Validate(ctx); err != nil {
 		return fmt.Errorf("node validation failed: %w", err)
 	}
