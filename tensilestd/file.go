@@ -1,16 +1,17 @@
 package tensilestd
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 
 	"github.com/ntnn/tensile"
 )
 
-var _ tensile.ValidatorCtx = (*File)(nil)
+var _ tensile.Validator = (*File)(nil)
 var _ tensile.Provider = (*File)(nil)
 var _ tensile.Depender = (*File)(nil)
-var _ tensile.ExecutorCtx = (*File)(nil)
+var _ tensile.Executor = (*File)(nil)
 
 // FileRef is the reference type for files.
 const FileRef = tensile.Ref("File")
@@ -27,7 +28,7 @@ type File struct {
 }
 
 // Validate implements [tensile.Validator].
-func (f *File) Validate(ctx tensile.Context) error {
+func (f *File) Validate(ctx context.Context) error {
 	agg, err := NewAggregate(
 		Chmod{Path: f.Path, FileMode: f.FileMode},
 		Chown{Path: f.Path, Owner: f.Owner, Group: f.Group},

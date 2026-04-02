@@ -8,7 +8,6 @@ import (
 	"log"
 	"log/slog"
 
-	"github.com/ntnn/tensile"
 	"github.com/ntnn/tensile/pkg/engine"
 	"github.com/ntnn/tensile/pkg/queue"
 	"github.com/ntnn/tensile/tensilestd"
@@ -61,8 +60,7 @@ func run() error {
 		},
 	)
 
-	tCtx := tensile.NewContext(context.Background())
-	if err := seq.Execute(tCtx); err != nil {
+	if err := seq.Execute(context.Background()); err != nil {
 		return err
 	}
 
