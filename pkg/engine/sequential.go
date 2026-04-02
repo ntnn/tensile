@@ -5,6 +5,7 @@ import (
 
 	"github.com/ntnn/tensile"
 	"github.com/ntnn/tensile/pkg/queue"
+	"github.com/stretchr/testify/assert"
 )
 
 // Sequential is a simple execution engine that executes nodes in the
@@ -50,8 +51,15 @@ func (s *Sequential) Execute(ctx tensile.Context) error {
 }
 
 func (s *Sequential) executeNode(ctx tensile.Context, node *tensile.Node) error {
-	if err := node.Validate(ctx); err != nil {
+	val := &tensile.TestingT{}
+	assertions := assert.New(val)
+
+	if err := node.Validate(ctx, assertions); err != nil {
 		return fmt.Errorf("node validation failed: %w", err)
+	}
+
+	if val.Errored() {
+		return fmt.Errorf("assertions errored")
 	}
 
 	needsExecution, err := node.NeedsExecution(ctx)

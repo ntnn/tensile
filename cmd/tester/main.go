@@ -49,6 +49,10 @@ func run() error {
 		return err
 	}
 
+	if err := q.Enqueue(&tensilestd.Print{}); err != nil {
+		return err
+	}
+
 	work, err := q.Build()
 	if err != nil {
 		return err

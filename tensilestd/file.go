@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 
 	"github.com/ntnn/tensile"
+	"github.com/stretchr/testify/assert"
 )
 
 var _ tensile.ValidatorCtx = (*File)(nil)
@@ -27,7 +28,7 @@ type File struct {
 }
 
 // Validate implements [tensile.Validator].
-func (f *File) Validate(ctx tensile.Context) error {
+func (f *File) Validate(ctx tensile.Context, assert *assert.Assertions) error {
 	agg, err := NewAggregate(
 		Chmod{Path: f.Path, FileMode: f.FileMode},
 		Chown{Path: f.Path, Owner: f.Owner, Group: f.Group},
@@ -37,7 +38,7 @@ func (f *File) Validate(ctx tensile.Context) error {
 		return err
 	}
 	f.Aggregate = agg
-	return f.Aggregate.Validate(ctx)
+	return f.Aggregate.Validate(ctx, assert)
 }
 
 // parentDirs returns a list of all parent directories.

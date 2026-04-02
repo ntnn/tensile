@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/ntnn/tensile"
+	"github.com/stretchr/testify/assert"
 )
 
 var _ tensile.ValidatorCtx = (*Aggregate)(nil)
@@ -35,9 +36,9 @@ func NewAggregate(raw ...any) (*Aggregate, error) {
 }
 
 // Validate implements [tensile.Validator].
-func (a *Aggregate) Validate(ctx tensile.Context) error {
+func (a *Aggregate) Validate(ctx tensile.Context, assert *assert.Assertions) error {
 	for i, node := range a.contained {
-		if err := node.Validate(ctx); err != nil {
+		if err := node.Validate(ctx, assert); err != nil {
 			return fmt.Errorf("error in .Validate of %d %q: %w", i, node, err)
 		}
 	}

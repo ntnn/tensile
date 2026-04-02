@@ -1,13 +1,17 @@
 package tensile
 
-import "context"
+import (
+	"context"
+
+	"github.com/stretchr/testify/assert"
+)
 
 // Validator is the interface to be satisfied by a [Node] when the
 // configuration needs to be validated e.g. before execution.
 type Validator interface {
 	// Validate validates the configuration of the node.
 	// It may be used to setup states in the node.
-	Validate(ctx context.Context) error
+	Validate(ctx context.Context, assert *assert.Assertions) error
 }
 
 // ValidatorCtx is equivalent to [Validator] but with a [Context]
@@ -15,7 +19,7 @@ type Validator interface {
 type ValidatorCtx interface {
 	// Validate validates the configuration of the node.
 	// It may be used to setup states in the node.
-	Validate(ctx Context) error
+	Validate(ctx Context, assert *assert.Assertions) error
 }
 
 // Provider is the interface to be satisfied by a [Node] when it

@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"hash/fnv"
+
+	"github.com/stretchr/testify/assert"
 )
 
 // Node is a single step to be executed by an engine.
@@ -49,12 +51,12 @@ func (n *Node) ID() int64 {
 }
 
 // Validate calls .Validate on the wrapped node if it implements it.
-func (n *Node) Validate(ctx Context) error {
+func (n *Node) Validate(ctx Context, assert *assert.Assertions) error {
 	if validator, ok := n.wrapped.(ValidatorCtx); ok {
-		return validator.Validate(ctx)
+		return validator.Validate(ctx, assert)
 	}
 	if validator, ok := n.wrapped.(Validator); ok {
-		return validator.Validate(ctx)
+		return validator.Validate(ctx, assert)
 	}
 	return nil
 }

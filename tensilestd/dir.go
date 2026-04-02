@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/ntnn/tensile"
+	"github.com/stretchr/testify/assert"
 )
 
 var _ tensile.Validator = (*Dir)(nil)
@@ -23,7 +24,8 @@ type Dir struct {
 }
 
 // Validate implements [tensile.Validator].
-func (d *Dir) Validate(_ context.Context) error {
+func (d *Dir) Validate(_ context.Context, assert *assert.Assertions) error {
+	assert.NotEmpty(d.Path)
 	d.Chmod.Path = d.Path
 	d.Chown.Path = d.Path
 	return nil

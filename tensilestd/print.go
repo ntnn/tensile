@@ -1,14 +1,22 @@
 package tensilestd
 
 import (
+	"context"
 	"fmt"
 	"strings"
+
+	"github.com/stretchr/testify/assert"
 )
 
 // Print prints a message when executed.
 type Print struct {
 	Message string
 	Args    []any
+}
+
+func (p *Print) Validate(ctx context.Context, assert *assert.Assertions) error {
+	assert.NotEmpty(p.Message)
+	return nil
 }
 
 // NeedsExecution returns true, indicating the node should always execute.
