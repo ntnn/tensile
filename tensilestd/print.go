@@ -3,6 +3,8 @@ package tensilestd
 import (
 	"fmt"
 	"strings"
+
+	"github.com/ntnn/tensile"
 )
 
 // Print prints a message when executed.
@@ -12,12 +14,12 @@ type Print struct {
 }
 
 // NeedsExecution returns true, indicating the node should always execute.
-func (p *Print) NeedsExecution() (bool, error) {
+func (p *Print) NeedsExecution(_ tensile.Cable) (bool, error) {
 	return true, nil
 }
 
 // Execute implements [tensile.Executor].
-func (p *Print) Execute() error {
+func (p *Print) Execute(_ tensile.Cable) error {
 	msg := p.Message
 	if !strings.HasSuffix(msg, "\n") {
 		msg += "\n"

@@ -1,7 +1,6 @@
 package tensilestd
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/ntnn/tensile"
@@ -36,9 +35,9 @@ func NewAggregate(raw ...any) (*Aggregate, error) {
 }
 
 // Validate implements [tensile.Validator].
-func (a *Aggregate) Validate(ctx context.Context) error {
+func (a *Aggregate) Validate(s tensile.Cable) error {
 	for i, node := range a.contained {
-		if err := node.Validate(ctx); err != nil {
+		if err := node.Validate(s); err != nil {
 			return fmt.Errorf("error in .Validate of %d %q: %w", i, node, err)
 		}
 	}
@@ -72,9 +71,9 @@ func (a *Aggregate) DependsOn() ([]tensile.NodeRef, error) {
 }
 
 // NeedsExecution implements [tensile.Executor].
-func (a *Aggregate) NeedsExecution(ctx context.Context) (bool, error) {
+func (a *Aggregate) NeedsExecution(s tensile.Cable) (bool, error) {
 	for i, node := range a.contained {
-		needsExecution, err := node.NeedsExecution(ctx)
+		needsExecution, err := node.NeedsExecution(s)
 		if err != nil {
 			return false, fmt.Errorf("error in .NeedsExecution of %d %q: %w", i, node, err)
 		}
@@ -86,16 +85,16 @@ func (a *Aggregate) NeedsExecution(ctx context.Context) (bool, error) {
 }
 
 // Execute implements [tensile.Executor].
-func (a *Aggregate) Execute(ctx context.Context) error {
+func (a *Aggregate) Execute(s tensile.Cable) error {
 	for i, node := range a.contained {
-		needsExecution, err := node.NeedsExecution(ctx)
+		needsExecution, err := node.NeedsExecution(s)
 		if err != nil {
 			return fmt.Errorf("error in .NeedsExecution of %d %q: %w", i, node, err)
 		}
 		if !needsExecution {
 			continue
 		}
-		if err := node.Execute(ctx); err != nil {
+		if err := node.Execute(s); err != nil {
 			return fmt.Errorf("error in .Execute of %d %q: %w", i, node, err)
 		}
 	}

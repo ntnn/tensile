@@ -1,13 +1,11 @@
 package tensile
 
-import "context"
-
 // Validator is the interface to be satisfied by a [Node] when the
 // configuration needs to be validated e.g. before execution.
 type Validator interface {
 	// Validate validates the configuration of the node.
 	// It may be used to setup states in the node.
-	Validate(ctx context.Context) error
+	Validate(Cable) error
 }
 
 // Provider is the interface to be satisfied by a [Node] when it
@@ -35,7 +33,7 @@ type Executor interface {
 	//
 	// NeedsExecution is called e.g. for noop runs to check if any
 	// changes are needed.
-	NeedsExecution(ctx context.Context) (bool, error)
+	NeedsExecution(Cable) (bool, error)
 	// Execute is called for the node to make the desired change.
-	Execute(ctx context.Context) error
+	Execute(Cable) error
 }

@@ -1,7 +1,6 @@
 package tensilestd
 
 import (
-	"context"
 	"os"
 
 	"github.com/ntnn/tensile"
@@ -25,7 +24,7 @@ func (c Chmod) DependsOn() ([]tensile.NodeRef, error) {
 }
 
 // NeedsExecution implements [tensile.Executor].
-func (c Chmod) NeedsExecution(_ context.Context) (bool, error) {
+func (c Chmod) NeedsExecution(_ tensile.Cable) (bool, error) {
 	info, err := os.Stat(c.Path)
 	if err != nil {
 		return false, err
@@ -34,6 +33,6 @@ func (c Chmod) NeedsExecution(_ context.Context) (bool, error) {
 }
 
 // Execute implements [tensile.Executor].
-func (c Chmod) Execute(_ context.Context) error {
+func (c Chmod) Execute(_ tensile.Cable) error {
 	return os.Chmod(c.Path, c.FileMode)
 }
