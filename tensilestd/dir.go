@@ -1,8 +1,6 @@
 package tensilestd
 
 import (
-	"context"
-
 	"github.com/ntnn/tensile"
 )
 
@@ -23,7 +21,7 @@ type Dir struct {
 }
 
 // Validate implements [tensile.Validator].
-func (d *Dir) Validate(_ context.Context) error {
+func (d *Dir) Validate(_ tensile.Cable) error {
 	d.Chmod.Path = d.Path
 	d.Chown.Path = d.Path
 	return nil
@@ -40,11 +38,11 @@ func (d *Dir) DependsOn() ([]tensile.NodeRef, error) {
 }
 
 // NeedsExecution implements [tensile.Executor].
-func (d *Dir) NeedsExecution(_ context.Context) (bool, error) {
+func (d *Dir) NeedsExecution(_ tensile.Cable) (bool, error) {
 	return false, nil
 }
 
 // Execute implements [tensile.Executor].
-func (d *Dir) Execute(_ context.Context) error {
+func (d *Dir) Execute(_ tensile.Cable) error {
 	return nil
 }
