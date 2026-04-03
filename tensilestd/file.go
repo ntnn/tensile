@@ -1,7 +1,6 @@
 package tensilestd
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 
@@ -28,7 +27,7 @@ type File struct {
 }
 
 // Validate implements [tensile.Validator].
-func (f *File) Validate(ctx context.Context) error {
+func (f *File) Validate(s tensile.Cable) error {
 	agg, err := NewAggregate(
 		Chmod{Path: f.Path, FileMode: f.FileMode},
 		Chown{Path: f.Path, Owner: f.Owner, Group: f.Group},
@@ -38,7 +37,7 @@ func (f *File) Validate(ctx context.Context) error {
 		return err
 	}
 	f.Aggregate = agg
-	return f.Aggregate.Validate(ctx)
+	return f.Aggregate.Validate(s)
 }
 
 // parentDirs returns a list of all parent directories.

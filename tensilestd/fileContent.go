@@ -1,7 +1,6 @@
 package tensilestd
 
 import (
-	"context"
 	"fmt"
 	"os"
 
@@ -32,13 +31,13 @@ func (f *FileContent) DependsOn() ([]tensile.NodeRef, error) {
 }
 
 // NeedsExecution implements [tensile.Executor].
-func (f *FileContent) NeedsExecution(_ context.Context) (bool, error) {
+func (f *FileContent) NeedsExecution(_ tensile.Cable) (bool, error) {
 	// TODO
 	return true, nil
 }
 
 // Execute implements [tensile.Executor].
-func (f *FileContent) Execute(_ context.Context) error {
+func (f *FileContent) Execute(_ tensile.Cable) error {
 	fd, err := os.Create(f.Path)
 	if err != nil {
 		return fmt.Errorf("error creating file: %w", err)

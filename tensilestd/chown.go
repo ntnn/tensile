@@ -1,7 +1,6 @@
 package tensilestd
 
 import (
-	"context"
 	"os"
 
 	"github.com/ntnn/tensile"
@@ -26,14 +25,14 @@ func (c Chown) DependsOn() ([]tensile.NodeRef, error) {
 }
 
 // NeedsExecution implements [tensile.Executor].
-func (c Chown) NeedsExecution(_ context.Context) (bool, error) {
+func (c Chown) NeedsExecution(_ tensile.Cable) (bool, error) {
 	// TODO resolve owner and group names to numeric IDs
 	// TODO check if the current owner and group match the desired ones
 	return true, nil
 }
 
 // Execute implements [tensile.Executor].
-func (c Chown) Execute(_ context.Context) error {
+func (c Chown) Execute(_ tensile.Cable) error {
 	// TODO resolve owner and group names to numeric IDs
 	return os.Chown(c.Path, -1, -1)
 }

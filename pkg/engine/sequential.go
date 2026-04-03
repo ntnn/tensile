@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/ntnn/tensile"
+	"github.com/ntnn/tensile/pkg/cable"
 	"github.com/ntnn/tensile/pkg/queue"
 )
 
@@ -51,11 +52,19 @@ func (s *Sequential) Execute(ctx context.Context) error {
 }
 
 func (s *Sequential) executeNode(ctx context.Context, node *tensile.Node) error {
-	if err := node.Validate(ctx); err != nil {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	wire := &cable.Wire{
+		Ctx: ctx,
+		Log: s.opts.Logger.With("id", node.ID()),
+	}
+
+	if err := node.Validate(wire); err != nil {
 		return fmt.Errorf("node validation failed: %w", err)
 	}
 
-	needsExecution, err := node.NeedsExecution(ctx)
+	needsExecution, err := node.NeedsExecution(wire)
 	if err != nil {
 		return fmt.Errorf("failed to check if node with ID %d needs execution: %w", node.ID(), err)
 	}
@@ -72,7 +81,7 @@ func (s *Sequential) executeNode(ctx context.Context, node *tensile.Node) error 
 		return nil
 	}
 
-	if err := node.Execute(ctx); err != nil {
+	if err := node.Execute(wire); err != nil {
 		return fmt.Errorf("failed to execute node with ID %d: %w", node.ID(), err)
 	}
 
