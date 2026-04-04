@@ -3,8 +3,7 @@ GO ?= go
 TOOLS_DIR := hack/tools
 
 GOLANGCI_LINT_VER := 2.10.0
-GOLANGCI_LINT_BIN := golangci-lint
-GOLANGCI_LINT := $(TOOLS_DIR)/$(GOLANGCI_LINT_BIN)-$(GOLANGCI_LINT_VER)
+GOLANGCI_LINT := $(TOOLS_DIR)/golangci-lint-$(GOLANGCI_LINT_VER)
 
 check: lint test
 
@@ -22,8 +21,4 @@ test:
 
 $(GOLANGCI_LINT):
 	mkdir -p $(TOOLS_DIR)
-	$(GO) tool github.com/ntnn/mindl download \
-		-url 'https://github.com/golangci/golangci-lint/releases/download/v{{.Version}}/golangci-lint-{{.Version}}-{{.OS}}-{{.Arch}}.{{.OSArchive}}' \
-		-version $(GOLANGCI_LINT_VER) \
-		-extract golangci-lint-{{.Version}}-{{.OS}}-{{.Arch}}/$(GOLANGCI_LINT_BIN){{.Exe}} \
-		-out $@
+	$(GO) tool github.com/ntnn/mindl download -tool golangci-lint -common -out $@ -version $(GOLANGCI_LINT_VER)
