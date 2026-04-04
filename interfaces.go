@@ -5,7 +5,7 @@ package tensile
 type Validator interface {
 	// Validate validates the configuration of the node.
 	// It may be used to setup states in the node.
-	Validate(Cable) error
+	Validate(cable Cable) error
 }
 
 // Provider is the interface to be satisfied by a [Node] when it
@@ -33,7 +33,7 @@ type Executor interface {
 	//
 	// NeedsExecution is called e.g. for noop runs to check if any
 	// changes are needed.
-	NeedsExecution(Cable) (bool, error)
+	NeedsExecution(cable Cable) (bool, error)
 	// Execute is called for the node to make the desired change.
-	Execute(Cable) error
+	Execute(cable Cable) error
 }
