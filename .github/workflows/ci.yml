@@ -19,6 +19,13 @@ jobs:
           - windows-latest
     runs-on: ${{matrix.os}}
     steps:
+      - if: matrix.os == 'windows-latest'
+        name: Force git to use line feed on windows
+        # Only required for windows because otherwise golangci-lint fails,
+        # claiming the files are not properly formatted
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.eol lf
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
       - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
         with:
