@@ -11,7 +11,7 @@ var _ tensile.Cable = (*Wire)(nil)
 
 // Wire is a basic implementation of [tensile.Cable].
 type Wire struct {
-	Ctx context.Context
+	Ctx context.Context //nolint:containedctx
 	Log *slog.Logger
 }
 
