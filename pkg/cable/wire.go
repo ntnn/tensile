@@ -15,10 +15,12 @@ type Wire struct {
 	Log *slog.Logger
 }
 
+// Context returns a context that is valid for the lifetime of a [tensile.Node].
 func (w *Wire) Context() context.Context {
 	return w.Ctx
 }
 
+// Logger returns an initialized logger that is configured for the [tensile.Node].
 func (w *Wire) Logger() *slog.Logger {
 	return w.Log
 }
