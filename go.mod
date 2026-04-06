@@ -6,7 +6,7 @@ tool github.com/ntnn/mindl
 
 require gonum.org/v1/gonum v0.17.0
 
-require github.com/ntnn/mindl v0.0.0-20260404200451-d669bae7622a // indirect
+require github.com/ntnn/mindl v0.0.0-20260405231350-ffc119113cd3 // indirect
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect

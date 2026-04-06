@@ -1,7 +1,7 @@
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/ntnn/mindl v0.0.0-20260404200451-d669bae7622a h1:KEO+IrBe7cp3SxX3O+CvRLRKmOnAZ2eVbPOmM6Phd78=
-github.com/ntnn/mindl v0.0.0-20260404200451-d669bae7622a/go.mod h1:fiva9uxPeEte6Wo5SR0iTaNiUrtphILf5ckDgHRhLdw=
+github.com/ntnn/mindl v0.0.0-20260405231350-ffc119113cd3 h1:I9b7J94LpR2O2su8N2JXDv8ytFbh9HMle0/bhfG0l7I=
+github.com/ntnn/mindl v0.0.0-20260405231350-ffc119113cd3/go.mod h1:fiva9uxPeEte6Wo5SR0iTaNiUrtphILf5ckDgHRhLdw=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/stretchr/testify v1.11.1 h1:7s2iGBzp5EwR7/aIZr8ao5+dra3wiQyKjjFuvgVKu7U=
