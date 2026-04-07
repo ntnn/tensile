@@ -2,7 +2,7 @@ GO ?= go
 
 TOOLS_DIR := hack/tools
 
-GOLANGCI_LINT_VER := 2.10.0
+GOLANGCI_LINT_VER := 2.11.4
 GOLANGCI_LINT := $(TOOLS_DIR)/golangci-lint-$(GOLANGCI_LINT_VER)
 
 check: lint test
