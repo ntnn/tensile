@@ -19,27 +19,26 @@ type Work struct {
 // Get returns the next node that is ready to be executed.
 // If there are no nodes ready to be executed, it returns nil and false.
 // If all nodes are done, it returns nil and true.
-func (w *Work) Get() (*tensile.Node, bool) {
+func (w *Work) Get() (*tensile.Node, bool, error) {
 	w.lock.Lock()
 	defer w.lock.Unlock()
 
 	if len(w.order) == 0 {
 		// All nodes are done
-		return nil, true
+		return nil, true, nil
 	}
 
 	for _, node := range w.order {
 		ready, err := w.isReady(node)
 		if err != nil {
-			// If there is an error checking if the node is ready, skip it
-			continue
+			return nil, false, err
 		}
 		if ready {
 			w.order = w.order[1:]
-			return node, false
+			return node, false, nil
 		}
 	}
-	return nil, false
+	return nil, false, nil
 }
 
 func (w *Work) isReady(node *tensile.Node) (bool, error) {
