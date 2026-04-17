@@ -30,7 +30,6 @@ func NewSequential(work *queue.Work, opts Options) *Sequential {
 
 // Summary returns the summary of the current execution state.
 func (s *Sequential) Summary() *Summary {
-	// TODO add a lock for the summary
 	return s.summary
 }
 
@@ -77,7 +76,7 @@ func (s *Sequential) executeNode(ctx context.Context, node *tensile.Node) error 
 	if s.opts.Noop {
 		s.opts.Logger.Debug(fmt.Sprintf("noop is enabled, skipping execution of node with ID %d", node.ID()))
 		s.work.MarkDone(node)
-		s.summary.NodesExecuted++
+		s.summary.IncrementNodesExecuted()
 		return nil
 	}
 
@@ -87,6 +86,6 @@ func (s *Sequential) executeNode(ctx context.Context, node *tensile.Node) error 
 
 	s.opts.Logger.Debug(fmt.Sprintf("successfully executed node with ID %d", node.ID()))
 	s.work.MarkDone(node)
-	s.summary.NodesExecuted++
+	s.summary.IncrementNodesExecuted()
 	return nil
 }

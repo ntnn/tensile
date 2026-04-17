@@ -1,6 +1,9 @@
 package engine
 
-import "log/slog"
+import (
+	"log/slog"
+	"sync"
+)
 
 // Options are common options for all execution engines.
 type Options struct {
@@ -22,8 +25,20 @@ func (o Options) WithDefaults() Options {
 
 // Summary is the summary of an execution.
 type Summary struct {
-	// NodesExecuted is the number of nodes that were executed.
-	// In noop mode this indicates the number of nodes that would have
-	// been executed if noop were disabled.
-	NodesExecuted int
+	mu            sync.Mutex
+	nodesExecuted int
+}
+
+// IncrementNodesExecuted safely increments the count of nodes executed.
+func (s *Summary) IncrementNodesExecuted() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.nodesExecuted++
+}
+
+// NodesExecuted returns the number of nodes that were executed.
+func (s *Summary) NodesExecuted() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.nodesExecuted
 }
