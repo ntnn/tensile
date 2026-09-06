@@ -49,7 +49,6 @@ linters:
     - interfacebloat
     - intrange
     - iotamixing
-    - ireturn
     - lll
     - loggercheck
     - mirror
