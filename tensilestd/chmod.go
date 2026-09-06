@@ -13,6 +13,7 @@ var _ tensile.Executor = (*Chmod)(nil)
 const ChmodRef = tensile.Ref("Chmod")
 
 // Chmod ensures a file has the specified permissions.
+// FileMode is interpreted as unix permission bits.
 type Chmod struct {
 	Path     string
 	FileMode os.FileMode
@@ -25,14 +26,10 @@ func (c Chmod) DependsOn() ([]tensile.NodeRef, error) {
 
 // NeedsExecution implements [tensile.Executor].
 func (c Chmod) NeedsExecution(_ tensile.Cable) (bool, error) {
-	info, err := os.Stat(c.Path)
-	if err != nil {
-		return false, err
-	}
-	return info.Mode() != c.FileMode, nil
+	return chmodNeedsExecution(c.Path, c.FileMode)
 }
 
 // Execute implements [tensile.Executor].
 func (c Chmod) Execute(_ tensile.Cable) error {
-	return os.Chmod(c.Path, c.FileMode)
+	return chmodApply(c.Path, c.FileMode)
 }
