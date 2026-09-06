@@ -1,2 +1,2 @@
-// Package tensilestd contains [tensile.Node] implementations.
+// Package tensilestd contains [tensile.Node] primitives to most common operations.
 package tensilestd
