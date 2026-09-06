@@ -94,6 +94,11 @@ linters:
     - wastedassign
     - whitespace
     - zerologlint
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters:
+          - goconst
 
 formatters:
   enable:
