@@ -1,7 +1,9 @@
 package tensilestd
 
 import (
+	"crypto/sha256"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/ntnn/tensile"
@@ -32,8 +34,21 @@ func (f *FileContent) DependsOn() ([]tensile.NodeRef, error) {
 
 // NeedsExecution implements [tensile.Executor].
 func (f *FileContent) NeedsExecution(_ tensile.Cable) (bool, error) {
-	// TODO
-	return true, nil
+	fd, err := os.Open(f.Path)
+	if os.IsNotExist(err) {
+		return true, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("error opening file: %w", err)
+	}
+	defer fd.Close() //nolint:errcheck
+
+	hash := sha256.New()
+	if _, err := io.Copy(hash, fd); err != nil {
+		return false, fmt.Errorf("error hashing file: %w", err)
+	}
+
+	return [sha256.Size]byte(hash.Sum(nil)) != sha256.Sum256([]byte(f.Content)), nil
 }
 
 // Execute implements [tensile.Executor].
