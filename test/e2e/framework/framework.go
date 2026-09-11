@@ -37,6 +37,7 @@ func Start(t *testing.T, image Image, name string) *Env {
 		HostConfigModifier: func(hc *container.HostConfig) {
 			hc.CgroupnsMode = container.CgroupnsModePrivate
 			hc.CapAdd = image.CapAdd
+			hc.SecurityOpt = image.SecurityOpt
 			hc.Tmpfs = image.Tmpfs
 		},
 		Files: []testcontainers.ContainerFile{

@@ -8,6 +8,8 @@ type Image struct {
 	Entrypoint []string
 	// CapAdd lists added Linux capabilities.
 	CapAdd []string
+	// SecurityOpt lists container security options.
+	SecurityOpt []string
 	// Tmpfs maps mount points to mount options.
 	Tmpfs map[string]string
 	// WaitCmd probes readiness inside the container.
@@ -26,6 +28,9 @@ var SystemdDebian = Image{
 		"[ -w /sys/fs/cgroup ] || mount -o remount,rw /sys/fs/cgroup && exec /sbin/init",
 	},
 	CapAdd: []string{"SYS_ADMIN"},
+	// docker's default AppArmor profile denies mount(2) even with
+	// CAP_SYS_ADMIN, breaking the cgroup remount on AppArmor hosts
+	SecurityOpt: []string{"apparmor=unconfined"},
 	Tmpfs: map[string]string{
 		"/run":      "",
 		"/run/lock": "",
