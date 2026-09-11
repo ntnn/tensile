@@ -17,10 +17,10 @@ func handlingFake() *fakeServiceManager {
 	}
 }
 
-func TestServiceManagerRegistry_register(t *testing.T) {
+func TestRegistry_register(t *testing.T) {
 	t.Parallel()
 
-	reg := &serviceManagerRegistry{}
+	reg := &registry[ServiceManager]{kind: "service manager"}
 	reg.register("one", &fakeServiceManager{})
 
 	assert.Panics(t, func() {
@@ -28,7 +28,7 @@ func TestServiceManagerRegistry_register(t *testing.T) {
 	}, "duplicate registration must panic")
 }
 
-func TestServiceManagerRegistry_byName(t *testing.T) {
+func TestRegistry_byName(t *testing.T) {
 	t.Parallel()
 
 	cases := map[string]struct {
@@ -44,7 +44,7 @@ func TestServiceManagerRegistry_byName(t *testing.T) {
 			t.Parallel()
 
 			mgr := &fakeServiceManager{}
-			reg := &serviceManagerRegistry{}
+			reg := &registry[ServiceManager]{kind: "service manager"}
 			reg.register("one", mgr)
 
 			got, err := reg.byName(cas.name)
@@ -58,12 +58,12 @@ func TestServiceManagerRegistry_byName(t *testing.T) {
 	}
 }
 
-func TestServiceManagerRegistry_detectLaterRegistrationWins(t *testing.T) {
+func TestRegistry_detectLaterRegistrationWins(t *testing.T) {
 	t.Parallel()
 
 	first := handlingFake()
 	second := handlingFake()
-	reg := &serviceManagerRegistry{}
+	reg := &registry[ServiceManager]{kind: "service manager"}
 	reg.register("first", first)
 	reg.register("second", second)
 
@@ -72,11 +72,11 @@ func TestServiceManagerRegistry_detectLaterRegistrationWins(t *testing.T) {
 	assert.Same(t, second, got)
 }
 
-func TestServiceManagerRegistry_detectSkipsNonHandling(t *testing.T) {
+func TestRegistry_detectSkipsNonHandling(t *testing.T) {
 	t.Parallel()
 
 	first := handlingFake()
-	reg := &serviceManagerRegistry{}
+	reg := &registry[ServiceManager]{kind: "service manager"}
 	reg.register("first", first)
 	reg.register("second", &fakeServiceManager{})
 
@@ -85,20 +85,20 @@ func TestServiceManagerRegistry_detectSkipsNonHandling(t *testing.T) {
 	assert.Same(t, first, got)
 }
 
-func TestServiceManagerRegistry_detectNoneHandling(t *testing.T) {
+func TestRegistry_detectNoneHandling(t *testing.T) {
 	t.Parallel()
 
-	reg := &serviceManagerRegistry{}
+	reg := &registry[ServiceManager]{kind: "service manager"}
 	reg.register("first", &fakeServiceManager{})
 
 	_, err := reg.detect(t.Context(), "svc")
 	assert.Error(t, err)
 }
 
-func TestServiceManagerRegistry_detectHandlesError(t *testing.T) {
+func TestRegistry_detectHandlesError(t *testing.T) {
 	t.Parallel()
 
-	reg := &serviceManagerRegistry{}
+	reg := &registry[ServiceManager]{kind: "service manager"}
 	reg.register("first", &fakeServiceManager{
 		handles: func(_ context.Context, _ string) (bool, error) {
 			return false, errors.New("boom")
