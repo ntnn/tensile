@@ -1,6 +1,6 @@
 module github.com/ntnn/tensile
 
-go 1.25.0
+go 1.27.0
 
 tool github.com/ntnn/mindl
 
