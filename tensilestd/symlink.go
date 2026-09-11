@@ -27,7 +27,7 @@ func (s *Symlink) Provides() ([]tensile.NodeRef, error) {
 
 // DependsOn implements [tensile.Depender].
 func (s *Symlink) DependsOn() ([]tensile.NodeRef, error) {
-	return DirRef.ToMany(parentDirs(s.Path)), nil
+	return tensile.ToMany(DirRef, parentDirs(s.Path)), nil
 }
 
 // NeedsExecution implements [tensile.Executor].

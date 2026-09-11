@@ -29,7 +29,7 @@ func (f *FileContent) Provides() ([]tensile.NodeRef, error) {
 
 // DependsOn implements [tensile.Depender].
 func (f *FileContent) DependsOn() ([]tensile.NodeRef, error) {
-	return DirRef.ToMany(parentDirs(f.Path)), nil
+	return tensile.ToMany(DirRef, parentDirs(f.Path)), nil
 }
 
 // NeedsExecution implements [tensile.Executor].
