@@ -42,9 +42,9 @@ func TestService_Validate(t *testing.T) {
 		wantErr bool
 		service Service
 	}{
-		"name and enabled":  {false, Service{Name: "svc", Enabled: ptr(true)}},
-		"name and running":  {false, Service{Name: "svc", Running: ptr(true)}},
-		"missing name":      {true, Service{Enabled: ptr(true)}},
+		"name and enabled":  {false, Service{Name: "svc", Enabled: new(true)}},
+		"name and running":  {false, Service{Name: "svc", Running: new(true)}},
+		"missing name":      {true, Service{Enabled: new(true)}},
 		"no state to apply": {true, Service{Name: "svc"}},
 	}
 
@@ -70,11 +70,11 @@ func TestService_NeedsExecution(t *testing.T) {
 		running  *bool
 		status   ServiceStatus
 	}{
-		"enabled mismatch":        {true, ptr(true), nil, ServiceStatus{Enabled: false, Active: true}},
-		"running mismatch":        {true, nil, ptr(true), ServiceStatus{Enabled: true, Active: false}},
-		"all matching":            {false, ptr(true), ptr(true), ServiceStatus{Enabled: true, Active: true}},
-		"unmanaged drift ignored": {false, ptr(true), nil, ServiceStatus{Enabled: true, Active: false}},
-		"both mismatch":           {true, ptr(true), ptr(true), ServiceStatus{Enabled: false, Active: false}},
+		"enabled mismatch":        {true, new(true), nil, ServiceStatus{Enabled: false, Active: true}},
+		"running mismatch":        {true, nil, new(true), ServiceStatus{Enabled: true, Active: false}},
+		"all matching":            {false, new(true), new(true), ServiceStatus{Enabled: true, Active: true}},
+		"unmanaged drift ignored": {false, new(true), nil, ServiceStatus{Enabled: true, Active: false}},
+		"both mismatch":           {true, new(true), new(true), ServiceStatus{Enabled: false, Active: false}},
 	}
 
 	for title, cas := range cases {
@@ -118,7 +118,7 @@ func TestService_Execute(t *testing.T) {
 
 	s := &Service{
 		Name:    "svc",
-		Running: ptr(true),
+		Running: new(true),
 		Manager: "fake-execute",
 	}
 	require.NoError(t, s.Execute(testWire(t)))
@@ -132,7 +132,7 @@ func TestService_NeedsExecutionUnknownManager(t *testing.T) {
 
 	s := &Service{
 		Name:    "svc",
-		Enabled: ptr(true),
+		Enabled: new(true),
 		Manager: "does-not-exist",
 	}
 

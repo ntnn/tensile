@@ -38,7 +38,7 @@ func NewAggregate(raw ...any) (*Aggregate, error) {
 func (a *Aggregate) Validate(s tensile.Cable) error {
 	for i, node := range a.contained {
 		if err := node.Validate(s); err != nil {
-			return fmt.Errorf("error in .Validate of %d %q: %w", i, node, err)
+			return fmt.Errorf("error in .Validate of %d %v: %w", i, node, err)
 		}
 	}
 	return nil
@@ -50,7 +50,7 @@ func (a *Aggregate) Provides() ([]tensile.NodeRef, error) {
 	for i, node := range a.contained {
 		cRefs, err := node.Provides()
 		if err != nil {
-			return nil, fmt.Errorf("error in .Provides of %d %q: %w", i, node, err)
+			return nil, fmt.Errorf("error in .Provides of %d %v: %w", i, node, err)
 		}
 		refs = append(refs, cRefs...)
 	}
@@ -63,7 +63,7 @@ func (a *Aggregate) DependsOn() ([]tensile.NodeRef, error) {
 	for i, node := range a.contained {
 		cRefs, err := node.DependsOn()
 		if err != nil {
-			return nil, fmt.Errorf("error in .DependsOn of %d %q: %w", i, node, err)
+			return nil, fmt.Errorf("error in .DependsOn of %d %v: %w", i, node, err)
 		}
 		refs = append(refs, cRefs...)
 	}
@@ -75,7 +75,7 @@ func (a *Aggregate) NeedsExecution(s tensile.Cable) (bool, error) {
 	for i, node := range a.contained {
 		needsExecution, err := node.NeedsExecution(s)
 		if err != nil {
-			return false, fmt.Errorf("error in .NeedsExecution of %d %q: %w", i, node, err)
+			return false, fmt.Errorf("error in .NeedsExecution of %d %v: %w", i, node, err)
 		}
 		if needsExecution {
 			return true, nil
@@ -89,13 +89,13 @@ func (a *Aggregate) Execute(s tensile.Cable) error {
 	for i, node := range a.contained {
 		needsExecution, err := node.NeedsExecution(s)
 		if err != nil {
-			return fmt.Errorf("error in .NeedsExecution of %d %q: %w", i, node, err)
+			return fmt.Errorf("error in .NeedsExecution of %d %v: %w", i, node, err)
 		}
 		if !needsExecution {
 			continue
 		}
 		if err := node.Execute(s); err != nil {
-			return fmt.Errorf("error in .Execute of %d %q: %w", i, node, err)
+			return fmt.Errorf("error in .Execute of %d %v: %w", i, node, err)
 		}
 	}
 	return nil

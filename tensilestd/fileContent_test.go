@@ -9,10 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func ptr[T any](v T) *T {
-	return &v
-}
-
 func TestFileContent_NeedsExecution(t *testing.T) {
 	t.Parallel()
 
@@ -22,10 +18,10 @@ func TestFileContent_NeedsExecution(t *testing.T) {
 		content  string
 	}{
 		"missing file":       {true, nil, "content"},
-		"matching content":   {false, ptr("content"), "content"},
-		"differing content":  {true, ptr("other"), "content"},
-		"empty vs non-empty": {true, ptr(""), "content"},
-		"both empty":         {false, ptr(""), ""},
+		"matching content":   {false, new("content"), "content"},
+		"differing content":  {true, new("other"), "content"},
+		"empty vs non-empty": {true, new(""), "content"},
+		"both empty":         {false, new(""), ""},
 	}
 
 	for title, cas := range cases {

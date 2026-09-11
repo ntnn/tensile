@@ -33,10 +33,8 @@ func TestDir_Validate(t *testing.T) {
 		t.Run(title, func(t *testing.T) {
 			t.Parallel()
 			d := &Dir{
-				Path: "/some/dir",
-				Chmod: Chmod{
-					FileMode: cas.mode,
-				},
+				Path:     "/some/dir",
+				FileMode: cas.mode,
 			}
 			require.NoError(t, d.Validate(nil))
 			assert.Equal(t, cas.expected, d.FileMode)
@@ -66,10 +64,8 @@ func TestDir_NeedsExecutionMatchingMode(t *testing.T) {
 	require.NoError(t, os.Mkdir(path, 0o700))
 
 	d := &Dir{
-		Path: path,
-		Chmod: Chmod{
-			FileMode: 0o700 | os.ModeDir,
-		},
+		Path:     path,
+		FileMode: 0o700 | os.ModeDir,
 	}
 	require.NoError(t, d.Validate(nil))
 
@@ -111,10 +107,8 @@ func TestDir_ExecuteCreatesNested(t *testing.T) {
 
 	path := filepath.Join(t.TempDir(), "a", "b", "c")
 	d := &Dir{
-		Path: path,
-		Chmod: Chmod{
-			FileMode: 0o700 | os.ModeDir,
-		},
+		Path:     path,
+		FileMode: 0o700 | os.ModeDir,
 	}
 	require.NoError(t, d.Validate(nil))
 	require.NoError(t, d.Execute(nil))
