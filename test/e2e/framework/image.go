@@ -38,3 +38,10 @@ var SystemdDebian = Image{
 	},
 	WaitCmd: []string{"systemctl", "is-system-running", "--wait"},
 }
+
+// ArchLinux is a plain Arch container.
+var ArchLinux = Image{
+	Ref:        "docker.io/library/archlinux:base",
+	Entrypoint: []string{"/bin/sh", "-c", "sleep infinity"},
+	WaitCmd:    []string{"pacman", "--version"},
+}
