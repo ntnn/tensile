@@ -10,8 +10,8 @@ func (ref Ref) To(input any) NodeRef {
 	return NodeRef{Ref: ref, Value: input}
 }
 
-// ToMany is equivalent for [Ref.To] but for many values.
-func (ref Ref) ToMany(inputs ...any) []NodeRef {
+// ToMany is equivalent to [Ref.To] but for many values.
+func ToMany[T any](ref Ref, inputs []T) []NodeRef {
 	ret := make([]NodeRef, len(inputs))
 	for i, input := range inputs {
 		ret[i] = ref.To(input)

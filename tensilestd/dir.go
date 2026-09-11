@@ -43,7 +43,7 @@ func (d *Dir) Provides() ([]tensile.NodeRef, error) {
 
 // DependsOn implements [tensile.Depender].
 func (d *Dir) DependsOn() ([]tensile.NodeRef, error) {
-	return DirRef.ToMany(parentDirs(d.Path)), nil
+	return tensile.ToMany(DirRef, parentDirs(d.Path)), nil
 }
 
 // NeedsExecution implements [tensile.Executor].

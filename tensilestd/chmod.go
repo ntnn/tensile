@@ -21,7 +21,7 @@ type Chmod struct {
 
 // DependsOn implements [tensile.Depender].
 func (c Chmod) DependsOn() ([]tensile.NodeRef, error) {
-	return DirRef.ToMany(parentDirs(c.Path)), nil
+	return tensile.ToMany(DirRef, parentDirs(c.Path)), nil
 }
 
 // NeedsExecution implements [tensile.Executor].
