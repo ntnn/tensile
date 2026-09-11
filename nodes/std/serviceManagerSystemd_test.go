@@ -1,6 +1,6 @@
 //go:build linux
 
-package tensilestd
+package std
 
 import (
 	"context"

@@ -1,4 +1,4 @@
-package tensilestd
+package std
 
 import (
 	"crypto/sha256"

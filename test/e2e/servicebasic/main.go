@@ -5,9 +5,9 @@ import (
 	"context"
 	"log"
 
+	"github.com/ntnn/tensile/nodes/std"
 	"github.com/ntnn/tensile/pkg/engine"
 	"github.com/ntnn/tensile/pkg/queue"
-	"github.com/ntnn/tensile/tensilestd"
 )
 
 const unit = `[Unit]
@@ -29,21 +29,21 @@ func main() {
 func run(ctx context.Context) error {
 	q := queue.New()
 
-	dir := &tensilestd.Dir{Path: "/opt/e2e"}
-	hello := &tensilestd.FileContent{
+	dir := &std.Dir{Path: "/opt/e2e"}
+	hello := &std.FileContent{
 		Path:    "/opt/e2e/hello.txt",
 		Content: "hello from tensile\n",
 	}
-	link := &tensilestd.Symlink{
+	link := &std.Symlink{
 		Path:   "/opt/e2e/link",
 		Target: "/opt/e2e/hello.txt",
 	}
-	unitFile := &tensilestd.FileContent{
+	unitFile := &std.FileContent{
 		Path:    "/etc/systemd/system/e2e-dummy.service",
 		Content: unit,
 	}
 	enabled, running := true, true
-	service := &tensilestd.Service{
+	service := &std.Service{
 		Name:    "e2e-dummy.service",
 		Enabled: &enabled,
 		Running: &running,

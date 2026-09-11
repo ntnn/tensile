@@ -8,9 +8,9 @@ import (
 	"log"
 	"log/slog"
 
+	"github.com/ntnn/tensile/nodes/std"
 	"github.com/ntnn/tensile/pkg/engine"
 	"github.com/ntnn/tensile/pkg/queue"
-	"github.com/ntnn/tensile/tensilestd"
 )
 
 func main() {
@@ -30,12 +30,12 @@ func run() error {
 		slog.SetLogLoggerLevel(slog.LevelDebug)
 	}
 
-	print1 := &tensilestd.Print{
+	print1 := &std.Print{
 		Message: "Hello, %s!",
 		Args:    []any{"world"},
 	}
 
-	print2 := &tensilestd.Print{
+	print2 := &std.Print{
 		Message: "The answer is %d.",
 		Args:    []any{42},
 	}

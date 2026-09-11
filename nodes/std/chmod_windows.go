@@ -1,6 +1,6 @@
 //go:build windows
 
-package tensilestd
+package std
 
 import (
 	"fmt"
