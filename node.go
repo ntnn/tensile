@@ -49,9 +49,9 @@ func (n *Node) ID() int64 {
 }
 
 // Validate calls .Validate on the wrapped node if it implements it.
-func (n *Node) Validate(cable Cable) error {
+func (n *Node) Validate(wire Wire) error {
 	if validator, ok := n.wrapped.(Validator); ok {
-		return validator.Validate(cable)
+		return validator.Validate(wire)
 	}
 	return nil
 }
@@ -75,17 +75,17 @@ func (n *Node) DependsOn() ([]NodeRef, error) {
 }
 
 // NeedsExecution calls .NeedsExecution on the wrapped node if it implements it.
-func (n *Node) NeedsExecution(cable Cable) (bool, error) {
+func (n *Node) NeedsExecution(wire Wire) (bool, error) {
 	if executor, ok := n.wrapped.(Executor); ok {
-		return executor.NeedsExecution(cable)
+		return executor.NeedsExecution(wire)
 	}
 	return true, nil
 }
 
 // Execute calls .Execute on the wrapped node if it implements it.
-func (n *Node) Execute(cable Cable) error {
+func (n *Node) Execute(wire Wire) error {
 	if executor, ok := n.wrapped.(Executor); ok {
-		return executor.Execute(cable)
+		return executor.Execute(wire)
 	}
 	return nil
 }

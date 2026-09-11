@@ -35,7 +35,7 @@ func NewAggregate(raw ...any) (*Aggregate, error) {
 }
 
 // Validate implements [tensile.Validator].
-func (a *Aggregate) Validate(s tensile.Cable) error {
+func (a *Aggregate) Validate(s tensile.Wire) error {
 	for i, node := range a.contained {
 		if err := node.Validate(s); err != nil {
 			return fmt.Errorf("error in .Validate of %d %v: %w", i, node, err)
@@ -71,7 +71,7 @@ func (a *Aggregate) DependsOn() ([]tensile.NodeRef, error) {
 }
 
 // NeedsExecution implements [tensile.Executor].
-func (a *Aggregate) NeedsExecution(s tensile.Cable) (bool, error) {
+func (a *Aggregate) NeedsExecution(s tensile.Wire) (bool, error) {
 	for i, node := range a.contained {
 		needsExecution, err := node.NeedsExecution(s)
 		if err != nil {
@@ -85,7 +85,7 @@ func (a *Aggregate) NeedsExecution(s tensile.Cable) (bool, error) {
 }
 
 // Execute implements [tensile.Executor].
-func (a *Aggregate) Execute(s tensile.Cable) error {
+func (a *Aggregate) Execute(s tensile.Wire) error {
 	for i, node := range a.contained {
 		needsExecution, err := node.NeedsExecution(s)
 		if err != nil {

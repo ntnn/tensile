@@ -27,7 +27,7 @@ type Dir struct {
 }
 
 // Validate implements [tensile.Validator].
-func (d *Dir) Validate(_ tensile.Cable) error {
+func (d *Dir) Validate(_ tensile.Wire) error {
 	d.Chmod.Path = d.Path
 	d.Chown.Path = d.Path
 	if d.FileMode == 0 {
@@ -47,7 +47,7 @@ func (d *Dir) DependsOn() ([]tensile.NodeRef, error) {
 }
 
 // NeedsExecution implements [tensile.Executor].
-func (d *Dir) NeedsExecution(s tensile.Cable) (bool, error) {
+func (d *Dir) NeedsExecution(s tensile.Wire) (bool, error) {
 	info, err := os.Stat(d.Path)
 	if os.IsNotExist(err) {
 		return true, nil
@@ -62,7 +62,7 @@ func (d *Dir) NeedsExecution(s tensile.Cable) (bool, error) {
 }
 
 // Execute implements [tensile.Executor].
-func (d *Dir) Execute(s tensile.Cable) error {
+func (d *Dir) Execute(s tensile.Wire) error {
 	if err := os.MkdirAll(d.Path, d.FileMode.Perm()); err != nil {
 		return fmt.Errorf("error creating directory: %w", err)
 	}

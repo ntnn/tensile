@@ -31,7 +31,7 @@ func (s *Symlink) DependsOn() ([]tensile.NodeRef, error) {
 }
 
 // NeedsExecution implements [tensile.Executor].
-func (s *Symlink) NeedsExecution(_ tensile.Cable) (bool, error) {
+func (s *Symlink) NeedsExecution(_ tensile.Wire) (bool, error) {
 	info, err := os.Lstat(s.Path)
 	if os.IsNotExist(err) {
 		return true, nil
@@ -51,7 +51,7 @@ func (s *Symlink) NeedsExecution(_ tensile.Cable) (bool, error) {
 }
 
 // Execute implements [tensile.Executor].
-func (s *Symlink) Execute(_ tensile.Cable) error {
+func (s *Symlink) Execute(_ tensile.Wire) error {
 	// os.Symlink fails when trying to overwrite, remove a pre-existing link first
 	if _, err := os.Lstat(s.Path); err == nil {
 		if err := os.Remove(s.Path); err != nil {

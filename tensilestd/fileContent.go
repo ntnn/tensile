@@ -33,7 +33,7 @@ func (f *FileContent) DependsOn() ([]tensile.NodeRef, error) {
 }
 
 // NeedsExecution implements [tensile.Executor].
-func (f *FileContent) NeedsExecution(_ tensile.Cable) (bool, error) {
+func (f *FileContent) NeedsExecution(_ tensile.Wire) (bool, error) {
 	fd, err := os.Open(f.Path)
 	if os.IsNotExist(err) {
 		return true, nil
@@ -52,7 +52,7 @@ func (f *FileContent) NeedsExecution(_ tensile.Cable) (bool, error) {
 }
 
 // Execute implements [tensile.Executor].
-func (f *FileContent) Execute(_ tensile.Cable) error {
+func (f *FileContent) Execute(_ tensile.Wire) error {
 	fd, err := os.Create(f.Path)
 	if err != nil {
 		return fmt.Errorf("error creating file: %w", err)

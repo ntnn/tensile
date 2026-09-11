@@ -4,7 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/ntnn/tensile/pkg/cable"
+	"github.com/ntnn/tensile"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -30,9 +31,9 @@ func (f *fakeServiceManager) Apply(ctx context.Context, name string, desired Ser
 	return f.apply(ctx, name, desired)
 }
 
-func testWire(t *testing.T) *cable.Wire {
+func testWire(t *testing.T) tensile.Wire {
 	t.Helper()
-	return &cable.Wire{Ctx: t.Context()}
+	return &tensile.DefaultWire{Ctx: t.Context()}
 }
 
 func TestService_Validate(t *testing.T) {

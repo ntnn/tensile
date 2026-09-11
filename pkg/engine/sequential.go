@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/ntnn/tensile"
-	"github.com/ntnn/tensile/pkg/cable"
 	"github.com/ntnn/tensile/pkg/queue"
 )
 
@@ -57,7 +56,7 @@ func (s *Sequential) executeNode(ctx context.Context, node *tensile.Node) error 
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	wire := &cable.Wire{
+	wire := &tensile.DefaultWire{
 		Ctx: ctx,
 		Log: s.opts.Logger.With("id", node.ID()),
 	}

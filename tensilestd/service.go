@@ -26,7 +26,7 @@ type Service struct {
 }
 
 // Validate implements [tensile.Validator].
-func (s *Service) Validate(_ tensile.Cable) error {
+func (s *Service) Validate(_ tensile.Wire) error {
 	if s.Name == "" {
 		return errors.New("name is required")
 	}
@@ -42,7 +42,7 @@ func (s *Service) Provides() ([]tensile.NodeRef, error) {
 }
 
 // NeedsExecution implements [tensile.Executor].
-func (s *Service) NeedsExecution(c tensile.Cable) (bool, error) {
+func (s *Service) NeedsExecution(c tensile.Wire) (bool, error) {
 	mgr, err := s.manager(c)
 	if err != nil {
 		return false, err
@@ -63,7 +63,7 @@ func (s *Service) NeedsExecution(c tensile.Cable) (bool, error) {
 }
 
 // Execute implements [tensile.Executor].
-func (s *Service) Execute(c tensile.Cable) error {
+func (s *Service) Execute(c tensile.Wire) error {
 	mgr, err := s.manager(c)
 	if err != nil {
 		return err
@@ -87,7 +87,7 @@ func (s *Service) Execute(c tensile.Cable) error {
 	return nil
 }
 
-func (s *Service) manager(c tensile.Cable) (ServiceManager, error) {
+func (s *Service) manager(c tensile.Wire) (ServiceManager, error) {
 	if s.Manager != "" {
 		return ServiceManagerByName(s.Manager)
 	}

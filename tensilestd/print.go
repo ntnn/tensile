@@ -14,12 +14,12 @@ type Print struct {
 }
 
 // NeedsExecution returns true, indicating the node should always execute.
-func (p *Print) NeedsExecution(_ tensile.Cable) (bool, error) {
+func (p *Print) NeedsExecution(_ tensile.Wire) (bool, error) {
 	return true, nil
 }
 
 // Execute implements [tensile.Executor].
-func (p *Print) Execute(_ tensile.Cable) error {
+func (p *Print) Execute(_ tensile.Wire) error {
 	msg := p.Message
 	if !strings.HasSuffix(msg, "\n") {
 		msg += "\n"

@@ -25,11 +25,11 @@ func (c Chmod) DependsOn() ([]tensile.NodeRef, error) {
 }
 
 // NeedsExecution implements [tensile.Executor].
-func (c Chmod) NeedsExecution(_ tensile.Cable) (bool, error) {
+func (c Chmod) NeedsExecution(_ tensile.Wire) (bool, error) {
 	return chmodNeedsExecution(c.Path, c.FileMode)
 }
 
 // Execute implements [tensile.Executor].
-func (c Chmod) Execute(_ tensile.Cable) error {
+func (c Chmod) Execute(_ tensile.Wire) error {
 	return chmodApply(c.Path, c.FileMode)
 }

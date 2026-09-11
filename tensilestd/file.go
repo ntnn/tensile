@@ -27,7 +27,7 @@ type File struct {
 }
 
 // Validate implements [tensile.Validator].
-func (f *File) Validate(s tensile.Cable) error {
+func (f *File) Validate(s tensile.Wire) error {
 	agg, err := NewAggregate(
 		Chmod{Path: f.Path, FileMode: f.FileMode},
 		Chown{Path: f.Path, Owner: f.Owner, Group: f.Group},
