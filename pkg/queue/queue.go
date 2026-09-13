@@ -14,12 +14,15 @@ import (
 type Queue struct {
 	nodes      map[int64]*tensile.Node
 	extraEdges []graph.Edge
+	// handlers maps handler node IDs to the IDs of nodes notifying them
+	handlers map[int64][]int64
 }
 
 // New returns a new [Queue].
 func New() *Queue {
 	return &Queue{
-		nodes: make(map[int64]*tensile.Node),
+		nodes:    make(map[int64]*tensile.Node),
+		handlers: make(map[int64][]int64),
 	}
 }
 
@@ -83,6 +86,31 @@ func (q *Queue) Depends(node any, dependsOn ...any) error {
 	return nil
 }
 
+// Notifies marks target as a handler notified by source.
+// This adds a dependency from source to target and target is only
+// executed if at least one of its notifying nodes was executed.
+func (q *Queue) Notifies(source, target any) error {
+	tensileSource, err := asTensileNode(source)
+	if err != nil {
+		return err
+	}
+	if _, exists := q.nodes[tensileSource.ID()]; !exists {
+		return fmt.Errorf("source node with ID %d is not in the queue", tensileSource.ID())
+	}
+
+	tensileTarget, err := asTensileNode(target)
+	if err != nil {
+		return err
+	}
+	if _, exists := q.nodes[tensileTarget.ID()]; !exists {
+		return fmt.Errorf("target node with ID %d is not in the queue", tensileTarget.ID())
+	}
+
+	q.extraEdges = append(q.extraEdges, simple.Edge{F: tensileSource, T: tensileTarget})
+	q.handlers[tensileTarget.ID()] = append(q.handlers[tensileTarget.ID()], tensileSource.ID())
+	return nil
+}
+
 // Build returns the nodes in the queue in the order they should be
 // executed. If there is a cycle in the graph, an error is returned.
 func (q *Queue) Build() (*Work, error) { //nolint:cyclop
@@ -94,6 +122,7 @@ func (q *Queue) Build() (*Work, error) { //nolint:cyclop
 
 	work := new(Work)
 	work.done = make(map[int64]bool)
+	work.handlers = q.handlers
 
 	// Build a map of provided node refs to the IDs of nodes that provide them
 	providedRefs, err := q.buildProvidedRefs()
