@@ -116,9 +116,9 @@ func (w *Work) MarkDone(node *tensile.Node, executed bool) {
 }
 
 // Executed returns whether the given node was executed and whether it is done.
-func (w *Work) Executed(node *tensile.Node) (executed, done bool) {
+func (w *Work) Executed(node *tensile.Node) (bool, bool) {
 	w.lock.RLock()
 	defer w.lock.RUnlock()
-	executed, done = w.done[node.ID()]
+	executed, done := w.done[node.ID()]
 	return executed, done
 }
