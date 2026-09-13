@@ -29,17 +29,27 @@ func (w *Work) Get() (*tensile.Node, bool, error) {
 		return nil, true, nil
 	}
 
-	for _, node := range w.order {
+	node, err := w.takeReady()
+	if err != nil {
+		return nil, false, err
+	}
+	return node, false, nil
+}
+
+// takeReady removes and returns the next ready node from the order.
+// Returns nil if no node is ready.
+func (w *Work) takeReady() (*tensile.Node, error) {
+	for i, node := range w.order {
 		ready, err := w.isReady(node)
 		if err != nil {
-			return nil, false, err
+			return nil, err
 		}
 		if ready {
-			w.order = w.order[1:]
-			return node, false, nil
+			w.order = append(w.order[:i], w.order[i+1:]...)
+			return node, nil
 		}
 	}
-	return nil, false, nil
+	return nil, nil
 }
 
 func (w *Work) isReady(node *tensile.Node) (bool, error) {
