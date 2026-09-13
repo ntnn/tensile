@@ -17,6 +17,9 @@ func NewNode(input any) (*Node, error) {
 	if node, ok := input.(*Node); ok {
 		return node, nil
 	}
+	if handler, ok := input.(*Handler); ok {
+		return &handler.Node, nil
+	}
 
 	n := new(Node)
 	n.wrapped = input

@@ -89,7 +89,7 @@ func (q *Queue) Depends(node any, dependsOn ...any) error {
 // Notifies marks target as a handler notified by source.
 // This adds a dependency from source to target and target is only
 // executed if at least one of its notifying nodes was executed.
-func (q *Queue) Notifies(source, target any) error {
+func (q *Queue) Notifies(source any, target *tensile.Handler) error {
 	tensileSource, err := asTensileNode(source)
 	if err != nil {
 		return err
@@ -98,10 +98,7 @@ func (q *Queue) Notifies(source, target any) error {
 		return fmt.Errorf("source node with ID %d is not in the queue", tensileSource.ID())
 	}
 
-	tensileTarget, err := asTensileNode(target)
-	if err != nil {
-		return err
-	}
+	tensileTarget := &target.Node
 	if _, exists := q.nodes[tensileTarget.ID()]; !exists {
 		return fmt.Errorf("target node with ID %d is not in the queue", tensileTarget.ID())
 	}
