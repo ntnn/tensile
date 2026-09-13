@@ -10,6 +10,8 @@ import (
 // Work is the result of building a queue.
 type Work struct {
 	providedRefs map[tensile.NodeRef][]int64
+	// handlers maps handler node IDs to the IDs of nodes notifying them
+	handlers map[int64][]int64
 
 	lock sync.RWMutex
 	// done maps node IDs to whether the node was executed.
@@ -37,19 +39,49 @@ func (w *Work) Get() (*tensile.Node, bool, error) {
 }
 
 // takeReady removes and returns the next ready node from the order.
+// Ready handler nodes whose notifying nodes were not executed are
+// marked done and skipped.
 // Returns nil if no node is ready.
 func (w *Work) takeReady() (*tensile.Node, error) {
-	for i, node := range w.order {
+	for i := 0; i < len(w.order); {
+		node := w.order[i]
+
 		ready, err := w.isReady(node)
 		if err != nil {
 			return nil, err
 		}
-		if ready {
-			w.order = append(w.order[:i], w.order[i+1:]...)
-			return node, nil
+
+		if !ready {
+			i++
+			continue
 		}
+
+		w.order = append(w.order[:i], w.order[i+1:]...)
+
+		if w.isHandler(node) && !w.wasNotified(node) {
+			// No notifying node was executed, skip the handler.
+			w.done[node.ID()] = false
+			continue
+		}
+
+		return node, nil
 	}
 	return nil, nil
+}
+
+// isHandler returns true if the node has any notifiers.
+func (w *Work) isHandler(node *tensile.Node) bool {
+	return len(w.handlers[node.ID()]) > 0
+}
+
+// wasNotified reports whether at least one notifier of the given handler node was executed.
+func (w *Work) wasNotified(node *tensile.Node) bool {
+	for _, notifierID := range w.handlers[node.ID()] {
+		if w.done[notifierID] {
+			return true
+		}
+	}
+	return false
 }
 
 func (w *Work) isReady(node *tensile.Node) (bool, error) {
