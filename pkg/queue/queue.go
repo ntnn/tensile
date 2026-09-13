@@ -12,9 +12,14 @@ import (
 // Queue aggregates [tensile.Node] and then orders them based on their
 // dependencies for execution.
 type Queue struct {
-	nodes      map[int64]*tensile.Node
+	nodes map[int64]*tensile.Node
+	// extraEdges are manually added edges to be considered during graph
+	// building
 	extraEdges []graph.Edge
-	// handlers maps handler node IDs to the IDs of nodes notifying them
+	// notifies maps node IDs to the refs they notify
+	notifies map[int64][]tensile.NodeRef
+	// handlers is a map of nodes that are handlers and also carries the
+	// list of manually added notfiers
 	handlers map[int64][]int64
 }
 
@@ -22,6 +27,7 @@ type Queue struct {
 func New() *Queue {
 	return &Queue{
 		nodes:    make(map[int64]*tensile.Node),
+		notifies: make(map[int64][]tensile.NodeRef),
 		handlers: make(map[int64][]int64),
 	}
 }
@@ -30,6 +36,10 @@ func asTensileNode(in any) (*tensile.Node, error) {
 	asserted, ok := in.(*tensile.Node)
 	if ok {
 		return asserted, nil
+	}
+	handler, ok := in.(*tensile.Handler)
+	if ok {
+		return &handler.Node, nil
 	}
 	tensiled, err := tensile.NewNode(in)
 	if err != nil {
@@ -49,6 +59,10 @@ func (q *Queue) Enqueue(nodes ...any) error {
 		if err := q.enqueue(tensileNode); err != nil {
 			return err
 		}
+
+		if _, isHandler := node.(*tensile.Handler); isHandler {
+			q.handlers[tensileNode.ID()] = []int64{}
+		}
 	}
 	return nil
 }
@@ -57,6 +71,15 @@ func (q *Queue) enqueue(node *tensile.Node) error {
 	if _, exists := q.nodes[node.ID()]; exists {
 		return fmt.Errorf("node with ID %d already exists in the queue", node.ID())
 	}
+
+	notifies, err := node.Notifies()
+	if err != nil {
+		return fmt.Errorf("failed to get notifications for node with ID %d: %w", node.ID(), err)
+	}
+	if len(notifies) > 0 {
+		q.notifies[node.ID()] = notifies
+	}
+
 	q.nodes[node.ID()] = node
 	return nil
 }
@@ -86,25 +109,24 @@ func (q *Queue) Depends(node any, dependsOn ...any) error {
 	return nil
 }
 
-// Notifies marks target as a handler notified by source.
-// This adds a dependency from source to target and target is only
-// executed if at least one of its notifying nodes was executed.
-func (q *Queue) Notifies(source any, target *tensile.Handler) error {
-	tensileSource, err := asTensileNode(source)
-	if err != nil {
-		return err
-	}
-	if _, exists := q.nodes[tensileSource.ID()]; !exists {
-		return fmt.Errorf("source node with ID %d is not in the queue", tensileSource.ID())
+// NotifiedBy adds the notifiers as notifiers for the handler.
+// If either the handler or notifiers are not in the queue an error is returned.
+func (q *Queue) NotifiedBy(handler *tensile.Handler, notifiers ...any) error {
+	if _, isKnown := q.handlers[handler.ID()]; !isKnown {
+		return fmt.Errorf("handler %d is not in the queue", handler.ID())
 	}
 
-	tensileTarget := &target.Node
-	if _, exists := q.nodes[tensileTarget.ID()]; !exists {
-		return fmt.Errorf("target node with ID %d is not in the queue", tensileTarget.ID())
+	for _, notifier := range notifiers {
+		tensileNode, err := asTensileNode(notifier)
+		if err != nil {
+			return err
+		}
+		if _, exists := q.nodes[tensileNode.ID()]; !exists {
+			return fmt.Errorf("notifier node with ID %d is not in the queue", tensileNode.ID())
+		}
+		q.handlers[handler.ID()] = append(q.handlers[handler.ID()], tensileNode.ID())
 	}
 
-	q.extraEdges = append(q.extraEdges, simple.Edge{F: tensileSource, T: tensileTarget})
-	q.handlers[tensileTarget.ID()] = append(q.handlers[tensileTarget.ID()], tensileSource.ID())
 	return nil
 }
 
@@ -119,7 +141,6 @@ func (q *Queue) Build() (*Work, error) { //nolint:cyclop
 
 	work := new(Work)
 	work.done = make(map[int64]bool)
-	work.handlers = q.handlers
 
 	// Build a map of provided node refs to the IDs of nodes that provide them
 	providedRefs, err := q.buildProvidedRefs()
@@ -127,6 +148,22 @@ func (q *Queue) Build() (*Work, error) { //nolint:cyclop
 		return nil, fmt.Errorf("failed to build providers: %w", err)
 	}
 	work.providedRefs = providedRefs
+
+	// Build the handlers->notifiers map
+	work.handlers = resolveNotifies(
+		providedRefs,
+		q.notifies,
+	)
+
+	// Handlers depend on their notifying nodes.
+	for handlerID, notifierIDs := range work.handlers {
+		for _, notifierID := range notifierIDs {
+			directed.SetEdge(directed.NewEdge(
+				directed.Node(notifierID),
+				directed.Node(handlerID),
+			))
+		}
+	}
 
 	// Iterate over all nodes and check if any dependency they declare
 	// is provided by another node. If so add an edge from the provider
@@ -190,4 +227,22 @@ func (q *Queue) buildProvidedRefs() (map[tensile.NodeRef][]int64, error) {
 		}
 	}
 	return ret, nil
+}
+
+// resolveNotifies resolves the notifier->handler map to a handler->notifier map with node IDs.
+func resolveNotifies(
+	refToID map[tensile.NodeRef][]int64,
+	notifierToHandler map[int64][]tensile.NodeRef,
+) map[int64][]int64 {
+	ret := map[int64][]int64{}
+
+	for nodeID, refs := range notifierToHandler {
+		for _, ref := range refs {
+			for _, handlerID := range refToID[ref] {
+				ret[handlerID] = append(ret[handlerID], nodeID)
+			}
+		}
+	}
+
+	return ret
 }

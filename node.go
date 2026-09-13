@@ -77,6 +77,15 @@ func (n *Node) DependsOn() ([]NodeRef, error) {
 	return depender.DependsOn()
 }
 
+// Notifies calls .Notifies on the wrapped node if it implements it.
+func (n *Node) Notifies() ([]NodeRef, error) {
+	notifier, ok := n.wrapped.(Notifier)
+	if !ok {
+		return nil, nil
+	}
+	return notifier.Notifies()
+}
+
 // NeedsExecution calls .NeedsExecution on the wrapped node if it implements it.
 func (n *Node) NeedsExecution(wire Wire) (bool, error) {
 	if executor, ok := n.wrapped.(Executor); ok {

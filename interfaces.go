@@ -25,6 +25,15 @@ type Depender interface {
 	DependsOn() ([]NodeRef, error)
 }
 
+// Notifier is the interface to be satisfied by a [Node] when it
+// notifies handlers, e.g. restarting a service after changing its
+// configuration.
+type Notifier interface {
+	// Notifies returns a list of resources provided by handlers to
+	// notify.
+	Notifies() ([]NodeRef, error)
+}
+
 // Executor is the interface to be satisfied by a [Node] to be executed.
 type Executor interface {
 	// NeedsExecution is run before Execute. NeedsExecution must not
