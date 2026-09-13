@@ -71,13 +71,13 @@ func (s *Sequential) executeNode(ctx context.Context, node *tensile.Node) error 
 	}
 	if !needsExecution {
 		s.opts.Logger.Debug(fmt.Sprintf("node with ID %d does not need execution, marking as done", node.ID()))
-		s.work.MarkDone(node)
+		s.work.MarkDone(node, false)
 		return nil
 	}
 
 	if s.opts.Noop {
 		s.opts.Logger.Debug(fmt.Sprintf("noop is enabled, skipping execution of node with ID %d", node.ID()))
-		s.work.MarkDone(node)
+		s.work.MarkDone(node, true)
 		s.summary.IncrementNodesExecuted()
 		return nil
 	}
@@ -87,7 +87,7 @@ func (s *Sequential) executeNode(ctx context.Context, node *tensile.Node) error 
 	}
 
 	s.opts.Logger.Debug(fmt.Sprintf("successfully executed node with ID %d", node.ID()))
-	s.work.MarkDone(node)
+	s.work.MarkDone(node, true)
 	s.summary.IncrementNodesExecuted()
 	return nil
 }

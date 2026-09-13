@@ -11,8 +11,9 @@ import (
 type Work struct {
 	providedRefs map[tensile.NodeRef][]int64
 
-	lock  sync.Mutex
-	done  map[int64]struct{}
+	lock sync.RWMutex
+	// done maps node IDs to whether the node was executed.
+	done  map[int64]bool
 	order []*tensile.Node
 }
 
@@ -64,9 +65,18 @@ func (w *Work) isReady(node *tensile.Node) (bool, error) {
 	return true, nil
 }
 
-// MarkDone marks the given node as done. It should be called after a node has been executed.
-func (w *Work) MarkDone(node *tensile.Node) {
+// MarkDone marks the given node as done and records whether it was executed.
+// It should be called after a node has been handled.
+func (w *Work) MarkDone(node *tensile.Node, executed bool) {
 	w.lock.Lock()
 	defer w.lock.Unlock()
-	w.done[node.ID()] = struct{}{}
+	w.done[node.ID()] = executed
+}
+
+// Executed returns whether the given node was executed and whether it is done.
+func (w *Work) Executed(node *tensile.Node) (executed, done bool) {
+	w.lock.RLock()
+	defer w.lock.RUnlock()
+	executed, done = w.done[node.ID()]
+	return executed, done
 }
