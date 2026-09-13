@@ -31,24 +31,12 @@ func (w *Work) Get() (*tensile.Node, bool, error) {
 		return nil, true, nil
 	}
 
-	node, err := w.takeReady()
-	if err != nil {
-		return nil, false, err
-	}
-	return node, false, nil
-}
-
-// takeReady removes and returns the next ready node from the order.
-// Ready handler nodes whose notifying nodes were not executed are
-// marked done and skipped.
-// Returns nil if no node is ready.
-func (w *Work) takeReady() (*tensile.Node, error) {
 	for i := 0; i < len(w.order); {
 		node := w.order[i]
 
 		ready, err := w.isReady(node)
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
 
 		if !ready {
@@ -64,9 +52,10 @@ func (w *Work) takeReady() (*tensile.Node, error) {
 			continue
 		}
 
-		return node, nil
+		return node, false, nil
 	}
-	return nil, nil
+
+	return nil, true, nil
 }
 
 // isHandler returns true if the node has any notifiers.
