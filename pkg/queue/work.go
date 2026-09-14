@@ -155,6 +155,13 @@ func (w *Work) wasNotified(node *tensile.Node) bool {
 }
 
 func (w *Work) isReady(node *tensile.Node) (bool, error) {
+	// Handlers are only ready once all their notifiers are done.
+	for _, notifierID := range w.handlers[node.ID()] {
+		if _, done := w.done[notifierID]; !done {
+			return false, nil
+		}
+	}
+
 	dependencies, err := node.DependsOn()
 	if err != nil {
 		return false, fmt.Errorf("failed to get dependencies for node with ID %d: %w", node.ID(), err)
