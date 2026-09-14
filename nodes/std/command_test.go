@@ -15,6 +15,10 @@ import (
 func TestCommand_Validate(t *testing.T) {
 	t.Parallel()
 
+	if _, err := exec.LookPath("sh"); err != nil {
+		t.Skip("sh not available")
+	}
+
 	cases := map[string]struct {
 		wantErr bool
 		command Command
@@ -43,6 +47,10 @@ func TestCommand_Validate(t *testing.T) {
 
 func TestCommand_ValidateUnknownInterpreter(t *testing.T) {
 	t.Parallel()
+
+	if _, err := exec.LookPath("sh"); err != nil {
+		t.Skip("sh not available")
+	}
 
 	command := Command{
 		Shell:   "sh",
