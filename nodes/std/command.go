@@ -91,40 +91,70 @@ func (c *Command) Validate(_ tensile.Wire) error {
 
 // NeedsExecution implements [tensile.Executor].
 func (c *Command) NeedsExecution(wire tensile.Wire) (bool, error) {
-	if c.Creates != "" {
-		_, err := os.Stat(c.Creates)
-		if err == nil {
-			return false, nil
-		}
-		if !os.IsNotExist(err) {
-			return false, fmt.Errorf("checking creates path: %w", err)
-		}
+	guards := []func(tensile.Wire) (bool, error){
+		c.createsGuard,
+		c.removesGuard,
+		c.unlessGuard,
+		c.onlyIfGuard,
 	}
-
-	if c.Removes != "" {
-		_, err := os.Stat(c.Removes)
+	for _, guard := range guards {
+		skip, err := guard(wire)
 		if err != nil {
-			if os.IsNotExist(err) {
-				return false, nil
-			}
-			return false, fmt.Errorf("checking removes path: %w", err)
+			return false, err
 		}
-	}
-
-	if c.Unless != "" {
-		if _, err := c.exec(wire, c.Unless); err == nil {
+		if skip {
 			return false, nil
 		}
 	}
-
-	if c.OnlyIf != "" {
-		//nolint:nilerr // nonzero exit means the guard rejects execution
-		if _, err := c.exec(wire, c.OnlyIf); err != nil {
-			return false, nil
-		}
-	}
-
 	return true, nil
+}
+
+// createsGuard skips execution when the Creates path exists.
+func (c *Command) createsGuard(_ tensile.Wire) (bool, error) {
+	if c.Creates == "" {
+		return false, nil
+	}
+	_, err := os.Stat(c.Creates)
+	if err == nil {
+		return true, nil
+	}
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return false, fmt.Errorf("checking creates path: %w", err)
+}
+
+// removesGuard skips execution when the Removes path is missing.
+func (c *Command) removesGuard(_ tensile.Wire) (bool, error) {
+	if c.Removes == "" {
+		return false, nil
+	}
+	_, err := os.Stat(c.Removes)
+	if err == nil {
+		return false, nil
+	}
+	if os.IsNotExist(err) {
+		return true, nil
+	}
+	return false, fmt.Errorf("checking removes path: %w", err)
+}
+
+// unlessGuard skips execution when Unless exits 0.
+func (c *Command) unlessGuard(wire tensile.Wire) (bool, error) {
+	if c.Unless == "" {
+		return false, nil
+	}
+	_, err := c.exec(wire, c.Unless)
+	return err == nil, nil
+}
+
+// onlyIfGuard skips execution unless OnlyIf exits 0.
+func (c *Command) onlyIfGuard(wire tensile.Wire) (bool, error) {
+	if c.OnlyIf == "" {
+		return false, nil
+	}
+	_, err := c.exec(wire, c.OnlyIf)
+	return err != nil, nil
 }
 
 // Execute implements [tensile.Executor].
