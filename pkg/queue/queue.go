@@ -155,6 +155,11 @@ func (q *Queue) Build() (*Work, error) { //nolint:cyclop
 		q.notifies,
 	)
 
+	// Add the manual notifiers
+	for handlerID, notifierIDs := range q.handlers {
+		work.handlers[handlerID] = append(work.handlers[handlerID], notifierIDs...)
+	}
+
 	// Handlers depend on their notifying nodes.
 	for handlerID, notifierIDs := range work.handlers {
 		for _, notifierID := range notifierIDs {

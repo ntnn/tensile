@@ -58,9 +58,10 @@ func (w *Work) Get() (*tensile.Node, bool, error) {
 	return nil, true, nil
 }
 
-// isHandler returns true if the node has any notifiers.
+// isHandler returns true if the node is registered as a handler.
 func (w *Work) isHandler(node *tensile.Node) bool {
-	return len(w.handlers[node.ID()]) > 0
+	_, ok := w.handlers[node.ID()]
+	return ok
 }
 
 // wasNotified reports whether at least one notifier of the given handler node was executed.
