@@ -8,8 +8,8 @@ import (
 )
 
 // Sequential is a simple execution engine that executes nodes in the
-// order the work queue yields them without parallelisation. If any node
-// errors the execution is stopped and the error is returned.
+// order the work queue yields them without parallelisation.
+// If any node errors the execution is stopped and the error is returned.
 type Sequential struct {
 	opts Options
 
