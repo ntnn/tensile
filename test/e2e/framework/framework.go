@@ -1,11 +1,13 @@
 package framework
 
 import (
+	"context"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"sync"
 	"testing"
 
 	"github.com/moby/moby/api/types/container"
@@ -22,14 +24,60 @@ type Env struct {
 
 const containerFileMode = 0o755
 
-// Start builds the scenario ./<name>/, starts the image and deploys the binary to /usr/local/bin/<name>.
-func Start(t *testing.T, image Image, name string) *Env {
+// sharedContainers caches running containers by image ref.
+var (
+	sharedLock       sync.Mutex
+	sharedContainers = map[string]testcontainers.Container{}
+)
+
+// SharedContainer deploys the scenario ./<name>/ into a container shared by all tests requesting the same image.
+// Shared containers are reaped by ryuk after the test process exits.
+//
+// Shared containers should be preferred for testing, since the startup
+// still takes time, CPU and RAM and in general tests should be able to
+// be written in a way to not impact each other.
+// For cases where a test will impact other tests use [PrivateContainer].
+func SharedContainer(t *testing.T, image Image, name string) *Env {
 	t.Helper()
 
-	bin := buildScenario(t, name)
-	binPath := "/usr/local/bin/" + name
+	ctr, err := sharedContainer(image)
+	require.NoError(t, err, "starting shared container %q", image.Ref)
 
-	ctr, err := testcontainers.GenericContainer(t.Context(), testcontainers.GenericContainerRequest{
+	return deployScenario(t, ctr, name)
+}
+
+// PrivateContainer deploys the scenario ./<name>/ into a dedicated container that is terminated when the test exits.
+func PrivateContainer(t *testing.T, image Image, name string) *Env {
+	t.Helper()
+
+	ctr, err := startContainer(t.Context(), image)
+	testcontainers.CleanupContainer(t, ctr)
+	require.NoError(t, err, "starting container %q", image.Ref)
+
+	return deployScenario(t, ctr, name)
+}
+
+// sharedContainer returns the shared container for image.
+// If no cntainer for image exists it is started.
+func sharedContainer(image Image) (testcontainers.Container, error) {
+	sharedLock.Lock()
+	defer sharedLock.Unlock()
+
+	if ctr, ok := sharedContainers[image.Ref]; ok {
+		return ctr, nil
+	}
+
+	// context.Background: the container outlives the requesting test
+	ctr, err := startContainer(context.Background(), image)
+	if err != nil {
+		return nil, err
+	}
+	sharedContainers[image.Ref] = ctr
+	return ctr, nil
+}
+
+func startContainer(ctx context.Context, image Image) (testcontainers.Container, error) {
+	return testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		Started:    true,
 		Image:      image.Ref,
 		Entrypoint: image.Entrypoint,
@@ -40,16 +88,18 @@ func Start(t *testing.T, image Image, name string) *Env {
 			hc.SecurityOpt = image.SecurityOpt
 			hc.Tmpfs = image.Tmpfs
 		},
-		Files: []testcontainers.ContainerFile{
-			{
-				HostFilePath:      bin,
-				ContainerFilePath: binPath,
-				FileMode:          containerFileMode,
-			},
-		},
 	})
-	testcontainers.CleanupContainer(t, ctr)
-	require.NoError(t, err, "starting container %q", image.Ref)
+}
+
+// deployScenario builds ./<name>/ and copies it to /usr/local/bin/<name>.
+func deployScenario(t *testing.T, ctr testcontainers.Container, name string) *Env {
+	t.Helper()
+
+	bin := buildScenario(t, name)
+	binPath := "/usr/local/bin/" + name
+
+	err := ctr.CopyFileToContainer(t.Context(), bin, binPath, containerFileMode)
+	require.NoError(t, err, "deploying scenario %q", name)
 
 	return &Env{
 		container: ctr,
