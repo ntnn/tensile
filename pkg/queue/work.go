@@ -26,17 +26,25 @@ func (w *Work) Get() (*tensile.Node, bool, error) {
 	w.lock.Lock()
 	defer w.lock.Unlock()
 
-	if len(w.order) == 0 {
-		// All nodes are done
+	node, err := w.get()
+	if err != nil {
+		return nil, false, err
+	}
+	if node == nil {
 		return nil, true, nil
 	}
+	return node, false, nil
+}
 
+// get returns the next ready node or nil if none is ready.
+// The caller must hold the lock.
+func (w *Work) get() (*tensile.Node, error) {
 	for i := 0; i < len(w.order); {
 		node := w.order[i]
 
 		ready, err := w.isReady(node)
 		if err != nil {
-			return nil, false, err
+			return nil, err
 		}
 
 		if !ready {
@@ -52,10 +60,10 @@ func (w *Work) Get() (*tensile.Node, bool, error) {
 			continue
 		}
 
-		return node, false, nil
+		return node, nil
 	}
 
-	return nil, true, nil
+	return nil, nil //nolint:nilnil // nil node means none ready
 }
 
 // isHandler returns true if the node is registered as a handler.
