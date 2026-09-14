@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/ntnn/tensile"
 	"github.com/ntnn/tensile/pkg/queue"
 )
 
@@ -46,48 +45,8 @@ func (s *Sequential) Execute(ctx context.Context) error {
 			return nil
 		}
 
-		if err := s.executeNode(ctx, node); err != nil {
+		if err := executeNode(ctx, s.opts, s.work, s.summary, node); err != nil {
 			return err
 		}
 	}
-}
-
-func (s *Sequential) executeNode(ctx context.Context, node *tensile.Node) error {
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	wire := &tensile.DefaultWire{
-		Ctx: ctx,
-		Log: s.opts.Logger.With("id", node.ID()),
-	}
-
-	if err := node.Validate(wire); err != nil {
-		return fmt.Errorf("node validation failed: %w", err)
-	}
-
-	needsExecution, err := node.NeedsExecution(wire)
-	if err != nil {
-		return fmt.Errorf("failed to check if node with ID %d needs execution: %w", node.ID(), err)
-	}
-	if !needsExecution {
-		s.opts.Logger.Debug(fmt.Sprintf("node with ID %d does not need execution, marking as done", node.ID()))
-		s.work.MarkDone(node, false)
-		return nil
-	}
-
-	if s.opts.Noop {
-		s.opts.Logger.Debug(fmt.Sprintf("noop is enabled, skipping execution of node with ID %d", node.ID()))
-		s.work.MarkDone(node, true)
-		s.summary.IncrementNodesExecuted()
-		return nil
-	}
-
-	if err := node.Execute(wire); err != nil {
-		return fmt.Errorf("failed to execute node with ID %d: %w", node.ID(), err)
-	}
-
-	s.opts.Logger.Debug(fmt.Sprintf("successfully executed node with ID %d", node.ID()))
-	s.work.MarkDone(node, true)
-	s.summary.IncrementNodesExecuted()
-	return nil
 }
