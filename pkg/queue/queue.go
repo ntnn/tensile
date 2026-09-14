@@ -2,6 +2,7 @@ package queue
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/ntnn/tensile"
 	"gonum.org/v1/gonum/graph"
@@ -140,6 +141,7 @@ func (q *Queue) Build() (*Work, error) { //nolint:cyclop
 	}
 
 	work := new(Work)
+	work.cond = sync.NewCond(&work.lock)
 	work.done = make(map[int64]bool)
 
 	// Build a map of provided node refs to the IDs of nodes that provide them

@@ -1,11 +1,19 @@
 package queue
 
 import (
+	"context"
 	"fmt"
 	"sync"
 
 	"github.com/ntnn/tensile"
 )
+
+// Item is a single element yielded by [Work.Chan].
+// Exactly one field is set.
+type Item struct {
+	Node *tensile.Node
+	Err  error
+}
 
 // Work is the result of building a queue.
 type Work struct {
@@ -14,6 +22,7 @@ type Work struct {
 	handlers map[int64][]int64
 
 	lock sync.RWMutex
+	cond *sync.Cond
 	// done maps node IDs to whether the node was executed.
 	done  map[int64]bool
 	order []*tensile.Node
@@ -66,6 +75,69 @@ func (w *Work) get() (*tensile.Node, error) {
 	return nil, nil //nolint:nilnil // nil node means none ready
 }
 
+// Chan returns a channel yielding nodes that are ready to be executed.
+// The channel is closed once all nodes have been processed.
+func (w *Work) Chan(ctx context.Context) <-chan Item {
+	items := make(chan Item)
+
+	// Wake up all goroutines waiting on the condition if the context is cancelled.
+	// That should be only the [Work.next] goroutine, which then exits
+	// due to the cancelled context.
+	stop := context.AfterFunc(ctx, w.cond.Broadcast)
+
+	go func() {
+		defer close(items)
+		defer stop()
+
+		for {
+			node, err := w.next(ctx)
+			if err != nil {
+				items <- Item{Err: err}
+				return
+			}
+			if node == nil {
+				return
+			}
+
+			select {
+			case items <- Item{Node: node}:
+			case <-ctx.Done():
+				items <- Item{Err: ctx.Err()}
+				return
+			}
+		}
+	}()
+
+	return items
+}
+
+func (w *Work) next(ctx context.Context) (*tensile.Node, error) {
+	w.lock.Lock()
+	defer w.lock.Unlock()
+
+	for {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+
+		node, err := w.get()
+		if err != nil {
+			return nil, err
+		}
+		if node != nil {
+			return node, nil
+		}
+		if len(w.order) == 0 {
+			return nil, nil //nolint:nilnil // all nodes yielded
+		}
+
+		// No new node, wait on the condition which unlocks the lock and
+		// wait for a broadcast, which happens once [Work.MarkDone]
+		// marks a node as done.
+		w.cond.Wait()
+	}
+}
+
 // isHandler returns true if the node is registered as a handler.
 func (w *Work) isHandler(node *tensile.Node) bool {
 	_, ok := w.handlers[node.ID()]
@@ -111,6 +183,7 @@ func (w *Work) MarkDone(node *tensile.Node, executed bool) {
 	w.lock.Lock()
 	defer w.lock.Unlock()
 	w.done[node.ID()] = executed
+	w.cond.Broadcast()
 }
 
 // Executed returns whether the given node was executed and whether it is done.
