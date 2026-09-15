@@ -83,6 +83,12 @@ func (g *Graph) contains(identity Identity) error {
 	return fmt.Errorf("node %s has not been added", identity)
 }
 
+// Get returns the value added under the identity.
+func (g *Graph) Get(identity Identity) (Identifier, bool) {
+	node, ok := g.nodes[identity]
+	return node, ok
+}
+
 // Nodes returns the added values.
 func (g *Graph) Nodes() []Identifier {
 	ret := make([]Identifier, 0, len(g.nodes))
