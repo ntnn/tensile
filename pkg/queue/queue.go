@@ -64,14 +64,14 @@ func (q *Queue) NotifiedBy(handler *tensile.Handler, notifiers ...tensile.Identi
 // Build returns the nodes in the queue in the order they should be
 // executed. If there is a cycle in the graph, an error is returned.
 func (q *Queue) Build() (*Work, error) { //nolint:cyclop
-	// Add all nodes to the graph first
+	d := newDecomposition()
+	if _, err := d.walk(&q.graph); err != nil {
+		return nil, err
+	}
+
 	nodes := make(map[tensile.Identity]*tensile.Node)
 	directed := simple.NewDirectedGraph()
-	for _, raw := range q.graph.Nodes() {
-		if _, isGroup := raw.(*tensile.Group); isGroup {
-			return nil, fmt.Errorf("group %s is not supported by the queue yet", raw.Identity())
-		}
-
+	for _, raw := range d.flat.Nodes() {
 		node := tensile.NewNode(raw)
 		nodes[node.Identity()] = node
 		directed.AddNode(graphNode{id: graphID(node.Identity()), node: node})
@@ -104,7 +104,7 @@ func (q *Queue) Build() (*Work, error) { //nolint:cyclop
 	work.handlers = resolveNotifies(provided, notifies)
 
 	// Add the manual notifiers
-	for handler, notifiers := range q.graph.Handlers() {
+	for handler, notifiers := range d.flat.Handlers() {
 		work.handlers[handler] = append(work.handlers[handler], notifiers...)
 	}
 
@@ -113,6 +113,16 @@ func (q *Queue) Build() (*Work, error) { //nolint:cyclop
 		for _, notifier := range notifiers {
 			edge(notifier, handler)
 		}
+	}
+
+	// Add the barrier start and end nodes of each group into the
+	// provided map for other nodes to reference.
+	for identity, enclosing := range d.groups {
+		provided[identity] = append(
+			provided[identity],
+			enclosing.start.Identity(),
+			enclosing.end.Identity(),
+		)
 	}
 
 	// Iterate over all nodes and check if any dependency they declare
@@ -137,8 +147,8 @@ func (q *Queue) Build() (*Work, error) { //nolint:cyclop
 		}
 	}
 
-	// Add the manually declared edges.
-	for _, declared := range q.graph.Edges() {
+	// Add the declared edges.
+	for _, declared := range d.flat.Edges() {
 		edge(declared[0], declared[1])
 	}
 

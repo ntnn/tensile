@@ -55,6 +55,12 @@ func (w *Work) get() *tensile.Node {
 
 		w.order = append(w.order[:i], w.order[i+1:]...)
 
+		if node.Identity().Kind() == barrierKind {
+			// Barriers only order the graph, complete them silently.
+			w.done[node.Identity()] = false
+			continue
+		}
+
 		if w.isHandler(node) && !w.wasNotified(node) {
 			// No notifying node was executed, skip the handler.
 			w.done[node.Identity()] = false
