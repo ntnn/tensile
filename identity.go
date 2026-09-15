@@ -67,6 +67,11 @@ func AsIdentity(kind string, kv ...string) Identity {
 	return id
 }
 
+// Kind returns the kind.
+func (id Identity) Kind() string {
+	return id.kind
+}
+
 // Identity implements [Identifier], returning itself.
 func (id Identity) Identity() Identity {
 	return id
