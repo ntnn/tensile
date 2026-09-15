@@ -6,21 +6,13 @@ import (
 	"github.com/ntnn/tensile"
 )
 
-var _ tensile.Identifier = (*File)(nil)
-var _ tensile.Validator = (*File)(nil)
-var _ tensile.Provider = (*File)(nil)
-var _ tensile.Depender = (*File)(nil)
-var _ tensile.Executor = (*File)(nil)
-
 // FileIdentity returns the identity of the node managing the file at path.
 func FileIdentity(path string) tensile.Identity {
 	return tensile.AsIdentity("file", "path", path)
 }
 
-// File manages file creation with ownership and permissions.
+// File describes a file with ownership and permissions.
 type File struct {
-	*Aggregate
-
 	Path     string
 	FileMode os.FileMode
 	Owner    string
@@ -28,17 +20,15 @@ type File struct {
 	Content  string
 }
 
-// Identity implements [tensile.Identifier].
-func (f *File) Identity() tensile.Identity {
-	return FileIdentity(f.Path)
-}
+// NewFile returns a [tensile.Group] managing a file.
+func NewFile(file File) (*tensile.Group, error) {
+	content := &FileContent{Path: file.Path, Content: file.Content}
+	chmod := Chmod{Path: file.Path, FileMode: file.FileMode}
+	chown := Chown{Path: file.Path, Owner: file.Owner, Group: file.Group}
 
-// Validate implements [tensile.Validator].
-func (f *File) Validate(s tensile.Wire) error {
-	f.Aggregate = NewAggregate(
-		Chmod{Path: f.Path, FileMode: f.FileMode},
-		Chown{Path: f.Path, Owner: f.Owner, Group: f.Group},
-		&FileContent{Path: f.Path, Content: f.Content},
-	)
-	return f.Aggregate.Validate(s)
+	group := tensile.NewGroup("file " + file.Path)
+	if err := group.Add(content, chmod, chown); err != nil {
+		return nil, err
+	}
+	return group, nil
 }
