@@ -1,5 +1,12 @@
 package tensile
 
+// Identifier is the interface that must be implemented by all [Node].
+type Identifier interface {
+	// Identity returns the node's identity.
+	// It must be deterministic and build from [AsIdentity].
+	Identity() Identity
+}
+
 // Validator is the interface to be satisfied by a [Node] when the
 // configuration needs to be validated e.g. before execution.
 type Validator interface {
