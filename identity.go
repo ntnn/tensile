@@ -67,6 +67,11 @@ func AsIdentity(kind string, kv ...string) Identity {
 	return id
 }
 
+// Identity implements [Identifier], returning itself.
+func (id Identity) Identity() Identity {
+	return id
+}
+
 // String implements [fmt.Stringer], returning the identity in the form `kind[key1="value1" key2="value2"]`.
 func (id Identity) String() string {
 	if id.pairs[0].key == "" {
