@@ -77,17 +77,21 @@ func (q *Queue) Build() (*Work, error) { //nolint:cyclop
 		directed.AddNode(graphNode{id: graphID(node.Identity()), node: node})
 	}
 
-	// edge adds a directed edge from one identity to another.
+	work := new(Work)
+	work.cond = sync.NewCond(&work.lock)
+	work.done = make(map[tensile.Identity]bool)
+	work.dependencies = make(map[tensile.Identity][]tensile.Identity)
+
+	// edge adds a directed edge from one identity to another and
+	// records it as a runtime dependency, so manual and automatic
+	// edges gate readiness the same way.
 	edge := func(from, to tensile.Identity) {
 		directed.SetEdge(directed.NewEdge(
 			directed.Node(graphID(from)),
 			directed.Node(graphID(to)),
 		))
+		work.dependencies[to] = append(work.dependencies[to], from)
 	}
-
-	work := new(Work)
-	work.cond = sync.NewCond(&work.lock)
-	work.done = make(map[tensile.Identity]bool)
 
 	// Build a map of provided identities to the nodes that provide
 	// them and collect notifications.
@@ -95,7 +99,6 @@ func (q *Queue) Build() (*Work, error) { //nolint:cyclop
 	if err != nil {
 		return nil, err
 	}
-	work.provided = provided
 
 	// Build the handlers->notifiers map
 	work.handlers = resolveNotifies(provided, notifies)

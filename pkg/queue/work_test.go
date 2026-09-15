@@ -49,8 +49,10 @@ func buildNotifiedWork(t *testing.T) (*queue.Work, tensile.Identity, *tensile.Ha
 	q := queue.New()
 	require.NoError(t, q.Enqueue(node, handler))
 	require.NoError(t, q.NotifiedBy(handler, node))
+
 	work, err := q.Build()
 	require.NoError(t, err)
+
 	return work, nodeIdentity(t, node), handler
 }
 
@@ -167,4 +169,36 @@ func TestWork_ChanYieldsHandlerAfterNotifierExecuted(t *testing.T) {
 	second := <-items
 	require.NoError(t, second.Err)
 	assert.Equal(t, handler.Identity(), second.Node.Identity())
+}
+
+func TestWork_ChanBlocksManualDependencyUntilDone(t *testing.T) {
+	t.Parallel()
+
+	first := testNode{Name: "first"}
+	second := testNode{Name: "second"}
+
+	q := queue.New()
+	require.NoError(t, q.Enqueue(first, second))
+	require.NoError(t, q.Depends(second, first))
+	work, err := q.Build()
+	require.NoError(t, err)
+
+	items := work.Chan(t.Context())
+
+	item := <-items
+	require.NoError(t, item.Err)
+	require.Equal(t, nodeIdentity(t, first), item.Node.Identity())
+
+	// first is yielded but not done; second must not be yielded yet
+	select {
+	case got := <-items:
+		t.Fatalf("depender yielded before its manual dependency was done: %+v", got)
+	case <-time.After(50 * time.Millisecond):
+	}
+
+	work.MarkDone(item.Node, true)
+
+	item = <-items
+	require.NoError(t, item.Err)
+	assert.Equal(t, nodeIdentity(t, second), item.Node.Identity())
 }

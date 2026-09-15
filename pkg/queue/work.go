@@ -2,7 +2,6 @@ package queue
 
 import (
 	"context"
-	"fmt"
 	"sync"
 
 	"github.com/ntnn/tensile"
@@ -17,9 +16,8 @@ type Item struct {
 
 // Work is the result of building a queue.
 type Work struct {
-	// provided maps provided identities to the identities of the nodes
-	// providing them
-	provided map[tensile.Identity][]tensile.Identity
+	// dependencies maps node identities to the identities of the nodes they depend on
+	dependencies map[tensile.Identity][]tensile.Identity
 	// handlers maps handler identities to the identities of nodes notifying them
 	handlers map[tensile.Identity][]tensile.Identity
 
@@ -33,32 +31,24 @@ type Work struct {
 // Get returns the next node that is ready to be executed.
 // If there are no nodes ready to be executed, it returns nil and false.
 // If all nodes are done, it returns nil and true.
-func (w *Work) Get() (*tensile.Node, bool, error) {
+func (w *Work) Get() (*tensile.Node, bool) {
 	w.lock.Lock()
 	defer w.lock.Unlock()
 
-	node, err := w.get()
-	if err != nil {
-		return nil, false, err
-	}
+	node := w.get()
 	if node == nil {
-		return nil, true, nil
+		return nil, true
 	}
-	return node, false, nil
+	return node, false
 }
 
 // get returns the next ready node or nil if none is ready.
 // The caller must hold the lock.
-func (w *Work) get() (*tensile.Node, error) {
+func (w *Work) get() *tensile.Node {
 	for i := 0; i < len(w.order); {
 		node := w.order[i]
 
-		ready, err := w.isReady(node)
-		if err != nil {
-			return nil, err
-		}
-
-		if !ready {
+		if !w.isReady(node) {
 			i++
 			continue
 		}
@@ -71,10 +61,10 @@ func (w *Work) get() (*tensile.Node, error) {
 			continue
 		}
 
-		return node, nil
+		return node
 	}
 
-	return nil, nil //nolint:nilnil // nil node means none ready
+	return nil
 }
 
 // Chan returns a channel yielding nodes that are ready to be executed.
@@ -122,10 +112,7 @@ func (w *Work) next(ctx context.Context) (*tensile.Node, error) {
 			return nil, err
 		}
 
-		node, err := w.get()
-		if err != nil {
-			return nil, err
-		}
+		node := w.get()
 		if node != nil {
 			return node, nil
 		}
@@ -156,34 +143,14 @@ func (w *Work) wasNotified(node *tensile.Node) bool {
 	return false
 }
 
-func (w *Work) isReady(node *tensile.Node) (bool, error) {
-	// Handlers are only ready once all their notifiers are done.
-	for _, notifier := range w.handlers[node.Identity()] {
-		if _, done := w.done[notifier]; !done {
-			return false, nil
+// isReady reports whether all dependencies of the node are done.
+func (w *Work) isReady(node *tensile.Node) bool {
+	for _, dep := range w.dependencies[node.Identity()] {
+		if _, done := w.done[dep]; !done {
+			return false
 		}
 	}
-
-	dependencies, err := node.DependsOn()
-	if err != nil {
-		return false, fmt.Errorf("failed to get dependencies for node %s: %w", node.Identity(), err)
-	}
-
-	for _, dep := range dependencies {
-		providers, exists := w.provided[dep]
-		if !exists {
-			// The dependency is not provided by any node, skip
-			continue
-		}
-		for _, provider := range providers {
-			if _, done := w.done[provider]; !done {
-				// The provider of the dependency is not done, so this node is not ready
-				return false, nil
-			}
-		}
-	}
-
-	return true, nil
+	return true
 }
 
 // MarkDone marks the given node as done and records whether it was executed.
