@@ -2,7 +2,6 @@ package engine
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/ntnn/tensile/pkg/queue"
 )
@@ -36,10 +35,7 @@ func (s *Sequential) Execute(ctx context.Context) error {
 	s.opts.Logger.Info("starting engine")
 	for {
 		s.opts.Logger.Debug("getting next node from work queue")
-		node, done, err := s.work.Get()
-		if err != nil {
-			return fmt.Errorf("failed to get node from work queue: %w", err)
-		}
+		node, done := s.work.Get()
 		if done {
 			s.opts.Logger.Info("all nodes are done, stopping")
 			return nil
