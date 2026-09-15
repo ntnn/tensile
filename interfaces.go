@@ -17,6 +17,10 @@ type Validator interface {
 
 // Provider is the interface to be satisfied by a [Node] when it
 // provides resources, e.g. installing a package or creating a file.
+//
+// It can be provided to add aliases with conflicting [Node], e.g.
+// std.Symlink, std.File and std.FileContent would conflict so std.Symlink also
+// yields the std.File identity as provides.
 type Provider interface {
 	// Provides returns a list of resources the node will provide, e.g.
 	// a list of packages or files.
