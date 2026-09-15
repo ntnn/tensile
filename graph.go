@@ -56,7 +56,7 @@ func (g *Graph) Depends(node Identifier, dependsOn ...Identifier) error {
 
 // NotifiedBy adds the notifiers as notifiers for the handler.
 // The handler and the notifiers must have been added.
-// Groups cannot notify.
+// A group as notifier notifies when any of its nodes executed.
 func (g *Graph) NotifiedBy(handler *Handler, notifiers ...Identifier) error {
 	identity := handler.Identity()
 	if _, isKnown := g.handlers[identity]; !isKnown {
@@ -64,9 +64,6 @@ func (g *Graph) NotifiedBy(handler *Handler, notifiers ...Identifier) error {
 	}
 
 	for _, notifier := range notifiers {
-		if _, isGroup := notifier.(*Group); isGroup {
-			return fmt.Errorf("group %s cannot notify handler %s", notifier.Identity(), identity)
-		}
 		if err := g.contains(notifier.Identity()); err != nil {
 			return err
 		}

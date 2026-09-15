@@ -385,3 +385,87 @@ func TestQueue_BuildErrorsOnSelfContainingGroup(t *testing.T) {
 	_, err := q.Build()
 	assert.Error(t, err, "a group containing itself must error")
 }
+
+func TestQueue_GroupNotifiesHandlerWhenMemberExecuted(t *testing.T) {
+	t.Parallel()
+
+	a := testNode{Name: "a"}
+	group := testGroup(t, "group", a)
+	handler := tensile.NewHandler(testNode{Name: "handler"})
+
+	q := queue.New()
+	require.NoError(t, q.Enqueue(group, handler))
+	require.NoError(t, q.NotifiedBy(handler, group))
+
+	work, err := q.Build()
+	require.NoError(t, err)
+
+	items := work.Chan(t.Context())
+
+	item := <-items
+	require.NoError(t, item.Err)
+	require.Equal(t, nodeIdentity(t, a), item.Node.Identity())
+	work.MarkDone(item.Node, true)
+
+	item = <-items
+	require.NoError(t, item.Err)
+	require.NotNil(t, item.Node, "handler must be yielded after a group member executed")
+	assert.Equal(t, handler.Identity(), item.Node.Identity())
+	work.MarkDone(item.Node, true)
+}
+
+func TestQueue_GroupDoesNotNotifyHandlerWithoutExecution(t *testing.T) {
+	t.Parallel()
+
+	a := testNode{Name: "a"}
+	group := testGroup(t, "group", a)
+	handler := tensile.NewHandler(testNode{Name: "handler"})
+
+	q := queue.New()
+	require.NoError(t, q.Enqueue(group, handler))
+	require.NoError(t, q.NotifiedBy(handler, group))
+
+	work, err := q.Build()
+	require.NoError(t, err)
+
+	items := work.Chan(t.Context())
+
+	item := <-items
+	require.NoError(t, item.Err)
+	require.Equal(t, nodeIdentity(t, a), item.Node.Identity())
+	work.MarkDone(item.Node, false)
+
+	got, open := <-items
+	assert.False(t, open, "handler without executed group member must be skipped: %+v", got)
+}
+
+func TestQueue_NestedGroupNotifiesThroughParent(t *testing.T) {
+	t.Parallel()
+
+	a := testNode{Name: "a"}
+	inner := testGroup(t, "inner", a)
+	outer := testGroup(t, "outer", inner)
+	handler := tensile.NewHandler(testNode{Name: "handler"})
+
+	q := queue.New()
+	require.NoError(t, q.Enqueue(outer, handler))
+	require.NoError(t, q.NotifiedBy(handler, outer))
+
+	work, err := q.Build()
+	require.NoError(t, err)
+
+	items := work.Chan(t.Context())
+
+	item := <-items
+	require.NoError(t, item.Err)
+	require.Equal(t, nodeIdentity(t, a), item.Node.Identity())
+
+	work.MarkDone(item.Node, true)
+
+	item = <-items
+	require.NoError(t, item.Err)
+	require.NotNil(t, item.Node, "handler must be yielded after a nested group member executed")
+	assert.Equal(t, handler.Identity(), item.Node.Identity())
+
+	work.MarkDone(item.Node, true)
+}

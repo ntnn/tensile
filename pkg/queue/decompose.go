@@ -73,7 +73,8 @@ func (d *decomposition) group(group *tensile.Group) error {
 	// reserve before recursing to error on self-containing groups
 	d.groups[identity] = enclosing
 
-	if err := d.flat.Add(enclosing.start, enclosing.end); err != nil {
+	endHandler := tensile.NewHandler(enclosing.end)
+	if err := d.flat.Add(enclosing.start, endHandler); err != nil {
 		return err
 	}
 	if err := d.flat.Depends(enclosing.end.Identity(), enclosing.start.Identity()); err != nil {
@@ -89,6 +90,9 @@ func (d *decomposition) group(group *tensile.Group) error {
 			return err
 		}
 		if err := d.flat.Depends(enclosing.end.Identity(), d.end(member)); err != nil {
+			return err
+		}
+		if err := d.flat.NotifiedBy(endHandler, d.end(member)); err != nil {
 			return err
 		}
 	}
