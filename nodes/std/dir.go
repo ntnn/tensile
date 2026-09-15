@@ -3,6 +3,7 @@ package std
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/ntnn/tensile"
 )
@@ -16,6 +17,31 @@ var _ tensile.Executor = (*Dir)(nil)
 // DirIdentity returns the identity of the node managing the directory at path.
 func DirIdentity(path string) tensile.Identity {
 	return tensile.AsIdentity("dir", "path", path)
+}
+
+// parentDirs returns a list of all parent directories.
+// It does not handle relative paths.
+func parentDirs(p string) []string {
+	ret := []string{}
+	var previous string
+	for {
+		previous = p
+		p = filepath.Dir(p)
+		if previous == p {
+			return ret
+		}
+		ret = append(ret, p)
+	}
+}
+
+// ParentDirIdentities returns [Dir] identities for all parents of p.
+func ParentDirIdentities(p string) []tensile.Identity {
+	dirs := parentDirs(p)
+	ret := make([]tensile.Identity, len(dirs))
+	for i, dir := range dirs {
+		ret[i] = DirIdentity(dir)
+	}
+	return ret
 }
 
 // DefaultDirMode is the mode applied to directories when none is set.
@@ -51,7 +77,7 @@ func (d *Dir) Provides() ([]tensile.Identity, error) {
 
 // DependsOn implements [tensile.Depender].
 func (d *Dir) DependsOn() ([]tensile.Identity, error) {
-	return parentDirIdentities(d.Path), nil
+	return ParentDirIdentities(d.Path), nil
 }
 
 // NeedsExecution implements [tensile.Executor].

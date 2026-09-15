@@ -42,18 +42,3 @@ func (f *File) Validate(s tensile.Wire) error {
 	)
 	return f.Aggregate.Validate(s)
 }
-
-// parentDirs returns a list of all parent directories.
-// It does not handle relative paths.
-func parentDirs(p string) []string {
-	ret := []string{}
-	var previous string
-	for {
-		previous = p
-		p = filepath.Dir(p)
-		if previous == p {
-			return ret
-		}
-		ret = append(ret, p)
-	}
-}

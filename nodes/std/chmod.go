@@ -24,7 +24,7 @@ func (c Chmod) Identity() tensile.Identity {
 
 // DependsOn implements [tensile.Depender].
 func (c Chmod) DependsOn() ([]tensile.Identity, error) {
-	return parentDirIdentities(c.Path), nil
+	return ParentDirIdentities(c.Path), nil
 }
 
 // NeedsExecution implements [tensile.Executor].

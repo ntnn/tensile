@@ -32,7 +32,7 @@ func (f *FileContent) Provides() ([]tensile.Identity, error) {
 
 // DependsOn implements [tensile.Depender].
 func (f *FileContent) DependsOn() ([]tensile.Identity, error) {
-	return parentDirIdentities(f.Path), nil
+	return ParentDirIdentities(f.Path), nil
 }
 
 // NeedsExecution implements [tensile.Executor].

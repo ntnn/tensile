@@ -30,7 +30,7 @@ func (s *Symlink) Provides() ([]tensile.Identity, error) {
 
 // DependsOn implements [tensile.Depender].
 func (s *Symlink) DependsOn() ([]tensile.Identity, error) {
-	return parentDirIdentities(s.Path), nil
+	return ParentDirIdentities(s.Path), nil
 }
 
 // NeedsExecution implements [tensile.Executor].
