@@ -6,11 +6,9 @@ import (
 	"github.com/ntnn/tensile"
 )
 
+var _ tensile.Identifier = (*Chown)(nil)
 var _ tensile.Depender = (*Chown)(nil)
 var _ tensile.Executor = (*Chown)(nil)
-
-// ChownRef is the reference type for chown operations.
-const ChownRef = tensile.Ref("Chown")
 
 // Chown ensures a file has the specified owner and group.
 type Chown struct {
@@ -19,9 +17,14 @@ type Chown struct {
 	Group string
 }
 
+// Identity implements [tensile.Identifier].
+func (c Chown) Identity() tensile.Identity {
+	return tensile.AsIdentity("chown", "path", c.Path)
+}
+
 // DependsOn implements [tensile.Depender].
-func (c Chown) DependsOn() ([]tensile.NodeRef, error) {
-	return tensile.ToMany(DirRef, parentDirs(c.Path)), nil
+func (c Chown) DependsOn() ([]tensile.Identity, error) {
+	return parentDirIdentities(c.Path), nil
 }
 
 // NeedsExecution implements [tensile.Executor].

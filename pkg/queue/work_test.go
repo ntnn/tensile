@@ -13,19 +13,23 @@ import (
 
 type testNode struct {
 	Name     string
-	Provide  []tensile.NodeRef
-	DependOn []tensile.NodeRef
+	Provide  []tensile.Identity
+	DependOn []tensile.Identity
 }
 
-func (n testNode) Provides() ([]tensile.NodeRef, error) {
+func (n testNode) Identity() tensile.Identity {
+	return tensile.AsIdentity("test", "name", n.Name)
+}
+
+func (n testNode) Provides() ([]tensile.Identity, error) {
 	return n.Provide, nil
 }
 
-func (n testNode) DependsOn() ([]tensile.NodeRef, error) {
+func (n testNode) DependsOn() ([]tensile.Identity, error) {
 	return n.DependOn, nil
 }
 
-func buildWork(t *testing.T, nodes ...any) *queue.Work {
+func buildWork(t *testing.T, nodes ...tensile.Identifier) *queue.Work {
 	t.Helper()
 	q := queue.New()
 	require.NoError(t, q.Enqueue(nodes...))
@@ -35,27 +39,24 @@ func buildWork(t *testing.T, nodes ...any) *queue.Work {
 }
 
 // buildNotifiedWork builds a Work with a single notifier node and a
-// handler notified by it, returning the work and the notifier's ID.
-func buildNotifiedWork(t *testing.T) (*queue.Work, int64, *tensile.Handler) {
+// handler notified by it, returning the work and the notifier's identity.
+func buildNotifiedWork(t *testing.T) (*queue.Work, tensile.Identity, *tensile.Handler) {
 	t.Helper()
 
 	node := testNode{Name: "notifier"}
-	handler, err := tensile.NewHandler(testNode{Name: "handler"})
-	require.NoError(t, err)
+	handler := tensile.NewHandler(testNode{Name: "handler"})
 
 	q := queue.New()
 	require.NoError(t, q.Enqueue(node, handler))
 	require.NoError(t, q.NotifiedBy(handler, node))
 	work, err := q.Build()
 	require.NoError(t, err)
-	return work, nodeID(t, node), handler
+	return work, nodeIdentity(t, node), handler
 }
 
-func nodeID(t *testing.T, input any) int64 {
+func nodeIdentity(t *testing.T, input tensile.Identifier) tensile.Identity {
 	t.Helper()
-	node, err := tensile.NewNode(input)
-	require.NoError(t, err)
-	return node.ID()
+	return tensile.NewNode(input).Identity()
 }
 
 func TestWork_ChanYieldsAllIndependentNodesAndCloses(t *testing.T) {
@@ -66,16 +67,16 @@ func TestWork_ChanYieldsAllIndependentNodesAndCloses(t *testing.T) {
 	c := testNode{Name: "c"}
 	work := buildWork(t, a, b, c)
 
-	want := map[int64]bool{
-		nodeID(t, a): true,
-		nodeID(t, b): true,
-		nodeID(t, c): true,
+	want := map[tensile.Identity]bool{
+		nodeIdentity(t, a): true,
+		nodeIdentity(t, b): true,
+		nodeIdentity(t, c): true,
 	}
 
-	got := map[int64]bool{}
+	got := map[tensile.Identity]bool{}
 	for item := range work.Chan(t.Context()) {
 		require.NoError(t, item.Err)
-		got[item.Node.ID()] = true
+		got[item.Node.Identity()] = true
 	}
 	assert.Equal(t, want, got, "every node must be yielded exactly once")
 }
@@ -83,16 +84,16 @@ func TestWork_ChanYieldsAllIndependentNodesAndCloses(t *testing.T) {
 func TestWork_ChanBlocksDependentUntilProviderDone(t *testing.T) {
 	t.Parallel()
 
-	ref := tensile.Ref("test").To("dep")
-	provider := testNode{Name: "provider", Provide: []tensile.NodeRef{ref}}
-	depender := testNode{Name: "depender", DependOn: []tensile.NodeRef{ref}}
+	ref := tensile.AsIdentity("testres", "name", "dep")
+	provider := testNode{Name: "provider", Provide: []tensile.Identity{ref}}
+	depender := testNode{Name: "depender", DependOn: []tensile.Identity{ref}}
 	work := buildWork(t, provider, depender)
 
 	items := work.Chan(t.Context())
 
 	first := <-items
 	require.NoError(t, first.Err)
-	require.Equal(t, nodeID(t, provider), first.Node.ID())
+	require.Equal(t, nodeIdentity(t, provider), first.Node.Identity())
 
 	select {
 	case item := <-items:
@@ -104,7 +105,7 @@ func TestWork_ChanBlocksDependentUntilProviderDone(t *testing.T) {
 
 	second := <-items
 	require.NoError(t, second.Err)
-	assert.Equal(t, nodeID(t, depender), second.Node.ID())
+	assert.Equal(t, nodeIdentity(t, depender), second.Node.Identity())
 
 	_, open := <-items
 	assert.False(t, open, "channel must be closed after all nodes were yielded")
@@ -113,9 +114,9 @@ func TestWork_ChanBlocksDependentUntilProviderDone(t *testing.T) {
 func TestWork_ChanYieldsContextErrorWhileWaiting(t *testing.T) {
 	t.Parallel()
 
-	ref := tensile.Ref("test").To("dep")
-	provider := testNode{Name: "provider", Provide: []tensile.NodeRef{ref}}
-	depender := testNode{Name: "depender", DependOn: []tensile.NodeRef{ref}}
+	ref := tensile.AsIdentity("testres", "name", "dep")
+	provider := testNode{Name: "provider", Provide: []tensile.Identity{ref}}
+	depender := testNode{Name: "depender", DependOn: []tensile.Identity{ref}}
 	work := buildWork(t, provider, depender)
 
 	ctx, cancel := context.WithCancel(t.Context())
@@ -138,13 +139,13 @@ func TestWork_ChanYieldsContextErrorWhileWaiting(t *testing.T) {
 func TestWork_ChanSkipsHandlerWithoutExecutedNotifier(t *testing.T) {
 	t.Parallel()
 
-	work, notifierID, _ := buildNotifiedWork(t)
+	work, notifierIdentity, _ := buildNotifiedWork(t)
 
 	items := work.Chan(t.Context())
 
 	first := <-items
 	require.NoError(t, first.Err)
-	require.Equal(t, notifierID, first.Node.ID())
+	require.Equal(t, notifierIdentity, first.Node.Identity())
 	work.MarkDone(first.Node, false)
 
 	item, open := <-items
@@ -154,16 +155,16 @@ func TestWork_ChanSkipsHandlerWithoutExecutedNotifier(t *testing.T) {
 func TestWork_ChanYieldsHandlerAfterNotifierExecuted(t *testing.T) {
 	t.Parallel()
 
-	work, notifierID, handler := buildNotifiedWork(t)
+	work, notifierIdentity, handler := buildNotifiedWork(t)
 
 	items := work.Chan(t.Context())
 
 	first := <-items
 	require.NoError(t, first.Err)
-	require.Equal(t, notifierID, first.Node.ID())
+	require.Equal(t, notifierIdentity, first.Node.Identity())
 	work.MarkDone(first.Node, true)
 
 	second := <-items
 	require.NoError(t, second.Err)
-	assert.Equal(t, handler.ID(), second.Node.ID())
+	assert.Equal(t, handler.Identity(), second.Node.Identity())
 }

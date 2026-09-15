@@ -20,7 +20,7 @@ type Validator interface {
 type Provider interface {
 	// Provides returns a list of resources the node will provide, e.g.
 	// a list of packages or files.
-	Provides() ([]NodeRef, error)
+	Provides() ([]Identity, error)
 }
 
 // Depender is the interface to be satisfied by a [Node] when it depends
@@ -29,7 +29,7 @@ type Provider interface {
 type Depender interface {
 	// DependsOn returns a list of resources the node depends on, e.g.
 	// packages or files.
-	DependsOn() ([]NodeRef, error)
+	DependsOn() ([]Identity, error)
 }
 
 // Notifier is the interface to be satisfied by a [Node] when it
@@ -38,7 +38,7 @@ type Depender interface {
 type Notifier interface {
 	// Notifies returns a list of resources provided by handlers to
 	// notify.
-	Notifies() ([]NodeRef, error)
+	Notifies() ([]Identity, error)
 }
 
 // Executor is the interface to be satisfied by a [Node] to be executed.

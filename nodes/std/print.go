@@ -7,10 +7,18 @@ import (
 	"github.com/ntnn/tensile"
 )
 
+var _ tensile.Identifier = (*Print)(nil)
+var _ tensile.Executor = (*Print)(nil)
+
 // Print prints a message when executed.
 type Print struct {
 	Message string
 	Args    []any
+}
+
+// Identity implements [tensile.Identifier].
+func (p *Print) Identity() tensile.Identity {
+	return tensile.AsIdentity("print", "message", p.Message)
 }
 
 // NeedsExecution returns true, indicating the node should always execute.

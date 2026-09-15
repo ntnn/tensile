@@ -2,18 +2,20 @@ package std
 
 import (
 	"os"
-	"path/filepath"
 
 	"github.com/ntnn/tensile"
 )
 
+var _ tensile.Identifier = (*File)(nil)
 var _ tensile.Validator = (*File)(nil)
 var _ tensile.Provider = (*File)(nil)
 var _ tensile.Depender = (*File)(nil)
 var _ tensile.Executor = (*File)(nil)
 
-// FileRef is the reference type for files.
-const FileRef = tensile.Ref("File")
+// FileIdentity returns the identity of the node managing the file at path.
+func FileIdentity(path string) tensile.Identity {
+	return tensile.AsIdentity("file", "path", path)
+}
 
 // File manages file creation with ownership and permissions.
 type File struct {
@@ -26,17 +28,18 @@ type File struct {
 	Content  string
 }
 
+// Identity implements [tensile.Identifier].
+func (f *File) Identity() tensile.Identity {
+	return FileIdentity(f.Path)
+}
+
 // Validate implements [tensile.Validator].
 func (f *File) Validate(s tensile.Wire) error {
-	agg, err := NewAggregate(
+	f.Aggregate = NewAggregate(
 		Chmod{Path: f.Path, FileMode: f.FileMode},
 		Chown{Path: f.Path, Owner: f.Owner, Group: f.Group},
-		FileContent{Path: f.Path, Content: f.Content},
+		&FileContent{Path: f.Path, Content: f.Content},
 	)
-	if err != nil {
-		return err
-	}
-	f.Aggregate = agg
 	return f.Aggregate.Validate(s)
 }
 

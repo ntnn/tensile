@@ -6,11 +6,9 @@ import (
 	"github.com/ntnn/tensile"
 )
 
+var _ tensile.Identifier = (*Chmod)(nil)
 var _ tensile.Depender = (*Chmod)(nil)
 var _ tensile.Executor = (*Chmod)(nil)
-
-// ChmodRef is the reference type for chmod operations.
-const ChmodRef = tensile.Ref("Chmod")
 
 // Chmod ensures a file has the specified permissions.
 // FileMode is interpreted as unix permission bits.
@@ -19,9 +17,14 @@ type Chmod struct {
 	FileMode os.FileMode
 }
 
+// Identity implements [tensile.Identifier].
+func (c Chmod) Identity() tensile.Identity {
+	return tensile.AsIdentity("chmod", "path", c.Path)
+}
+
 // DependsOn implements [tensile.Depender].
-func (c Chmod) DependsOn() ([]tensile.NodeRef, error) {
-	return tensile.ToMany(DirRef, parentDirs(c.Path)), nil
+func (c Chmod) DependsOn() ([]tensile.Identity, error) {
+	return parentDirIdentities(c.Path), nil
 }
 
 // NeedsExecution implements [tensile.Executor].

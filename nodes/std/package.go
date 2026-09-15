@@ -7,12 +7,15 @@ import (
 	"github.com/ntnn/tensile"
 )
 
+var _ tensile.Identifier = (*Package)(nil)
 var _ tensile.Validator = (*Package)(nil)
 var _ tensile.Provider = (*Package)(nil)
 var _ tensile.Executor = (*Package)(nil)
 
-// PackageRef is the reference type for packages.
-const PackageRef = tensile.Ref("Package")
+// PackageIdentity returns the identity of the node managing the named package.
+func PackageIdentity(name string) tensile.Identity {
+	return tensile.AsIdentity("package", "name", name)
+}
 
 // PackageState is the desired presence of a package.
 type PackageState string
@@ -55,9 +58,14 @@ func (p *Package) Validate(_ tensile.Wire) error {
 	return nil
 }
 
+// Identity implements [tensile.Identifier].
+func (p *Package) Identity() tensile.Identity {
+	return PackageIdentity(p.Name)
+}
+
 // Provides implements [tensile.Provider].
-func (p *Package) Provides() ([]tensile.NodeRef, error) {
-	return []tensile.NodeRef{PackageRef.To(p.Name)}, nil
+func (p *Package) Provides() ([]tensile.Identity, error) {
+	return []tensile.Identity{PackageIdentity(p.Name)}, nil
 }
 
 // NeedsExecution implements [tensile.Executor].

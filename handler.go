@@ -6,15 +6,10 @@ type Handler struct {
 	Node
 }
 
-// NewHandler takes any value and transforms it into a [Handler].
-func NewHandler(input any) (*Handler, error) {
+// NewHandler wraps an [Identifier] into a [Handler].
+func NewHandler(input Identifier) *Handler {
 	if handler, ok := input.(*Handler); ok {
-		return handler, nil
+		return handler
 	}
-
-	node, err := NewNode(input)
-	if err != nil {
-		return nil, err
-	}
-	return &Handler{Node: *node}, nil
+	return &Handler{Node: *NewNode(input)}
 }

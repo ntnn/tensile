@@ -13,9 +13,11 @@ func executeNode(ctx context.Context, opts Options, work *queue.Work, summary *S
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
+	logger := opts.Logger.With("node", node.Identity())
+
 	wire := &tensile.DefaultWire{
 		Ctx: ctx,
-		Log: opts.Logger.With("id", node.ID()),
+		Log: logger,
 	}
 
 	if err := node.Validate(wire); err != nil {
@@ -24,26 +26,26 @@ func executeNode(ctx context.Context, opts Options, work *queue.Work, summary *S
 
 	needsExecution, err := node.NeedsExecution(wire)
 	if err != nil {
-		return fmt.Errorf("failed to check if node with ID %d needs execution: %w", node.ID(), err)
+		return fmt.Errorf("failed to check if node %s needs execution: %w", node.Identity(), err)
 	}
 	if !needsExecution {
-		opts.Logger.Debug(fmt.Sprintf("node with ID %d does not need execution, marking as done", node.ID()))
+		logger.Debug("node does not need execution, marking as done")
 		work.MarkDone(node, false)
 		return nil
 	}
 
 	if opts.Noop {
-		opts.Logger.Debug(fmt.Sprintf("noop is enabled, skipping execution of node with ID %d", node.ID()))
+		logger.Debug("noop is enabled, skipping execution")
 		work.MarkDone(node, true)
 		summary.IncrementNodesExecuted()
 		return nil
 	}
 
 	if err := node.Execute(wire); err != nil {
-		return fmt.Errorf("failed to execute node with ID %d: %w", node.ID(), err)
+		return fmt.Errorf("failed to execute node %s: %w", node.Identity(), err)
 	}
 
-	opts.Logger.Debug(fmt.Sprintf("successfully executed node with ID %d", node.ID()))
+	logger.Debug("successfully executed node")
 	work.MarkDone(node, true)
 	summary.IncrementNodesExecuted()
 	return nil

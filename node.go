@@ -1,54 +1,29 @@
 package tensile
 
-import (
-	"encoding/json"
-	"fmt"
-	"hash/fnv"
-)
-
 // Node is a single step to be executed by an engine.
 type Node struct {
-	wrapped any
-	id      int64
+	wrapped  any
+	identity Identity
 }
 
-// NewNode takes any value and transforms it into a [Node].
-func NewNode(input any) (*Node, error) {
+// NewNode wraps an [Identifier] into a [Node].
+func NewNode(input Identifier) *Node {
 	if node, ok := input.(*Node); ok {
-		return node, nil
+		return node
 	}
 	if handler, ok := input.(*Handler); ok {
-		return &handler.Node, nil
+		return &handler.Node
 	}
 
-	n := new(Node)
-	n.wrapped = input
-
-	id, err := hash(input)
-	if err != nil {
-		return nil, fmt.Errorf("failed to hash input: %w", err)
+	return &Node{
+		wrapped:  input,
+		identity: input.Identity(),
 	}
-	n.id = id
-
-	return n, nil
 }
 
-func hash(input any) (int64, error) {
-	b, err := json.Marshal(input)
-	if err != nil {
-		return 0, fmt.Errorf("failed to marshal input: %w", err)
-	}
-
-	h := fnv.New64a()
-	if _, err := h.Write(b); err != nil {
-		return 0, fmt.Errorf("failed to write to hash: %w", err)
-	}
-	return int64(h.Sum64()), nil //nolint:gosec
-}
-
-// ID returns a hash of the node.
-func (n *Node) ID() int64 {
-	return n.id
+// Identity returns the identity of the wrapped node.
+func (n *Node) Identity() Identity {
+	return n.identity
 }
 
 // Validate calls .Validate on the wrapped node if it implements it.
@@ -60,7 +35,7 @@ func (n *Node) Validate(wire Wire) error {
 }
 
 // Provides calls .Provides on the wrapped node if it implements it.
-func (n *Node) Provides() ([]NodeRef, error) {
+func (n *Node) Provides() ([]Identity, error) {
 	provider, ok := n.wrapped.(Provider)
 	if !ok {
 		return nil, nil
@@ -69,7 +44,7 @@ func (n *Node) Provides() ([]NodeRef, error) {
 }
 
 // DependsOn calls .DependsOn on the wrapped node if it implements it.
-func (n *Node) DependsOn() ([]NodeRef, error) {
+func (n *Node) DependsOn() ([]Identity, error) {
 	depender, ok := n.wrapped.(Depender)
 	if !ok {
 		return nil, nil
@@ -78,7 +53,7 @@ func (n *Node) DependsOn() ([]NodeRef, error) {
 }
 
 // Notifies calls .Notifies on the wrapped node if it implements it.
-func (n *Node) Notifies() ([]NodeRef, error) {
+func (n *Node) Notifies() ([]Identity, error) {
 	notifier, ok := n.wrapped.(Notifier)
 	if !ok {
 		return nil, nil
