@@ -7,12 +7,15 @@ import (
 	"github.com/ntnn/tensile"
 )
 
+var _ tensile.Identifier = (*Service)(nil)
 var _ tensile.Validator = (*Service)(nil)
 var _ tensile.Provider = (*Service)(nil)
 var _ tensile.Executor = (*Service)(nil)
 
-// ServiceRef is the reference type for services.
-const ServiceRef = tensile.Ref("Service")
+// ServiceIdentity returns the identity of the node managing the named service.
+func ServiceIdentity(name string) tensile.Identity {
+	return tensile.AsIdentity("service", "name", name)
+}
 
 // Service ensures a service is in the desired state.
 // Nil means the state is unmanaged.
@@ -36,9 +39,14 @@ func (s *Service) Validate(_ tensile.Wire) error {
 	return nil
 }
 
+// Identity implements [tensile.Identifier].
+func (s *Service) Identity() tensile.Identity {
+	return ServiceIdentity(s.Name)
+}
+
 // Provides implements [tensile.Provider].
-func (s *Service) Provides() ([]tensile.NodeRef, error) {
-	return []tensile.NodeRef{ServiceRef.To(s.Name)}, nil
+func (s *Service) Provides() ([]tensile.Identity, error) {
+	return []tensile.Identity{ServiceIdentity(s.Name)}, nil
 }
 
 // NeedsExecution implements [tensile.Executor].

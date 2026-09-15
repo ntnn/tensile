@@ -10,6 +10,7 @@ import (
 	"github.com/ntnn/tensile"
 )
 
+var _ tensile.Identifier = (*Command)(nil)
 var _ tensile.Validator = (*Command)(nil)
 var _ tensile.Executor = (*Command)(nil)
 
@@ -70,6 +71,11 @@ type Command struct {
 
 	// run executes the interpreter and returns combined output.
 	run func(wire tensile.Wire, args ...string) ([]byte, error)
+}
+
+// Identity implements [tensile.Identifier].
+func (c *Command) Identity() tensile.Identity {
+	return tensile.AsIdentity("command", "command", c.Command)
 }
 
 // Validate implements [tensile.Validator].

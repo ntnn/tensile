@@ -26,20 +26,14 @@ func run(ctx context.Context) error {
 		Content: "hello from tensile\n",
 	}
 
-	notified, err := tensile.NewHandler(&std.Command{
+	notified := tensile.NewHandler(&std.Command{
 		Command: "touch /opt/e2e/notified",
 	})
-	if err != nil {
-		return err
-	}
 
 	// no notifiers, must never run
-	silent, err := tensile.NewHandler(&std.Command{
+	silent := tensile.NewHandler(&std.Command{
 		Command: "touch /opt/e2e/silent",
 	})
-	if err != nil {
-		return err
-	}
 
 	if err := q.Enqueue(dir, file, notified, silent); err != nil {
 		return err

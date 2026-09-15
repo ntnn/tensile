@@ -2,17 +2,16 @@ package std
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/ntnn/tensile"
 )
 
+var _ tensile.Identifier = (*Aggregate)(nil)
 var _ tensile.Validator = (*Aggregate)(nil)
 var _ tensile.Provider = (*Aggregate)(nil)
 var _ tensile.Depender = (*Aggregate)(nil)
 var _ tensile.Executor = (*Aggregate)(nil)
-
-// AggregateRef is the reference type for aggregates.
-const AggregateRef = tensile.Ref("Aggregate")
 
 // Aggregate is a utility node that can chain multiple other nodes.
 // For example uses see e.g. the [File] node.
@@ -20,18 +19,23 @@ type Aggregate struct {
 	contained []*tensile.Node
 }
 
-// NewAggregate eturns a new [Aggregate]. The values may be
-// [tensile.Node], if they are not they will be converted.
-func NewAggregate(raw ...any) (*Aggregate, error) {
+// NewAggregate returns a new [Aggregate].
+func NewAggregate(raw ...tensile.Identifier) *Aggregate {
 	nodes := make([]*tensile.Node, len(raw))
 	for i, r := range raw {
-		node, err := tensile.NewNode(r)
-		if err != nil {
-			return nil, fmt.Errorf("error transforming input %d %q to a tensile node: %w", i, r, err)
-		}
-		nodes[i] = node
+		nodes[i] = tensile.NewNode(r)
 	}
-	return &Aggregate{contained: nodes}, nil
+	return &Aggregate{contained: nodes}
+}
+
+// Identity implements [tensile.Identifier].
+// The identity is derived from the contained nodes.
+func (a *Aggregate) Identity() tensile.Identity {
+	contained := make([]string, len(a.contained))
+	for i, node := range a.contained {
+		contained[i] = node.Identity().String()
+	}
+	return tensile.AsIdentity("aggregate", "of", strings.Join(contained, " "))
 }
 
 // Validate implements [tensile.Validator].
@@ -45,8 +49,8 @@ func (a *Aggregate) Validate(s tensile.Wire) error {
 }
 
 // Provides implements [tensile.Provides].
-func (a *Aggregate) Provides() ([]tensile.NodeRef, error) {
-	refs := []tensile.NodeRef{}
+func (a *Aggregate) Provides() ([]tensile.Identity, error) {
+	refs := []tensile.Identity{}
 	for i, node := range a.contained {
 		cRefs, err := node.Provides()
 		if err != nil {
@@ -58,8 +62,8 @@ func (a *Aggregate) Provides() ([]tensile.NodeRef, error) {
 }
 
 // DependsOn implements [tensile.DependsOn].
-func (a *Aggregate) DependsOn() ([]tensile.NodeRef, error) {
-	refs := []tensile.NodeRef{}
+func (a *Aggregate) DependsOn() ([]tensile.Identity, error) {
+	refs := []tensile.Identity{}
 	for i, node := range a.contained {
 		cRefs, err := node.DependsOn()
 		if err != nil {

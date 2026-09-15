@@ -1,131 +1,124 @@
 package queue
 
 import (
+	"errors"
 	"fmt"
+	"hash/fnv"
 	"sync"
 
 	"github.com/ntnn/tensile"
-	"gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/simple"
 	"gonum.org/v1/gonum/graph/topo"
 )
 
+// graphID hashes an identity into the int64 ID space gonum requires.
+func graphID(identity tensile.Identity) int64 {
+	h := fnv.New64a()
+	_, err := h.Write([]byte(identity.String()))
+	if err != nil {
+		// fnv.Write never errors, if it does there's something seriously wrong.
+		panic(err)
+	}
+	return int64(h.Sum64()) //nolint:gosec // deliberate wraparound, only used as opaque ID
+}
+
+// graphNode adapts a [tensile.Node] to [graph.Node].
+type graphNode struct {
+	id   int64
+	node *tensile.Node
+}
+
+func (g graphNode) ID() int64 {
+	return g.id
+}
+
 // Queue aggregates [tensile.Node] and then orders them based on their
 // dependencies for execution.
 type Queue struct {
-	nodes map[int64]*tensile.Node
+	nodes map[tensile.Identity]*tensile.Node
 	// extraEdges are manually added edges to be considered during graph
 	// building
-	extraEdges []graph.Edge
-	// notifies maps node IDs to the refs they notify
-	notifies map[int64][]tensile.NodeRef
+	extraEdges [][2]tensile.Identity
+	// notifies maps node identities to the identities they notify
+	notifies map[tensile.Identity][]tensile.Identity
 	// handlers is a map of nodes that are handlers and also carries the
 	// list of manually added notfiers
-	handlers map[int64][]int64
+	handlers map[tensile.Identity][]tensile.Identity
 }
 
 // New returns a new [Queue].
 func New() *Queue {
 	return &Queue{
-		nodes:    make(map[int64]*tensile.Node),
-		notifies: make(map[int64][]tensile.NodeRef),
-		handlers: make(map[int64][]int64),
+		nodes:    make(map[tensile.Identity]*tensile.Node),
+		notifies: make(map[tensile.Identity][]tensile.Identity),
+		handlers: make(map[tensile.Identity][]tensile.Identity),
 	}
-}
-
-func asTensileNode(in any) (*tensile.Node, error) {
-	asserted, ok := in.(*tensile.Node)
-	if ok {
-		return asserted, nil
-	}
-	handler, ok := in.(*tensile.Handler)
-	if ok {
-		return &handler.Node, nil
-	}
-	tensiled, err := tensile.NewNode(in)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create node for input: %w", err)
-	}
-	return tensiled, nil
 }
 
 // Enqueue adds a value as a [tensile.Node] to the queue.
-func (q *Queue) Enqueue(nodes ...any) error {
-	for _, node := range nodes {
-		tensileNode, err := asTensileNode(node)
-		if err != nil {
+func (q *Queue) Enqueue(nodes ...tensile.Identifier) error {
+	for _, raw := range nodes {
+		node := tensile.NewNode(raw)
+
+		if err := q.enqueue(node); err != nil {
 			return err
 		}
 
-		if err := q.enqueue(tensileNode); err != nil {
-			return err
-		}
-
-		if _, isHandler := node.(*tensile.Handler); isHandler {
-			q.handlers[tensileNode.ID()] = []int64{}
+		if _, isHandler := raw.(*tensile.Handler); isHandler {
+			q.handlers[node.Identity()] = []tensile.Identity{}
 		}
 	}
 	return nil
 }
 
 func (q *Queue) enqueue(node *tensile.Node) error {
-	if _, exists := q.nodes[node.ID()]; exists {
-		return fmt.Errorf("node with ID %d already exists in the queue", node.ID())
+	identity := node.Identity()
+
+	if _, exists := q.nodes[identity]; exists {
+		return fmt.Errorf("node %s already exists in the queue", identity)
 	}
 
 	notifies, err := node.Notifies()
 	if err != nil {
-		return fmt.Errorf("failed to get notifications for node with ID %d: %w", node.ID(), err)
+		return fmt.Errorf("failed to get notifications for node %s: %w", identity, err)
 	}
 	if len(notifies) > 0 {
-		q.notifies[node.ID()] = notifies
+		q.notifies[identity] = notifies
 	}
 
-	q.nodes[node.ID()] = node
+	q.nodes[identity] = node
 	return nil
 }
 
 // Depends adds a dependency from node to each of the nodes in
 // dependsOn. If any of the nodes in dependsOn are not in the queue, an
 // error is returned.
-func (q *Queue) Depends(node any, dependsOn ...any) error {
-	tensileNode, err := asTensileNode(node)
-	if err != nil {
-		return err
-	}
-	if _, exists := q.nodes[tensileNode.ID()]; !exists {
-		return fmt.Errorf("node with ID %d is not in the queue", tensileNode.ID())
+func (q *Queue) Depends(node tensile.Identifier, dependsOn ...tensile.Identifier) error {
+	if _, exists := q.nodes[node.Identity()]; !exists {
+		return fmt.Errorf("node %s is not in the queue", node.Identity())
 	}
 
 	for _, dep := range dependsOn {
-		tensileDep, err := asTensileNode(dep)
-		if err != nil {
-			return err
+		if _, exists := q.nodes[dep.Identity()]; !exists {
+			return fmt.Errorf("dependency node %s is not in the queue", dep.Identity())
 		}
-		if _, exists := q.nodes[tensileDep.ID()]; !exists {
-			return fmt.Errorf("dependency node with ID %d is not in the queue", tensileDep.ID())
-		}
-		q.extraEdges = append(q.extraEdges, simple.Edge{F: tensileDep, T: tensileNode})
+		q.extraEdges = append(q.extraEdges, [2]tensile.Identity{dep.Identity(), node.Identity()})
 	}
 	return nil
 }
 
 // NotifiedBy adds the notifiers as notifiers for the handler.
 // If either the handler or notifiers are not in the queue an error is returned.
-func (q *Queue) NotifiedBy(handler *tensile.Handler, notifiers ...any) error {
-	if _, isKnown := q.handlers[handler.ID()]; !isKnown {
-		return fmt.Errorf("handler %d is not in the queue", handler.ID())
+func (q *Queue) NotifiedBy(handler *tensile.Handler, notifiers ...tensile.Identifier) error {
+	if _, isKnown := q.handlers[handler.Identity()]; !isKnown {
+		return fmt.Errorf("handler %s is not in the queue", handler.Identity())
 	}
 
 	for _, notifier := range notifiers {
-		tensileNode, err := asTensileNode(notifier)
-		if err != nil {
-			return err
+		if _, exists := q.nodes[notifier.Identity()]; !exists {
+			return fmt.Errorf("notifier node %s is not in the queue", notifier.Identity())
 		}
-		if _, exists := q.nodes[tensileNode.ID()]; !exists {
-			return fmt.Errorf("notifier node with ID %d is not in the queue", tensileNode.ID())
-		}
-		q.handlers[handler.ID()] = append(q.handlers[handler.ID()], tensileNode.ID())
+		q.handlers[handler.Identity()] = append(q.handlers[handler.Identity()], notifier.Identity())
 	}
 
 	return nil
@@ -136,117 +129,131 @@ func (q *Queue) NotifiedBy(handler *tensile.Handler, notifiers ...any) error {
 func (q *Queue) Build() (*Work, error) { //nolint:cyclop
 	// Add all nodes to the graph first
 	directed := simple.NewDirectedGraph()
-	for _, node := range q.nodes {
-		directed.AddNode(node)
+	for identity, node := range q.nodes {
+		directed.AddNode(graphNode{id: graphID(identity), node: node})
+	}
+
+	// edge adds a directed edge from one identity to another.
+	edge := func(from, to tensile.Identity) {
+		directed.SetEdge(directed.NewEdge(
+			directed.Node(graphID(from)),
+			directed.Node(graphID(to)),
+		))
 	}
 
 	work := new(Work)
 	work.cond = sync.NewCond(&work.lock)
-	work.done = make(map[int64]bool)
+	work.done = make(map[tensile.Identity]bool)
 
-	// Build a map of provided node refs to the IDs of nodes that provide them
-	providedRefs, err := q.buildProvidedRefs()
+	// Build a map of provided identities to the nodes that provide them
+	provided, err := q.buildProvided()
 	if err != nil {
 		return nil, fmt.Errorf("failed to build providers: %w", err)
 	}
-	work.providedRefs = providedRefs
+	work.provided = provided
 
 	// Build the handlers->notifiers map
-	work.handlers = resolveNotifies(
-		providedRefs,
-		q.notifies,
-	)
+	work.handlers = resolveNotifies(provided, q.notifies)
 
 	// Add the manual notifiers
-	for handlerID, notifierIDs := range q.handlers {
-		work.handlers[handlerID] = append(work.handlers[handlerID], notifierIDs...)
+	for handler, notifiers := range q.handlers {
+		work.handlers[handler] = append(work.handlers[handler], notifiers...)
 	}
 
 	// Handlers depend on their notifying nodes.
-	for handlerID, notifierIDs := range work.handlers {
-		for _, notifierID := range notifierIDs {
-			directed.SetEdge(directed.NewEdge(
-				directed.Node(notifierID),
-				directed.Node(handlerID),
-			))
+	for handler, notifiers := range work.handlers {
+		for _, notifier := range notifiers {
+			edge(notifier, handler)
 		}
 	}
 
 	// Iterate over all nodes and check if any dependency they declare
 	// is provided by another node. If so add an edge from the provider
 	// to the depender.
-	for _, node := range q.nodes {
+	for identity, node := range q.nodes {
 		dependencies, err := node.DependsOn()
 		if err != nil {
-			return nil, fmt.Errorf("failed to get dependencies for node with ID %d: %w", node.ID(), err)
+			return nil, fmt.Errorf("failed to get dependencies for node %s: %w", identity, err)
 		}
 
 		for _, dep := range dependencies {
-			providers, ok := providedRefs[dep]
+			providers, ok := provided[dep]
 			if !ok {
 				// dependencies are not required, nodes are giving
 				// every possible value they can depend on
 				continue
 			}
-			for _, providerID := range providers {
-				directed.SetEdge(directed.NewEdge(directed.Node(providerID), node))
+			for _, provider := range providers {
+				edge(provider, identity)
 			}
 		}
 	}
 
 	// Add any extra edges that were added via Depends.
-	for _, edge := range q.extraEdges {
-		directed.SetEdge(edge)
+	for _, extra := range q.extraEdges {
+		edge(extra[0], extra[1])
 	}
 
 	sorted, err := topo.Sort(directed)
 	if err != nil {
-		// TODO unpack error? the error semes to contain the IDs etcpp
-		// which is not useful for the end user when the ID is the
-		// hashed node.
-		return nil, fmt.Errorf("cycle detected in graph: %w", err)
+		return nil, fmt.Errorf("cycle detected in graph: %w", unpackCycles(err))
 	}
 
 	ret := make([]*tensile.Node, len(sorted))
 	for i, node := range sorted {
-		ret[i] = node.(*tensile.Node)
+		ret[i] = node.(graphNode).node
 	}
 	work.order = ret
 
 	return work, nil
 }
 
-// buildProvidedRefs builds a map of provided refs to the IDs of the
-// nodes that provide them.
-func (q *Queue) buildProvidedRefs() (map[tensile.NodeRef][]int64, error) {
-	ret := make(map[tensile.NodeRef][]int64)
-	for _, node := range q.nodes {
+// unpackCycles translates the graph IDs in a topo.Unorderable error
+// into identities.
+func unpackCycles(err error) error {
+	var unorderable topo.Unorderable
+	if !errors.As(err, &unorderable) {
+		return err
+	}
+
+	cycles := make([]string, len(unorderable))
+	for i, cycle := range unorderable {
+		identities := make([]string, len(cycle))
+		for j, node := range cycle {
+			identities[j] = node.(graphNode).node.Identity().String()
+		}
+		cycles[i] = fmt.Sprintf("%v", identities)
+	}
+	return fmt.Errorf("%v", cycles)
+}
+
+// buildProvided builds a map of provided identities to the identities
+// of the nodes that provide them.
+func (q *Queue) buildProvided() (map[tensile.Identity][]tensile.Identity, error) {
+	ret := make(map[tensile.Identity][]tensile.Identity)
+	for identity, node := range q.nodes {
 		provides, err := node.Provides()
 		if err != nil {
-			return nil, fmt.Errorf("failed to get provides for node with ID %d: %w", node.ID(), err)
+			return nil, fmt.Errorf("failed to get provides for node %s: %w", identity, err)
 		}
 		for _, p := range provides {
-			if ret[p] == nil {
-				ret[p] = []int64{node.ID()}
-			} else {
-				ret[p] = append(ret[p], node.ID())
-			}
+			ret[p] = append(ret[p], identity)
 		}
 	}
 	return ret, nil
 }
 
-// resolveNotifies resolves the notifier->handler map to a handler->notifier map with node IDs.
+// resolveNotifies resolves the notifier->handler map to a handler->notifier map.
 func resolveNotifies(
-	refToID map[tensile.NodeRef][]int64,
-	notifierToHandler map[int64][]tensile.NodeRef,
-) map[int64][]int64 {
-	ret := map[int64][]int64{}
+	provided map[tensile.Identity][]tensile.Identity,
+	notifierToHandler map[tensile.Identity][]tensile.Identity,
+) map[tensile.Identity][]tensile.Identity {
+	ret := map[tensile.Identity][]tensile.Identity{}
 
-	for nodeID, refs := range notifierToHandler {
-		for _, ref := range refs {
-			for _, handlerID := range refToID[ref] {
-				ret[handlerID] = append(ret[handlerID], nodeID)
+	for notifier, targets := range notifierToHandler {
+		for _, target := range targets {
+			for _, handler := range provided[target] {
+				ret[handler] = append(ret[handler], notifier)
 			}
 		}
 	}

@@ -9,12 +9,10 @@ import (
 	"github.com/ntnn/tensile"
 )
 
+var _ tensile.Identifier = (*FileContent)(nil)
 var _ tensile.Provider = (*FileContent)(nil)
 var _ tensile.Depender = (*FileContent)(nil)
 var _ tensile.Executor = (*FileContent)(nil)
-
-// FileContentRef is the reference type for file content operations.
-const FileContentRef = tensile.Ref("FileContent")
 
 // FileContent ensures a file is created with the specified content.
 type FileContent struct {
@@ -22,14 +20,19 @@ type FileContent struct {
 	Content string
 }
 
+// Identity implements [tensile.Identifier].
+func (f *FileContent) Identity() tensile.Identity {
+	return tensile.AsIdentity("filecontent", "path", f.Path)
+}
+
 // Provides implements [tensile.Provider].
-func (f *FileContent) Provides() ([]tensile.NodeRef, error) {
-	return []tensile.NodeRef{FileRef.To(f.Path)}, nil
+func (f *FileContent) Provides() ([]tensile.Identity, error) {
+	return []tensile.Identity{FileIdentity(f.Path)}, nil
 }
 
 // DependsOn implements [tensile.Depender].
-func (f *FileContent) DependsOn() ([]tensile.NodeRef, error) {
-	return tensile.ToMany(DirRef, parentDirs(f.Path)), nil
+func (f *FileContent) DependsOn() ([]tensile.Identity, error) {
+	return ParentDirIdentities(f.Path), nil
 }
 
 // NeedsExecution implements [tensile.Executor].

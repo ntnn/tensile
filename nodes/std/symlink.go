@@ -7,12 +7,10 @@ import (
 	"github.com/ntnn/tensile"
 )
 
+var _ tensile.Identifier = (*Symlink)(nil)
 var _ tensile.Provider = (*Symlink)(nil)
 var _ tensile.Depender = (*Symlink)(nil)
 var _ tensile.Executor = (*Symlink)(nil)
-
-// SymlinkRef is the reference type for symlinks.
-const SymlinkRef = tensile.Ref("Symlink")
 
 // Symlink ensures a symbolic link at Path points to Target.
 type Symlink struct {
@@ -20,14 +18,19 @@ type Symlink struct {
 	Target string
 }
 
+// Identity implements [tensile.Identifier].
+func (s *Symlink) Identity() tensile.Identity {
+	return tensile.AsIdentity("symlink", "path", s.Path)
+}
+
 // Provides implements [tensile.Provider].
-func (s *Symlink) Provides() ([]tensile.NodeRef, error) {
-	return []tensile.NodeRef{FileRef.To(s.Path)}, nil
+func (s *Symlink) Provides() ([]tensile.Identity, error) {
+	return []tensile.Identity{FileIdentity(s.Path)}, nil
 }
 
 // DependsOn implements [tensile.Depender].
-func (s *Symlink) DependsOn() ([]tensile.NodeRef, error) {
-	return tensile.ToMany(DirRef, parentDirs(s.Path)), nil
+func (s *Symlink) DependsOn() ([]tensile.Identity, error) {
+	return ParentDirIdentities(s.Path), nil
 }
 
 // NeedsExecution implements [tensile.Executor].

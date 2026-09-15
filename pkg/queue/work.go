@@ -17,14 +17,16 @@ type Item struct {
 
 // Work is the result of building a queue.
 type Work struct {
-	providedRefs map[tensile.NodeRef][]int64
-	// handlers maps handler node IDs to the IDs of nodes notifying them
-	handlers map[int64][]int64
+	// provided maps provided identities to the identities of the nodes
+	// providing them
+	provided map[tensile.Identity][]tensile.Identity
+	// handlers maps handler identities to the identities of nodes notifying them
+	handlers map[tensile.Identity][]tensile.Identity
 
 	lock sync.RWMutex
 	cond *sync.Cond
-	// done maps node IDs to whether the node was executed.
-	done  map[int64]bool
+	// done maps node identities to whether the node was executed.
+	done  map[tensile.Identity]bool
 	order []*tensile.Node
 }
 
@@ -65,7 +67,7 @@ func (w *Work) get() (*tensile.Node, error) {
 
 		if w.isHandler(node) && !w.wasNotified(node) {
 			// No notifying node was executed, skip the handler.
-			w.done[node.ID()] = false
+			w.done[node.Identity()] = false
 			continue
 		}
 
@@ -140,14 +142,14 @@ func (w *Work) next(ctx context.Context) (*tensile.Node, error) {
 
 // isHandler returns true if the node is registered as a handler.
 func (w *Work) isHandler(node *tensile.Node) bool {
-	_, ok := w.handlers[node.ID()]
+	_, ok := w.handlers[node.Identity()]
 	return ok
 }
 
 // wasNotified reports whether at least one notifier of the given handler node was executed.
 func (w *Work) wasNotified(node *tensile.Node) bool {
-	for _, notifierID := range w.handlers[node.ID()] {
-		if w.done[notifierID] {
+	for _, notifier := range w.handlers[node.Identity()] {
+		if w.done[notifier] {
 			return true
 		}
 	}
@@ -156,25 +158,25 @@ func (w *Work) wasNotified(node *tensile.Node) bool {
 
 func (w *Work) isReady(node *tensile.Node) (bool, error) {
 	// Handlers are only ready once all their notifiers are done.
-	for _, notifierID := range w.handlers[node.ID()] {
-		if _, done := w.done[notifierID]; !done {
+	for _, notifier := range w.handlers[node.Identity()] {
+		if _, done := w.done[notifier]; !done {
 			return false, nil
 		}
 	}
 
 	dependencies, err := node.DependsOn()
 	if err != nil {
-		return false, fmt.Errorf("failed to get dependencies for node with ID %d: %w", node.ID(), err)
+		return false, fmt.Errorf("failed to get dependencies for node %s: %w", node.Identity(), err)
 	}
 
 	for _, dep := range dependencies {
-		providers, exists := w.providedRefs[dep]
+		providers, exists := w.provided[dep]
 		if !exists {
 			// The dependency is not provided by any node, skip
 			continue
 		}
-		for _, providerID := range providers {
-			if _, done := w.done[providerID]; !done {
+		for _, provider := range providers {
+			if _, done := w.done[provider]; !done {
 				// The provider of the dependency is not done, so this node is not ready
 				return false, nil
 			}
@@ -189,7 +191,7 @@ func (w *Work) isReady(node *tensile.Node) (bool, error) {
 func (w *Work) MarkDone(node *tensile.Node, executed bool) {
 	w.lock.Lock()
 	defer w.lock.Unlock()
-	w.done[node.ID()] = executed
+	w.done[node.Identity()] = executed
 	w.cond.Broadcast()
 }
 
@@ -197,6 +199,6 @@ func (w *Work) MarkDone(node *tensile.Node, executed bool) {
 func (w *Work) Executed(node *tensile.Node) (bool, bool) {
 	w.lock.RLock()
 	defer w.lock.RUnlock()
-	executed, done := w.done[node.ID()]
+	executed, done := w.done[node.Identity()]
 	return executed, done
 }

@@ -3,17 +3,46 @@ package std
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/ntnn/tensile"
 )
 
+var _ tensile.Identifier = (*Dir)(nil)
 var _ tensile.Validator = (*Dir)(nil)
 var _ tensile.Provider = (*Dir)(nil)
 var _ tensile.Depender = (*Dir)(nil)
 var _ tensile.Executor = (*Dir)(nil)
 
-// DirRef is the reference type for directories.
-const DirRef = tensile.Ref("Dir")
+// DirIdentity returns the identity of the node managing the directory at path.
+func DirIdentity(path string) tensile.Identity {
+	return tensile.AsIdentity("dir", "path", path)
+}
+
+// parentDirs returns a list of all parent directories.
+// It does not handle relative paths.
+func parentDirs(p string) []string {
+	ret := []string{}
+	var previous string
+	for {
+		previous = p
+		p = filepath.Dir(p)
+		if previous == p {
+			return ret
+		}
+		ret = append(ret, p)
+	}
+}
+
+// ParentDirIdentities returns [Dir] identities for all parents of p.
+func ParentDirIdentities(p string) []tensile.Identity {
+	dirs := parentDirs(p)
+	ret := make([]tensile.Identity, len(dirs))
+	for i, dir := range dirs {
+		ret[i] = DirIdentity(dir)
+	}
+	return ret
+}
 
 // DefaultDirMode is the mode applied to directories when none is set.
 const DefaultDirMode = 0o755 | os.ModeDir
@@ -36,14 +65,19 @@ func (d *Dir) Validate(_ tensile.Wire) error {
 	return nil
 }
 
+// Identity implements [tensile.Identifier].
+func (d *Dir) Identity() tensile.Identity {
+	return DirIdentity(d.Path)
+}
+
 // Provides implements [tensile.Provider].
-func (d *Dir) Provides() ([]tensile.NodeRef, error) {
-	return []tensile.NodeRef{DirRef.To(d.Path)}, nil
+func (d *Dir) Provides() ([]tensile.Identity, error) {
+	return []tensile.Identity{DirIdentity(d.Path)}, nil
 }
 
 // DependsOn implements [tensile.Depender].
-func (d *Dir) DependsOn() ([]tensile.NodeRef, error) {
-	return tensile.ToMany(DirRef, parentDirs(d.Path)), nil
+func (d *Dir) DependsOn() ([]tensile.Identity, error) {
+	return ParentDirIdentities(d.Path), nil
 }
 
 // NeedsExecution implements [tensile.Executor].
