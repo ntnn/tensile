@@ -44,7 +44,7 @@ func run() error {
 		return err
 	}
 
-	if err := q.Depends(print1, print2); err != nil {
+	if err := q.DependsOn(print1, print2); err != nil {
 		return err
 	}
 

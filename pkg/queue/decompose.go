@@ -45,7 +45,7 @@ func (d *decomposition) walk(graph *tensile.Graph) ([]tensile.Identity, error) {
 	}
 
 	for _, edge := range graph.Edges() {
-		if err := d.flat.Depends(d.start(edge[1]), d.end(edge[0])); err != nil {
+		if err := d.flat.DependsOn(d.start(edge[1]), d.end(edge[0])); err != nil {
 			return nil, err
 		}
 	}
@@ -77,7 +77,7 @@ func (d *decomposition) group(group *tensile.Group) error {
 	if err := d.flat.Add(enclosing.start, endHandler); err != nil {
 		return err
 	}
-	if err := d.flat.Depends(enclosing.end.Identity(), enclosing.start.Identity()); err != nil {
+	if err := d.flat.DependsOn(enclosing.end.Identity(), enclosing.start.Identity()); err != nil {
 		return err
 	}
 
@@ -86,10 +86,10 @@ func (d *decomposition) group(group *tensile.Group) error {
 		return err
 	}
 	for _, member := range members {
-		if err := d.flat.Depends(d.start(member), enclosing.start.Identity()); err != nil {
+		if err := d.flat.DependsOn(d.start(member), enclosing.start.Identity()); err != nil {
 			return err
 		}
-		if err := d.flat.Depends(enclosing.end.Identity(), d.end(member)); err != nil {
+		if err := d.flat.DependsOn(enclosing.end.Identity(), d.end(member)); err != nil {
 			return err
 		}
 		if err := d.flat.NotifiedBy(endHandler, d.end(member)); err != nil {

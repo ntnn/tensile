@@ -38,9 +38,9 @@ func (g *Graph) Add(nodes ...Identifier) error {
 	return nil
 }
 
-// Depends adds a dependency from node to each of the nodes in dependsOn.
+// DependsOn adds a dependency from node to each of the nodes in dependsOn.
 // All referenced nodes must have been added.
-func (g *Graph) Depends(node Identifier, dependsOn ...Identifier) error {
+func (g *Graph) DependsOn(node Identifier, dependsOn ...Identifier) error {
 	if err := g.contains(node.Identity()); err != nil {
 		return err
 	}
@@ -50,6 +50,23 @@ func (g *Graph) Depends(node Identifier, dependsOn ...Identifier) error {
 			return err
 		}
 		g.edges = append(g.edges, [2]Identity{dep.Identity(), node.Identity()})
+	}
+	return nil
+}
+
+// RequiredBy is like [Graph.DependsOn] but adds a dependency from each
+// of the nodes in requiredBy to node.
+// All referenced nodes must have been added.
+func (g *Graph) RequiredBy(node Identifier, requiredBy ...Identifier) error {
+	if err := g.contains(node.Identity()); err != nil {
+		return err
+	}
+
+	for _, req := range requiredBy {
+		if err := g.contains(req.Identity()); err != nil {
+			return err
+		}
+		g.edges = append(g.edges, [2]Identity{node.Identity(), req.Identity()})
 	}
 	return nil
 }

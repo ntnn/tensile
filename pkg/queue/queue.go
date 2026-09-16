@@ -48,11 +48,17 @@ func (q *Queue) Enqueue(nodes ...tensile.Identifier) error {
 	return q.graph.Add(nodes...)
 }
 
-// Depends adds a dependency from node to each of the nodes in
-// dependsOn. If any of the nodes are not in the queue, an error is
-// returned.
-func (q *Queue) Depends(node tensile.Identifier, dependsOn ...tensile.Identifier) error {
-	return q.graph.Depends(node, dependsOn...)
+// DependsOn adds a dependency from node to each of the nodes in dependsOn.
+// All referenced nodes must have been added.
+func (q *Queue) DependsOn(node tensile.Identifier, dependsOn ...tensile.Identifier) error {
+	return q.graph.DependsOn(node, dependsOn...)
+}
+
+// RequiredBy is like [Queue.DependsOn] but adds a dependency from each
+// of the nodes in requiredBy to node.
+// All referenced nodes must have been added.
+func (q *Queue) RequiredBy(node tensile.Identifier, requiredBy ...tensile.Identifier) error {
+	return q.graph.RequiredBy(node, requiredBy...)
 }
 
 // NotifiedBy adds the notifiers as notifiers for the handler.

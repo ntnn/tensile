@@ -179,7 +179,7 @@ func TestWork_ChanBlocksManualDependencyUntilDone(t *testing.T) {
 
 	q := queue.New()
 	require.NoError(t, q.Enqueue(first, second))
-	require.NoError(t, q.Depends(second, first))
+	require.NoError(t, q.DependsOn(second, first))
 	work, err := q.Build()
 	require.NoError(t, err)
 
@@ -261,7 +261,7 @@ func TestQueue_GroupInternalDependencyGates(t *testing.T) {
 	first := testNode{Name: "first"}
 	second := testNode{Name: "second"}
 	group := testGroup(t, "group", first, second)
-	require.NoError(t, group.Depends(second, first))
+	require.NoError(t, group.DependsOn(second, first))
 	work := buildWork(t, group)
 
 	items := work.Chan(t.Context())
@@ -293,7 +293,7 @@ func TestQueue_DependsOnGroupWaitsForAllMembers(t *testing.T) {
 
 	q := queue.New()
 	require.NoError(t, q.Enqueue(group, depender))
-	require.NoError(t, q.Depends(depender, group))
+	require.NoError(t, q.DependsOn(depender, group))
 	work, err := q.Build()
 	require.NoError(t, err)
 
@@ -321,7 +321,7 @@ func TestQueue_GroupDependsOnNodeGatesAllMembers(t *testing.T) {
 
 	q := queue.New()
 	require.NoError(t, q.Enqueue(group, dep))
-	require.NoError(t, q.Depends(group, dep))
+	require.NoError(t, q.DependsOn(group, dep))
 	work, err := q.Build()
 	require.NoError(t, err)
 

@@ -52,7 +52,7 @@ func run(ctx context.Context) error {
 	if err := q.Enqueue(dir, hello, link, unitFile, service); err != nil {
 		return err
 	}
-	if err := q.Depends(service, unitFile); err != nil {
+	if err := q.DependsOn(service, unitFile); err != nil {
 		return err
 	}
 
