@@ -35,128 +35,76 @@ func (g graphNode) ID() int64 {
 // Queue aggregates [tensile.Node] and then orders them based on their
 // dependencies for execution.
 type Queue struct {
-	nodes map[tensile.Identity]*tensile.Node
-	// extraEdges are manually added edges to be considered during graph
-	// building
-	extraEdges [][2]tensile.Identity
-	// notifies maps node identities to the identities they notify
-	notifies map[tensile.Identity][]tensile.Identity
-	// handlers is a map of nodes that are handlers and also carries the
-	// list of manually added notfiers
-	handlers map[tensile.Identity][]tensile.Identity
+	graph tensile.Graph
 }
 
 // New returns a new [Queue].
 func New() *Queue {
-	return &Queue{
-		nodes:    make(map[tensile.Identity]*tensile.Node),
-		notifies: make(map[tensile.Identity][]tensile.Identity),
-		handlers: make(map[tensile.Identity][]tensile.Identity),
-	}
+	return &Queue{}
 }
 
-// Enqueue adds a value as a [tensile.Node] to the queue.
+// Enqueue adds values as [tensile.Node] to the queue.
 func (q *Queue) Enqueue(nodes ...tensile.Identifier) error {
-	for _, raw := range nodes {
-		node := tensile.NewNode(raw)
-
-		if err := q.enqueue(node); err != nil {
-			return err
-		}
-
-		if _, isHandler := raw.(*tensile.Handler); isHandler {
-			q.handlers[node.Identity()] = []tensile.Identity{}
-		}
-	}
-	return nil
-}
-
-func (q *Queue) enqueue(node *tensile.Node) error {
-	identity := node.Identity()
-
-	if _, exists := q.nodes[identity]; exists {
-		return fmt.Errorf("node %s already exists in the queue", identity)
-	}
-
-	notifies, err := node.Notifies()
-	if err != nil {
-		return fmt.Errorf("failed to get notifications for node %s: %w", identity, err)
-	}
-	if len(notifies) > 0 {
-		q.notifies[identity] = notifies
-	}
-
-	q.nodes[identity] = node
-	return nil
+	return q.graph.Add(nodes...)
 }
 
 // Depends adds a dependency from node to each of the nodes in
-// dependsOn. If any of the nodes in dependsOn are not in the queue, an
-// error is returned.
+// dependsOn. If any of the nodes are not in the queue, an error is
+// returned.
 func (q *Queue) Depends(node tensile.Identifier, dependsOn ...tensile.Identifier) error {
-	if _, exists := q.nodes[node.Identity()]; !exists {
-		return fmt.Errorf("node %s is not in the queue", node.Identity())
-	}
-
-	for _, dep := range dependsOn {
-		if _, exists := q.nodes[dep.Identity()]; !exists {
-			return fmt.Errorf("dependency node %s is not in the queue", dep.Identity())
-		}
-		q.extraEdges = append(q.extraEdges, [2]tensile.Identity{dep.Identity(), node.Identity()})
-	}
-	return nil
+	return q.graph.Depends(node, dependsOn...)
 }
 
 // NotifiedBy adds the notifiers as notifiers for the handler.
 // If either the handler or notifiers are not in the queue an error is returned.
 func (q *Queue) NotifiedBy(handler *tensile.Handler, notifiers ...tensile.Identifier) error {
-	if _, isKnown := q.handlers[handler.Identity()]; !isKnown {
-		return fmt.Errorf("handler %s is not in the queue", handler.Identity())
-	}
-
-	for _, notifier := range notifiers {
-		if _, exists := q.nodes[notifier.Identity()]; !exists {
-			return fmt.Errorf("notifier node %s is not in the queue", notifier.Identity())
-		}
-		q.handlers[handler.Identity()] = append(q.handlers[handler.Identity()], notifier.Identity())
-	}
-
-	return nil
+	return q.graph.NotifiedBy(handler, notifiers...)
 }
 
 // Build returns the nodes in the queue in the order they should be
 // executed. If there is a cycle in the graph, an error is returned.
 func (q *Queue) Build() (*Work, error) { //nolint:cyclop
-	// Add all nodes to the graph first
-	directed := simple.NewDirectedGraph()
-	for identity, node := range q.nodes {
-		directed.AddNode(graphNode{id: graphID(identity), node: node})
+	d := newDecomposition()
+	if _, err := d.walk(&q.graph); err != nil {
+		return nil, err
 	}
 
-	// edge adds a directed edge from one identity to another.
-	edge := func(from, to tensile.Identity) {
-		directed.SetEdge(directed.NewEdge(
-			directed.Node(graphID(from)),
-			directed.Node(graphID(to)),
-		))
+	nodes := make(map[tensile.Identity]*tensile.Node)
+	directed := simple.NewDirectedGraph()
+	for _, raw := range d.flat.Nodes() {
+		node := tensile.NewNode(raw)
+		nodes[node.Identity()] = node
+		directed.AddNode(graphNode{id: graphID(node.Identity()), node: node})
 	}
 
 	work := new(Work)
 	work.cond = sync.NewCond(&work.lock)
 	work.done = make(map[tensile.Identity]bool)
+	work.dependencies = make(map[tensile.Identity][]tensile.Identity)
 
-	// Build a map of provided identities to the nodes that provide them
-	provided, err := q.buildProvided()
-	if err != nil {
-		return nil, fmt.Errorf("failed to build providers: %w", err)
+	// edge adds a directed edge from one identity to another and
+	// records it as a runtime dependency, so manual and automatic
+	// edges gate readiness the same way.
+	edge := func(from, to tensile.Identity) {
+		directed.SetEdge(directed.NewEdge(
+			directed.Node(graphID(from)),
+			directed.Node(graphID(to)),
+		))
+		work.dependencies[to] = append(work.dependencies[to], from)
 	}
-	work.provided = provided
+
+	// Build a map of provided identities to the nodes that provide
+	// them and collect notifications.
+	provided, notifies, err := collect(nodes)
+	if err != nil {
+		return nil, err
+	}
 
 	// Build the handlers->notifiers map
-	work.handlers = resolveNotifies(provided, q.notifies)
+	work.handlers = resolveNotifies(provided, notifies)
 
 	// Add the manual notifiers
-	for handler, notifiers := range q.handlers {
+	for handler, notifiers := range d.flat.Handlers() {
 		work.handlers[handler] = append(work.handlers[handler], notifiers...)
 	}
 
@@ -167,10 +115,20 @@ func (q *Queue) Build() (*Work, error) { //nolint:cyclop
 		}
 	}
 
+	// Add the barrier start and end nodes of each group into the
+	// provided map for other nodes to reference.
+	for identity, enclosing := range d.groups {
+		provided[identity] = append(
+			provided[identity],
+			enclosing.start.Identity(),
+			enclosing.end.Identity(),
+		)
+	}
+
 	// Iterate over all nodes and check if any dependency they declare
 	// is provided by another node. If so add an edge from the provider
 	// to the depender.
-	for identity, node := range q.nodes {
+	for identity, node := range nodes {
 		dependencies, err := node.DependsOn()
 		if err != nil {
 			return nil, fmt.Errorf("failed to get dependencies for node %s: %w", identity, err)
@@ -189,9 +147,9 @@ func (q *Queue) Build() (*Work, error) { //nolint:cyclop
 		}
 	}
 
-	// Add any extra edges that were added via Depends.
-	for _, extra := range q.extraEdges {
-		edge(extra[0], extra[1])
+	// Add the declared edges.
+	for _, declared := range d.flat.Edges() {
+		edge(declared[0], declared[1])
 	}
 
 	sorted, err := topo.Sort(directed)
@@ -199,11 +157,11 @@ func (q *Queue) Build() (*Work, error) { //nolint:cyclop
 		return nil, fmt.Errorf("cycle detected in graph: %w", unpackCycles(err))
 	}
 
-	ret := make([]*tensile.Node, len(sorted))
+	order := make([]*tensile.Node, len(sorted))
 	for i, node := range sorted {
-		ret[i] = node.(graphNode).node
+		order[i] = node.(graphNode).node
 	}
-	work.order = ret
+	work.order = order
 
 	return work, nil
 }
@@ -227,20 +185,33 @@ func unpackCycles(err error) error {
 	return fmt.Errorf("%v", cycles)
 }
 
-// buildProvided builds a map of provided identities to the identities
-// of the nodes that provide them.
-func (q *Queue) buildProvided() (map[tensile.Identity][]tensile.Identity, error) {
-	ret := make(map[tensile.Identity][]tensile.Identity)
-	for identity, node := range q.nodes {
+// collect builds the map of provided identities to the identities of
+// the nodes providing them and the map of notifiers to their targets.
+func collect(nodes map[tensile.Identity]*tensile.Node) (
+	map[tensile.Identity][]tensile.Identity,
+	map[tensile.Identity][]tensile.Identity,
+	error,
+) {
+	provided := make(map[tensile.Identity][]tensile.Identity)
+	notifies := make(map[tensile.Identity][]tensile.Identity)
+	for identity, node := range nodes {
 		provides, err := node.Provides()
 		if err != nil {
-			return nil, fmt.Errorf("failed to get provides for node %s: %w", identity, err)
+			return nil, nil, fmt.Errorf("failed to get provides for node %s: %w", identity, err)
 		}
 		for _, p := range provides {
-			ret[p] = append(ret[p], identity)
+			provided[p] = append(provided[p], identity)
+		}
+
+		notified, err := node.Notifies()
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to get notifications for node %s: %w", identity, err)
+		}
+		if len(notified) > 0 {
+			notifies[identity] = notified
 		}
 	}
-	return ret, nil
+	return provided, notifies, nil
 }
 
 // resolveNotifies resolves the notifier->handler map to a handler->notifier map.

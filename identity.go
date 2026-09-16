@@ -3,6 +3,7 @@ package tensile
 import (
 	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
 )
 
@@ -54,13 +55,25 @@ func AsIdentity(kind string, kv ...string) Identity {
 	}
 
 	id := Identity{kind: kind}
-	for i := 0; i < len(kv); i += pairSize {
-		if kv[i] == "" {
+	i := 0
+	for pair := range slices.Chunk(kv, pairSize) {
+		if pair[0] == "" {
 			panic("AsIdentity: empty key")
 		}
-		id.pairs[i/pairSize].key = kv[i]
-		id.pairs[i/pairSize].value = kv[i+1]
+		id.pairs[i].key = pair[0]
+		id.pairs[i].value = pair[1]
+		i++
 	}
+	return id
+}
+
+// Kind returns the kind.
+func (id Identity) Kind() string {
+	return id.kind
+}
+
+// Identity implements [Identifier], returning itself.
+func (id Identity) Identity() Identity {
 	return id
 }
 
