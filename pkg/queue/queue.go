@@ -99,15 +99,21 @@ func (q *Queue) Build() (*Work, error) { //nolint:cyclop
 		work.dependencies[to] = append(work.dependencies[to], from)
 	}
 
-	// Build a map of provided identities to the nodes that provide
-	// them and collect notifications.
-	provided, notifies, err := collect(nodes)
+	// Build a map of identities to the node claiming them and collect notifications.
+	//
+	// A node provides a single identity - its own.
+	// But it may claim multiple identities to prevent conflicts, e.g.
+	// std.Symlink and std.File both claim the file identity to force an
+	// error when both target the same path.
+	//
+	// Duplicate claims are a conflict.
+	claimed, notifies, err := collect(nodes)
 	if err != nil {
 		return nil, err
 	}
 
 	// Build the handlers->notifiers map
-	work.handlers = resolveNotifies(provided, notifies)
+	work.handlers = resolveNotifies(claimed, notifies)
 
 	// Add the manual notifiers
 	for handler, notifiers := range d.flat.Handlers() {
@@ -121,19 +127,17 @@ func (q *Queue) Build() (*Work, error) { //nolint:cyclop
 		}
 	}
 
-	// Add the barrier start and end nodes of each group into the
-	// provided map for other nodes to reference.
+	// Barrier start and end nodes of each group are referenced by the group identity.
+	groups := make(map[tensile.Identity][]tensile.Identity, len(d.groups))
 	for identity, enclosing := range d.groups {
-		provided[identity] = append(
-			provided[identity],
+		groups[identity] = []tensile.Identity{
 			enclosing.start.Identity(),
 			enclosing.end.Identity(),
-		)
+		}
 	}
 
-	// Iterate over all nodes and check if any dependency they declare
-	// is provided by another node. If so add an edge from the provider
-	// to the depender.
+	// Iterate over all nodes and check if any dependency they declare is claimed by another node.
+	// If so add an edge from the provider to the depender.
 	for identity, node := range nodes {
 		dependencies, err := node.DependsOn()
 		if err != nil {
@@ -141,14 +145,12 @@ func (q *Queue) Build() (*Work, error) { //nolint:cyclop
 		}
 
 		for _, dep := range dependencies {
-			providers, ok := provided[dep]
-			if !ok {
-				// dependencies are not required, nodes are giving
-				// every possible value they can depend on
+			if owner, ok := claimed[dep]; ok {
+				edge(owner, identity)
 				continue
 			}
-			for _, provider := range providers {
-				edge(provider, identity)
+			for _, barrier := range groups[dep] {
+				edge(barrier, identity)
 			}
 		}
 	}
@@ -191,22 +193,37 @@ func unpackCycles(err error) error {
 	return fmt.Errorf("%v", cycles)
 }
 
-// collect builds the map of provided identities to the identities of
-// the nodes providing them and the map of notifiers to their targets.
+// collect builds the map of conflict identities to the identity of the
+// node claiming them and the map of notifiers to their targets.
 func collect(nodes map[tensile.Identity]*tensile.Node) (
-	map[tensile.Identity][]tensile.Identity,
+	map[tensile.Identity]tensile.Identity,
 	map[tensile.Identity][]tensile.Identity,
 	error,
 ) {
-	provided := make(map[tensile.Identity][]tensile.Identity)
+	claimed := make(map[tensile.Identity]tensile.Identity)
 	notifies := make(map[tensile.Identity][]tensile.Identity)
-	for identity, node := range nodes {
-		provides, err := node.Provides()
-		if err != nil {
-			return nil, nil, fmt.Errorf("failed to get provides for node %s: %w", identity, err)
+
+	claim := func(claim, owner tensile.Identity) error {
+		if existing, ok := claimed[claim]; ok && existing != owner {
+			return fmt.Errorf("nodes %s and %s conflict on %s", existing, owner, claim)
 		}
-		for _, p := range provides {
-			provided[p] = append(provided[p], identity)
+		claimed[claim] = owner
+		return nil
+	}
+
+	for identity, node := range nodes {
+		if err := claim(identity, identity); err != nil {
+			return nil, nil, err
+		}
+
+		conflicts, err := node.Conflicts()
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to get conflicts for node %s: %w", identity, err)
+		}
+		for _, c := range conflicts {
+			if err := claim(c, identity); err != nil {
+				return nil, nil, err
+			}
 		}
 
 		notified, err := node.Notifies()
@@ -217,19 +234,20 @@ func collect(nodes map[tensile.Identity]*tensile.Node) (
 			notifies[identity] = notified
 		}
 	}
-	return provided, notifies, nil
+
+	return claimed, notifies, nil
 }
 
 // resolveNotifies resolves the notifier->handler map to a handler->notifier map.
 func resolveNotifies(
-	provided map[tensile.Identity][]tensile.Identity,
+	claimed map[tensile.Identity]tensile.Identity,
 	notifierToHandler map[tensile.Identity][]tensile.Identity,
 ) map[tensile.Identity][]tensile.Identity {
 	ret := map[tensile.Identity][]tensile.Identity{}
 
 	for notifier, targets := range notifierToHandler {
 		for _, target := range targets {
-			for _, handler := range provided[target] {
+			if handler, ok := claimed[target]; ok {
 				ret[handler] = append(ret[handler], notifier)
 			}
 		}
