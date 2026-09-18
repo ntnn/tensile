@@ -13,7 +13,7 @@ import (
 
 type testNode struct {
 	Name     string
-	Provide  []tensile.Identity
+	Conflict []tensile.Identity
 	DependOn []tensile.Identity
 }
 
@@ -21,8 +21,8 @@ func (n testNode) Identity() tensile.Identity {
 	return tensile.AsIdentity("test", "name", n.Name)
 }
 
-func (n testNode) Provides() ([]tensile.Identity, error) {
-	return n.Provide, nil
+func (n testNode) Conflicts() ([]tensile.Identity, error) {
+	return n.Conflict, nil
 }
 
 func (n testNode) DependsOn() ([]tensile.Identity, error) {
@@ -61,6 +61,31 @@ func nodeIdentity(t *testing.T, input tensile.Identifier) tensile.Identity {
 	return tensile.NewNode(input).Identity()
 }
 
+func TestQueue_BuildErrorsOnSharedConflictIdentity(t *testing.T) {
+	t.Parallel()
+
+	ref := tensile.AsIdentity("testres", "name", "shared")
+	a := testNode{Name: "a", Conflict: []tensile.Identity{ref}}
+	b := testNode{Name: "b", Conflict: []tensile.Identity{ref}}
+
+	q := queue.New()
+	require.NoError(t, q.Enqueue(a, b))
+	_, err := q.Build()
+	require.ErrorContains(t, err, "conflict")
+}
+
+func TestQueue_BuildErrorsOnConflictWithNodeIdentity(t *testing.T) {
+	t.Parallel()
+
+	a := testNode{Name: "a"}
+	b := testNode{Name: "b", Conflict: []tensile.Identity{nodeIdentity(t, a)}}
+
+	q := queue.New()
+	require.NoError(t, q.Enqueue(a, b))
+	_, err := q.Build()
+	require.ErrorContains(t, err, "conflict")
+}
+
 func TestWork_ChanYieldsAllIndependentNodesAndCloses(t *testing.T) {
 	t.Parallel()
 
@@ -87,7 +112,7 @@ func TestWork_ChanBlocksDependentUntilProviderDone(t *testing.T) {
 	t.Parallel()
 
 	ref := tensile.AsIdentity("testres", "name", "dep")
-	provider := testNode{Name: "provider", Provide: []tensile.Identity{ref}}
+	provider := testNode{Name: "provider", Conflict: []tensile.Identity{ref}}
 	depender := testNode{Name: "depender", DependOn: []tensile.Identity{ref}}
 	work := buildWork(t, provider, depender)
 
@@ -117,7 +142,7 @@ func TestWork_ChanYieldsContextErrorWhileWaiting(t *testing.T) {
 	t.Parallel()
 
 	ref := tensile.AsIdentity("testres", "name", "dep")
-	provider := testNode{Name: "provider", Provide: []tensile.Identity{ref}}
+	provider := testNode{Name: "provider", Conflict: []tensile.Identity{ref}}
 	depender := testNode{Name: "depender", DependOn: []tensile.Identity{ref}}
 	work := buildWork(t, provider, depender)
 

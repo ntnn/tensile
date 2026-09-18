@@ -34,13 +34,13 @@ func (n *Node) Validate(wire Wire) error {
 	return nil
 }
 
-// Provides calls .Provides on the wrapped node if it implements it.
-func (n *Node) Provides() ([]Identity, error) {
-	provider, ok := n.wrapped.(Provider)
+// Conflicts calls .Conflicts on the wrapped node if it implements it.
+func (n *Node) Conflicts() ([]Identity, error) {
+	conflictor, ok := n.wrapped.(Conflictor)
 	if !ok {
 		return nil, nil
 	}
-	return provider.Provides()
+	return conflictor.Conflicts()
 }
 
 // DependsOn calls .DependsOn on the wrapped node if it implements it.

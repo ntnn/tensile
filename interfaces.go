@@ -15,16 +15,16 @@ type Validator interface {
 	Validate(wire Wire) error
 }
 
-// Provider is the interface to be satisfied by a [Node] when it
-// provides resources, e.g. installing a package or creating a file.
+// Conflictor is the interface to be satisfied by a [Node] when it touches resources beyond its own identity.
 //
-// It can be provided to add aliases with conflicting [Node], e.g.
-// std.Symlink, std.File and std.FileContent would conflict so std.Symlink also
-// yields the std.File identity as provides.
-type Provider interface {
-	// Provides returns a list of resources the node will provide, e.g.
-	// a list of packages or files.
-	Provides() ([]Identity, error)
+// e.g. std.Symlink and std.FileContent both touch the file at their path.
+//
+// A node implicitly conflicts with its own identity.
+// Two nodes sharing any conflict identity is an error when building the final graph.
+type Conflictor interface {
+	// Conflicts returns the identities of resources the node touches,
+	// e.g. packages or files.
+	Conflicts() ([]Identity, error)
 }
 
 // Depender is the interface to be satisfied by a [Node] when it depends

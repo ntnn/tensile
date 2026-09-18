@@ -10,7 +10,6 @@ import (
 
 var _ tensile.Identifier = (*Dir)(nil)
 var _ tensile.Validator = (*Dir)(nil)
-var _ tensile.Provider = (*Dir)(nil)
 var _ tensile.Depender = (*Dir)(nil)
 var _ tensile.Executor = (*Dir)(nil)
 
@@ -68,11 +67,6 @@ func (d *Dir) Validate(_ tensile.Wire) error {
 // Identity implements [tensile.Identifier].
 func (d *Dir) Identity() tensile.Identity {
 	return DirIdentity(d.Path)
-}
-
-// Provides implements [tensile.Provider].
-func (d *Dir) Provides() ([]tensile.Identity, error) {
-	return []tensile.Identity{DirIdentity(d.Path)}, nil
 }
 
 // DependsOn implements [tensile.Depender].

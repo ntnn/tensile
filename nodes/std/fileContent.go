@@ -10,7 +10,7 @@ import (
 )
 
 var _ tensile.Identifier = (*FileContent)(nil)
-var _ tensile.Provider = (*FileContent)(nil)
+var _ tensile.Conflictor = (*FileContent)(nil)
 var _ tensile.Depender = (*FileContent)(nil)
 var _ tensile.Executor = (*FileContent)(nil)
 
@@ -25,8 +25,8 @@ func (f *FileContent) Identity() tensile.Identity {
 	return tensile.AsIdentity("filecontent", "path", f.Path)
 }
 
-// Provides implements [tensile.Provider].
-func (f *FileContent) Provides() ([]tensile.Identity, error) {
+// Conflicts implements [tensile.Conflictor].
+func (f *FileContent) Conflicts() ([]tensile.Identity, error) {
 	return []tensile.Identity{FileIdentity(f.Path)}, nil
 }
 

@@ -8,7 +8,7 @@ import (
 )
 
 var _ tensile.Identifier = (*Symlink)(nil)
-var _ tensile.Provider = (*Symlink)(nil)
+var _ tensile.Conflictor = (*Symlink)(nil)
 var _ tensile.Depender = (*Symlink)(nil)
 var _ tensile.Executor = (*Symlink)(nil)
 
@@ -23,8 +23,8 @@ func (s *Symlink) Identity() tensile.Identity {
 	return tensile.AsIdentity("symlink", "path", s.Path)
 }
 
-// Provides implements [tensile.Provider].
-func (s *Symlink) Provides() ([]tensile.Identity, error) {
+// Conflicts implements [tensile.Conflictor].
+func (s *Symlink) Conflicts() ([]tensile.Identity, error) {
 	return []tensile.Identity{FileIdentity(s.Path)}, nil
 }
 
