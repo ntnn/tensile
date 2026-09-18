@@ -45,6 +45,13 @@ type Notifier interface {
 	Notifies() ([]Identity, error)
 }
 
+// Reporter is the interface to be satisfied by a [Node] when it reports an output.
+type Reporter interface {
+	// Report returns the node's output.
+	// It is called after the node completed and must not modify the system.
+	Report(wire Wire) (any, error)
+}
+
 // Executor is the interface to be satisfied by a [Node] to be executed.
 type Executor interface {
 	// NeedsExecution is run before Execute. NeedsExecution must not
