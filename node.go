@@ -4,6 +4,9 @@ package tensile
 type Node struct {
 	wrapped  any
 	identity Identity
+
+	// when gates the node, the zero value is always enabled
+	when Condition
 }
 
 // NewNode wraps an [Identifier] into a [Node].
@@ -21,13 +24,55 @@ func NewNode(input Identifier) *Node {
 	}
 }
 
+// Condition gates a [Node].
+type Condition struct {
+	// Reads are dependencies the condition may read.
+	Reads []Identity
+	// Cond decides whether the node runs.
+	// nil means always enabled.
+	Cond func(Wire) (bool, error)
+}
+
+// Cond returns a [Condition] from fn and the dependencies it reads.
+func Cond(fn func(Wire) (bool, error), reads ...Identity) Condition {
+	return Condition{
+		Reads: reads,
+		Cond:  fn,
+	}
+}
+
+// When wraps input into a [Node] whose execution is gated by cond.
+// If the condition returns false the node's validation and execution is skipped.
+// [Condition.Reads] are added to the node's dependencies.
+func When(cond Condition, input Identifier) *Node {
+	node := NewNode(input)
+	node.when = cond
+	return node
+}
+
+// enabled evaluates the when condition, nil means enabled.
+func (n *Node) enabled(wire Wire) (bool, error) {
+	if n.when.Cond == nil {
+		return true, nil
+	}
+	return n.when.Cond(wire)
+}
+
 // Identity returns the identity of the wrapped node.
 func (n *Node) Identity() Identity {
 	return n.identity
 }
 
 // Validate calls .Validate on the wrapped node if it implements it.
+// A disabled node validates nothing.
 func (n *Node) Validate(wire Wire) error {
+	enabled, err := n.enabled(wire)
+	if err != nil {
+		return err
+	}
+	if !enabled {
+		return nil
+	}
 	if validator, ok := n.wrapped.(Validator); ok {
 		return validator.Validate(wire)
 	}
@@ -47,9 +92,13 @@ func (n *Node) Conflicts() ([]Identity, error) {
 func (n *Node) DependsOn() ([]Identity, error) {
 	depender, ok := n.wrapped.(Depender)
 	if !ok {
-		return nil, nil
+		return n.when.Reads, nil
 	}
-	return depender.DependsOn()
+	deps, err := depender.DependsOn()
+	if err != nil {
+		return nil, err
+	}
+	return append(deps, n.when.Reads...), nil
 }
 
 // Notifies calls .Notifies on the wrapped node if it implements it.
@@ -74,6 +123,13 @@ func (n *Node) Report(wire Wire) (any, bool, error) {
 
 // NeedsExecution calls .NeedsExecution on the wrapped node if it implements it.
 func (n *Node) NeedsExecution(wire Wire) (bool, error) {
+	enabled, err := n.enabled(wire)
+	if err != nil {
+		return false, err
+	}
+	if !enabled {
+		return false, nil
+	}
 	if executor, ok := n.wrapped.(Executor); ok {
 		return executor.NeedsExecution(wire)
 	}
@@ -82,6 +138,13 @@ func (n *Node) NeedsExecution(wire Wire) (bool, error) {
 
 // Execute calls .Execute on the wrapped node if it implements it.
 func (n *Node) Execute(wire Wire) error {
+	enabled, err := n.enabled(wire)
+	if err != nil {
+		return err
+	}
+	if !enabled {
+		return nil
+	}
 	if executor, ok := n.wrapped.(Executor); ok {
 		return executor.Execute(wire)
 	}
