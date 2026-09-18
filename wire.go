@@ -18,6 +18,7 @@ type Wire interface {
 	Logger() *slog.Logger
 
 	// Storage the [storage.Store], which provides output of other nodes.
+	// The [storage.Store] only gives access to output of [Node] declared as dependencies.
 	Storage() *storage.Store[Identity]
 }
 
