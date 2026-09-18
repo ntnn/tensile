@@ -13,6 +13,14 @@ var _ tensile.Identifier = (*FileContent)(nil)
 var _ tensile.Conflictor = (*FileContent)(nil)
 var _ tensile.Depender = (*FileContent)(nil)
 var _ tensile.Executor = (*FileContent)(nil)
+var _ tensile.Reporter = (*FileContent)(nil)
+
+// FileContentOutput is the output reported by [FileContent].
+type FileContentOutput struct {
+	Path string
+	// SHA256 is the hex-encoded checksum of the content.
+	SHA256 string
+}
 
 // FileContent ensures a file is created with the specified content.
 type FileContent struct {
@@ -66,4 +74,12 @@ func (f *FileContent) Execute(_ tensile.Wire) error {
 		return fmt.Errorf("error writing to file: %w", err)
 	}
 	return nil
+}
+
+// Report implements [tensile.Reporter].
+func (f *FileContent) Report(_ tensile.Wire) (any, error) {
+	return FileContentOutput{
+		Path:   f.Path,
+		SHA256: fmt.Sprintf("%x", sha256.Sum256([]byte(f.Content))),
+	}, nil
 }

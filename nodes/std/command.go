@@ -13,6 +13,14 @@ import (
 var _ tensile.Identifier = (*Command)(nil)
 var _ tensile.Validator = (*Command)(nil)
 var _ tensile.Executor = (*Command)(nil)
+var _ tensile.Reporter = (*Command)(nil)
+
+// CommandOutput is the output reported by [Command].
+type CommandOutput struct {
+	// Output is the combined stdout and stderr of the executed
+	// command, empty when the command was not executed.
+	Output string
+}
 
 // WellKnownShellArgs maps shells to arguments so that [Command.Command] can be executed by the shell.
 // It is used to fill [Command.Args] if it is empty based on [Command.Shell].
@@ -71,6 +79,9 @@ type Command struct {
 
 	// run executes the interpreter and returns combined output.
 	run func(wire tensile.Wire, args ...string) ([]byte, error)
+
+	// out is the combined output of the executed command for Report.
+	out []byte
 }
 
 // Identity implements [tensile.Identifier].
@@ -169,10 +180,13 @@ func (c *Command) Execute(wire tensile.Wire) error {
 	if err != nil {
 		return fmt.Errorf("running command: %w: %s", err, strings.TrimSpace(string(out)))
 	}
-	if len(out) > 0 {
-		wire.Logger().Debug("command output", "output", string(out))
-	}
+	c.out = out
 	return nil
+}
+
+// Report implements [tensile.Reporter].
+func (c *Command) Report(_ tensile.Wire) (any, error) {
+	return CommandOutput{Output: string(c.out)}, nil
 }
 
 func (c *Command) shell() string {
