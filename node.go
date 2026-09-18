@@ -61,6 +61,17 @@ func (n *Node) Notifies() ([]Identity, error) {
 	return notifier.Notifies()
 }
 
+// Report calls .Report on the wrapped node if it implements it.
+// The bool reports whether the wrapped node is a [Reporter].
+func (n *Node) Report(wire Wire) (any, bool, error) {
+	reporter, ok := n.wrapped.(Reporter)
+	if !ok {
+		return nil, false, nil
+	}
+	output, err := reporter.Report(wire)
+	return output, true, err
+}
+
 // NeedsExecution calls .NeedsExecution on the wrapped node if it implements it.
 func (n *Node) NeedsExecution(wire Wire) (bool, error) {
 	if executor, ok := n.wrapped.(Executor); ok {

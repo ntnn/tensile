@@ -2,6 +2,7 @@ package queue
 
 import (
 	"context"
+	"slices"
 	"sync"
 
 	"github.com/ntnn/tensile"
@@ -26,6 +27,12 @@ type Work struct {
 	// done maps node identities to whether the node was executed.
 	done  map[tensile.Identity]bool
 	order []*tensile.Node
+}
+
+// Dependencies returns the identities of the direct dependencies of
+// the node with the given identity.
+func (w *Work) Dependencies(identity tensile.Identity) []tensile.Identity {
+	return slices.Clone(w.dependencies[identity])
 }
 
 // Get returns the next node that is ready to be executed.
