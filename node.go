@@ -45,6 +45,10 @@ func Cond(fn func(Wire) (bool, error), reads ...Identity) Condition {
 // If the condition returns false the node's validation and execution is skipped.
 // [Condition.Reads] are added to the node's dependencies.
 func When(cond Condition, input Identifier) *Node {
+	if _, isGroup := input.(*Group); isGroup {
+		// TODO(ntnn): Make group gateable...
+		panic("group cannot be gated currently")
+	}
 	node := NewNode(input)
 	node.when = cond
 	return node
