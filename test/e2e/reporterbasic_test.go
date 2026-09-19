@@ -13,7 +13,7 @@ import (
 func TestReporterBasic(t *testing.T) {
 	t.Parallel()
 
-	env := framework.SharedContainer(t, framework.ArchLinux, "reporterbasic")
+	env := framework.SharedContainer(t, framework.ArchLinux, framework.Scenario{Name: "reporterbasic"})
 
 	exit, out := env.RunScenario(t)
 	require.Zero(t, exit, out)
