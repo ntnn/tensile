@@ -3,6 +3,7 @@ package std
 import (
 	"context"
 	"fmt"
+	"iter"
 	"slices"
 	"sync"
 )
@@ -44,6 +45,19 @@ func (r *registry[T]) byName(name string) (T, error) {
 		return zero, fmt.Errorf("no %s registered under %q", r.kind, name)
 	}
 	return manager, nil
+}
+
+// all yields registered managers in registration order.
+func (r *registry[T]) all() iter.Seq2[string, T] {
+	return func(yield func(string, T) bool) {
+		r.lock.RLock()
+		defer r.lock.RUnlock()
+		for _, name := range r.order {
+			if !yield(name, r.entries[name]) {
+				return
+			}
+		}
+	}
 }
 
 // detect walks managers in reverse registration order so a later registration wins over an earlier one.
