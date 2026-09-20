@@ -3,6 +3,7 @@ version: '2'
 run:
   timeout: 5m
   allow-parallel-runners: true
+  relative-path-mode: cfg
 
 issues:
   max-issues-per-linter: 0
@@ -96,6 +97,9 @@ linters:
   exclusions:
     rules:
       - path: _test\.go
+        linters:
+          - goconst
+      - path: ^test/e2e/
         linters:
           - goconst
 
