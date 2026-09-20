@@ -49,14 +49,22 @@ var OpenWrtImages = map[string]Image{
 var OpenWrt2410 = Image{
 	Ref:        "docker.io/openwrt/rootfs:x86_64-24.10.8",
 	Entrypoint: []string{"/sbin/init"},
-	WaitCmd:    []string{"ubus", "call", "system", "board"},
+	// procd wraps services in ujail, which needs to clone mount
+	// namespaces: blocked by the default seccomp profile without
+	// CAP_SYS_ADMIN and by docker's AppArmor profile on AppArmor hosts
+	CapAdd:      []string{"SYS_ADMIN"},
+	SecurityOpt: []string{"seccomp=unconfined", "apparmor=unconfined"},
+	WaitCmd:     []string{"ubus", "call", "system", "board"},
 }
 
 // OpenWrt2512 is an OpenWrt 25.12 machine with procd as PID 1 and apk.
 var OpenWrt2512 = Image{
 	Ref:        "docker.io/openwrt/rootfs:x86_64-25.12.4",
 	Entrypoint: []string{"/sbin/init"},
-	WaitCmd:    []string{"ubus", "call", "system", "board"},
+	// see OpenWrt2410
+	CapAdd:      []string{"SYS_ADMIN"},
+	SecurityOpt: []string{"seccomp=unconfined", "apparmor=unconfined"},
+	WaitCmd:     []string{"ubus", "call", "system", "board"},
 }
 
 // sleepEntrypoint keeps a plain container running without an init.
