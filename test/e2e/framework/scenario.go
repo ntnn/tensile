@@ -54,12 +54,12 @@ func (s Scenario) Build(t *testing.T) string {
 	return out
 }
 
-// Deploy builds the scenario and copies it to /usr/local/bin/<Name>.
+// Deploy builds the scenario and copies it to /usr/local/bin/tensile-<Name>.
 func (s Scenario) Deploy(t *testing.T, ctr testcontainers.Container) *Env {
 	t.Helper()
 
 	bin := s.Build(t)
-	binPath := "/usr/local/bin/" + s.Name
+	binPath := "/usr/local/bin/tensile-" + s.Name
 
 	err := ctr.CopyFileToContainer(t.Context(), bin, binPath, containerFileMode)
 	require.NoError(t, err, "deploying scenario %q", s.Name)
