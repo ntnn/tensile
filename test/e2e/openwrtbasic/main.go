@@ -29,10 +29,27 @@ func run(ctx context.Context) error {
 		Creates: "/opt/e2e/command-ran",
 	}
 
-	if err := q.Enqueue(dir, file, cmd); err != nil {
+	pkg := &std.Package{Name: "tree"}
+
+	// cron refuses to start with an empty /etc/crontabs
+	crontab := &std.FileContent{
+		Path:    "/etc/crontabs/root",
+		Content: "* * * * * true\n",
+	}
+	enabled, running := true, true
+	service := &std.Service{
+		Name:    "cron",
+		Enabled: &enabled,
+		Running: &running,
+	}
+
+	if err := q.Enqueue(dir, file, cmd, pkg, crontab, service); err != nil {
 		return err
 	}
 	if err := q.DependsOn(cmd, dir); err != nil {
+		return err
+	}
+	if err := q.DependsOn(service, crontab); err != nil {
 		return err
 	}
 
