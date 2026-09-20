@@ -38,6 +38,18 @@ func (a *Apk) Handles(ctx context.Context, name string) (bool, error) {
 	return false, fmt.Errorf("apk info %q: %w: %s", name, err, strings.TrimSpace(string(out)))
 }
 
+// Update implements [PackageManager].
+func (a *Apk) Update(ctx context.Context) error {
+	if !a.isAvailable() {
+		return nil
+	}
+	out, err := a.apk(ctx, "update")
+	if err != nil {
+		return fmt.Errorf("apk update: %w: %s", err, strings.TrimSpace(string(out)))
+	}
+	return nil
+}
+
 // Installed implements [PackageManager].
 func (a *Apk) Installed(ctx context.Context, name string) (bool, error) {
 	out, err := a.apk(ctx, "info", "-e", name)

@@ -44,6 +44,18 @@ func (o *Opkg) Handles(ctx context.Context, name string) (bool, error) {
 	return len(bytes.TrimSpace(out)) > 0, nil
 }
 
+// Update implements [PackageManager].
+func (o *Opkg) Update(ctx context.Context) error {
+	if !o.isAvailable() {
+		return nil
+	}
+	out, err := o.opkg(ctx, "update")
+	if err != nil {
+		return fmt.Errorf("opkg update: %w: %s", err, strings.TrimSpace(string(out)))
+	}
+	return nil
+}
+
 // Installed implements [PackageManager].
 func (o *Opkg) Installed(ctx context.Context, name string) (bool, error) {
 	out, err := o.opkg(ctx, "status", name)

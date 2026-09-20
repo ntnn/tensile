@@ -8,6 +8,10 @@ import (
 type PackageManager interface {
 	// Handles reports whether this manager handles the package.
 	Handles(ctx context.Context, name string) (bool, error)
+	// Update refreshes the package lists.
+	// It does not upgrade packages.
+	// A no-op when the manager is not available or has no way of updating package lists.
+	Update(ctx context.Context) error
 	// Installed returns whether the package is installed.
 	Installed(ctx context.Context, name string) (bool, error)
 	// Install installs the package.
