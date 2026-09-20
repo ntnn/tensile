@@ -94,6 +94,11 @@ func (p *Procd) Apply(ctx context.Context, name string, desired ServiceStatus) e
 	return nil
 }
 
+// Restart implements [ServiceManager].
+func (p *Procd) Restart(ctx context.Context, name string) error {
+	return p.transition(ctx, name, "restart")
+}
+
 func (p *Procd) transition(ctx context.Context, name, verb string) error {
 	code, out, err := p.initd(ctx, name, verb)
 	if err != nil {

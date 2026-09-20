@@ -18,6 +18,8 @@ type ServiceManager interface {
 	Status(ctx context.Context, name string) (ServiceStatus, error)
 	// Apply transitions the service to the desired state.
 	Apply(ctx context.Context, name string, desired ServiceStatus) error
+	// Restart restarts the service.
+	Restart(ctx context.Context, name string) error
 }
 
 var serviceManagers = registry[ServiceManager]{kind: "service manager"}

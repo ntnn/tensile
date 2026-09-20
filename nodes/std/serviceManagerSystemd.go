@@ -86,6 +86,11 @@ func (systemd *Systemd) Apply(ctx context.Context, name string, desired ServiceS
 	return nil
 }
 
+// Restart implements [ServiceManager].
+func (systemd *Systemd) Restart(ctx context.Context, name string) error {
+	return systemd.transition(ctx, "restart", name)
+}
+
 // show queries unit properties as Key=value pairs.
 func (systemd *Systemd) show(ctx context.Context, name string) (map[string]string, error) {
 	out, err := systemd.systemctl(ctx,
