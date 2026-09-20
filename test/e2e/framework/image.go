@@ -59,9 +59,19 @@ var OpenWrt2512 = Image{
 	WaitCmd:    []string{"ubus", "call", "system", "board"},
 }
 
+// sleepEntrypoint keeps a plain container running without an init.
+var sleepEntrypoint = []string{"/bin/sh", "-c", "sleep infinity"}
+
 // ArchLinux is a plain Arch container.
 var ArchLinux = Image{
 	Ref:        "docker.io/library/archlinux:base",
-	Entrypoint: []string{"/bin/sh", "-c", "sleep infinity"},
+	Entrypoint: sleepEntrypoint,
 	WaitCmd:    []string{"pacman", "--version"},
+}
+
+// Alpine is a plain Alpine container.
+var Alpine = Image{
+	Ref:        "docker.io/library/alpine:3.22",
+	Entrypoint: sleepEntrypoint,
+	WaitCmd:    []string{"apk", "--version"},
 }
