@@ -82,7 +82,7 @@ var _ tensile.Depender = (*writeReport)(nil)
 var _ tensile.Executor = (*writeReport)(nil)
 
 func (w *writeReport) Identity() tensile.Identity {
-	return tensile.AsIdentity("writereport", "path", w.Path)
+	return tensile.AsIdentity("writeReport", "path", w.Path)
 }
 
 func (w *writeReport) DependsOn() ([]tensile.Identity, error) {

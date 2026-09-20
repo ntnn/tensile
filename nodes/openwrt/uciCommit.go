@@ -17,7 +17,7 @@ var (
 
 // UCICommitIdentity returns the identity of the node committing config.
 func UCICommitIdentity(config string) tensile.Identity {
-	return tensile.AsIdentity("ucicommit", "config", config)
+	return tensile.AsIdentity("uciCommit", "config", config)
 }
 
 // UCICommit commits staged uci changes.

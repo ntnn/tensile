@@ -30,7 +30,7 @@ type FileContent struct {
 
 // Identity implements [tensile.Identifier].
 func (f *FileContent) Identity() tensile.Identity {
-	return tensile.AsIdentity("filecontent", "path", f.Path)
+	return tensile.AsIdentity("fileContent", "path", f.Path)
 }
 
 // Conflicts implements [tensile.Conflictor].

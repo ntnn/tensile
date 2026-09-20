@@ -19,7 +19,7 @@ var (
 
 // UCIDeleteAnonymousSectionsIdentity returns the identity of the UCIDeleteAnonymousSectionsIdentity node.
 func UCIDeleteAnonymousSectionsIdentity(config, sectionType string) tensile.Identity {
-	return tensile.AsIdentity("ucideleteanonymoussections", "config", config, "type", sectionType)
+	return tensile.AsIdentity("uciDeleteAnonymousSections", "config", config, "type", sectionType)
 }
 
 // UCIDeleteAnonymousSections deletes all anonymous sections of a type.

@@ -15,7 +15,7 @@ var (
 
 // ServiceRestartIdentity returns the identity of the node restarting the named service.
 func ServiceRestartIdentity(name string) tensile.Identity {
-	return tensile.AsIdentity("servicerestart", "name", name)
+	return tensile.AsIdentity("serviceRestart", "name", name)
 }
 
 // ServiceRestart restarts a service.

@@ -28,7 +28,7 @@ type LineInFile struct {
 
 // Identity implements [tensile.Identifier].
 func (l *LineInFile) Identity() tensile.Identity {
-	return tensile.AsIdentity("lineinfile", "path", l.Path, "regexp", l.Regexp)
+	return tensile.AsIdentity("lineInFile", "path", l.Path, "regexp", l.Regexp)
 }
 
 // Validate implements [tensile.Validator].

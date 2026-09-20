@@ -14,7 +14,7 @@ var (
 
 // PackageManagerUpdateIdentity returns the identity of the node updating package lists.
 func PackageManagerUpdateIdentity() tensile.Identity {
-	return tensile.AsIdentity("packagemanagerupdate")
+	return tensile.AsIdentity("packageManagerUpdate")
 }
 
 // PackageManagerUpdate refreshes the package lists of all registered package managers.
