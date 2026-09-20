@@ -23,6 +23,10 @@ type Scenario struct {
 	Args []string
 	// Env is extra build environment appended after the defaults.
 	Env []string
+	// Dir is the directory containing the main package to build as the
+	// scenario binary.
+	// Defaults to `./<Scenario.Name>`
+	Dir string
 }
 
 // Build compiles ./<Name>/ as a static binary returns the binary path.
@@ -39,7 +43,12 @@ func (s Scenario) Build(t *testing.T) string {
 	}
 
 	out := filepath.Join(t.TempDir(), s.Name)
-	args = append(args, "-o", out, "./"+s.Name)
+
+	dir := s.Dir
+	if dir == "" {
+		dir = "./" + s.Name
+	}
+	args = append(args, "-o", out, dir)
 
 	//nolint:gosec // passing variables is expected
 	cmd := exec.CommandContext(t.Context(), compiler, args...)
