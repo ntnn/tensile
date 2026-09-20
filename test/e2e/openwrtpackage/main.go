@@ -1,4 +1,4 @@
-// openwrtbasic exercises core std nodes on an OpenWrt machine.
+// openwrtpackage installs a package through the detected manager.
 package main
 
 import (
@@ -19,20 +19,14 @@ func main() {
 func run(ctx context.Context) error {
 	q := queue.New()
 
-	dir := &std.Dir{Path: "/opt/e2e"}
-	file := &std.FileContent{
-		Path:    "/opt/e2e/hello.txt",
-		Content: "hello from tensile\n",
-	}
-	cmd := &std.Command{
-		Command: "touch /opt/e2e/command-ran",
-		Creates: "/opt/e2e/command-ran",
-	}
+	update := &std.PackageManagerUpdate{}
 
-	if err := q.Enqueue(dir, file, cmd); err != nil {
-		return err
-	}
-	if err := q.DependsOn(cmd, dir); err != nil {
+	// not installed, must be installed
+	install := &std.Package{Name: "tree"}
+	// not installed, must stay absent as a no-op
+	absent := &std.Package{Name: "jq", State: std.PackageAbsent}
+
+	if err := q.Enqueue(update, install, absent); err != nil {
 		return err
 	}
 

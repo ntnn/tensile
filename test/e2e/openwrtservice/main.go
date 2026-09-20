@@ -1,4 +1,4 @@
-// openwrtbasic exercises core std nodes on an OpenWrt machine.
+// openwrtservice enables and starts a service.
 package main
 
 import (
@@ -19,20 +19,22 @@ func main() {
 func run(ctx context.Context) error {
 	q := queue.New()
 
-	dir := &std.Dir{Path: "/opt/e2e"}
-	file := &std.FileContent{
-		Path:    "/opt/e2e/hello.txt",
-		Content: "hello from tensile\n",
+	// cron refuses to start with an empty /etc/crontabs
+	crontab := &std.FileContent{
+		Path:    "/etc/crontabs/root",
+		Content: "* * * * * true\n",
 	}
-	cmd := &std.Command{
-		Command: "touch /opt/e2e/command-ran",
-		Creates: "/opt/e2e/command-ran",
+	enabled, running := true, true
+	service := &std.Service{
+		Name:    "cron",
+		Enabled: &enabled,
+		Running: &running,
 	}
 
-	if err := q.Enqueue(dir, file, cmd); err != nil {
+	if err := q.Enqueue(crontab, service); err != nil {
 		return err
 	}
-	if err := q.DependsOn(cmd, dir); err != nil {
+	if err := q.DependsOn(service, crontab); err != nil {
 		return err
 	}
 

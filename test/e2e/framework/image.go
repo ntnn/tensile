@@ -39,6 +39,12 @@ var SystemdDebian = Image{
 	WaitCmd: []string{"systemctl", "is-system-running", "--wait"},
 }
 
+// OpenWrtImages are the OpenWrt releases every openwrt* test runs on.
+var OpenWrtImages = map[string]Image{
+	"24.10": OpenWrt2410,
+	"25.12": OpenWrt2512,
+}
+
 // OpenWrt2410 is an OpenWrt 24.10 machine with procd as PID 1 and opkg.
 var OpenWrt2410 = Image{
 	Ref:        "docker.io/openwrt/rootfs:x86_64-24.10.8",
