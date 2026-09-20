@@ -11,7 +11,7 @@ import (
 func TestHandlerBasic(t *testing.T) {
 	t.Parallel()
 
-	env := framework.SharedContainer(t, framework.ArchLinux, "handlerbasic")
+	env := framework.SharedContainer(t, framework.ArchLinux, framework.Scenario{Name: "handlerbasic"})
 
 	exit, out := env.RunScenario(t)
 	require.Zero(t, exit, out)

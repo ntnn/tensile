@@ -11,7 +11,7 @@ import (
 func TestServiceBasic(t *testing.T) {
 	t.Parallel()
 
-	env := framework.SharedContainer(t, framework.SystemdDebian, "servicebasic")
+	env := framework.SharedContainer(t, framework.SystemdDebian, framework.Scenario{Name: "servicebasic"})
 
 	exit, out := env.RunScenario(t)
 	require.Zero(t, exit, out)

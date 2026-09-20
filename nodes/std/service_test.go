@@ -13,6 +13,7 @@ type fakeServiceManager struct {
 	handles func(ctx context.Context, name string) (bool, error)
 	status  func(ctx context.Context, name string) (ServiceStatus, error)
 	apply   func(ctx context.Context, name string, desired ServiceStatus) error
+	restart func(ctx context.Context, name string) error
 }
 
 func (f *fakeServiceManager) Handles(ctx context.Context, name string) (bool, error) {
@@ -28,6 +29,10 @@ func (f *fakeServiceManager) Status(ctx context.Context, name string) (ServiceSt
 
 func (f *fakeServiceManager) Apply(ctx context.Context, name string, desired ServiceStatus) error {
 	return f.apply(ctx, name, desired)
+}
+
+func (f *fakeServiceManager) Restart(ctx context.Context, name string) error {
+	return f.restart(ctx, name)
 }
 
 func testWire(t *testing.T) tensile.Wire {

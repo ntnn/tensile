@@ -22,6 +22,10 @@ func (f *fakePackageManager) Handles(ctx context.Context, name string) (bool, er
 	return f.handles(ctx, name)
 }
 
+func (f *fakePackageManager) Update(_ context.Context) error {
+	return nil
+}
+
 func (f *fakePackageManager) Installed(ctx context.Context, name string) (bool, error) {
 	return f.installed(ctx, name)
 }

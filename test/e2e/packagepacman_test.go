@@ -11,7 +11,7 @@ import (
 func TestPackagePacman(t *testing.T) {
 	t.Parallel()
 
-	env := framework.SharedContainer(t, framework.ArchLinux, "packagepacman")
+	env := framework.SharedContainer(t, framework.ArchLinux, framework.Scenario{Name: "packagepacman"})
 
 	exit, out := env.Exec(t, "pacman", "-Sy", "--noconfirm")
 	require.Zero(t, exit, out)

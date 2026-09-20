@@ -13,7 +13,7 @@ import (
 func TestWhenBasic(t *testing.T) {
 	t.Parallel()
 
-	env := framework.SharedContainer(t, framework.ArchLinux, "whenbasic")
+	env := framework.SharedContainer(t, framework.ArchLinux, framework.Scenario{Name: "whenbasic"})
 
 	exit, out := env.RunScenario(t)
 	require.Zero(t, exit, out)

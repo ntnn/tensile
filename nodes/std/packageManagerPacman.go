@@ -46,6 +46,18 @@ func (p *Pacman) Handles(ctx context.Context, name string) (bool, error) {
 	return false, nil
 }
 
+// Update implements [PackageManager].
+func (p *Pacman) Update(ctx context.Context) error {
+	if !p.isAvailable() {
+		return nil
+	}
+	out, err := p.pacman(ctx, "-Sy")
+	if err != nil {
+		return fmt.Errorf("pacman -Sy: %w: %s", err, strings.TrimSpace(string(out)))
+	}
+	return nil
+}
+
 // Installed implements [PackageManager].
 func (p *Pacman) Installed(ctx context.Context, name string) (bool, error) {
 	out, err := p.pacman(ctx, "-Q", "--", name)

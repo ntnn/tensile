@@ -9,6 +9,7 @@ import (
 
 var _ tensile.Identifier = (*Package)(nil)
 var _ tensile.Validator = (*Package)(nil)
+var _ tensile.Depender = (*Package)(nil)
 var _ tensile.Executor = (*Package)(nil)
 
 // PackageIdentity returns the identity of the node managing the named package.
@@ -60,6 +61,12 @@ func (p *Package) Validate(_ tensile.Wire) error {
 // Identity implements [tensile.Identifier].
 func (p *Package) Identity() tensile.Identity {
 	return PackageIdentity(p.Name)
+}
+
+// DependsOn implements [tensile.Depender].
+// Package lists are updated first when a [PackageManagerUpdate] node is enqueued.
+func (p *Package) DependsOn() ([]tensile.Identity, error) {
+	return []tensile.Identity{PackageManagerUpdateIdentity()}, nil
 }
 
 // NeedsExecution implements [tensile.Executor].
