@@ -15,6 +15,7 @@ import (
 var (
 	_ tensile.Identifier = (*UCIOption[string])(nil)
 	_ tensile.Validator  = (*UCIOption[string])(nil)
+	_ tensile.Depender   = (*UCIOption[string])(nil)
 	_ tensile.Notifier   = (*UCIOption[string])(nil)
 	_ tensile.Executor   = (*UCIOption[string])(nil)
 )
@@ -70,6 +71,13 @@ func (o *UCIOption[T]) Validate(_ tensile.Wire) error {
 // Identity implements [tensile.Identifier].
 func (o *UCIOption[T]) Identity() tensile.Identity {
 	return UCIOptionIdentity(o.Config, o.Section, o.Option)
+}
+
+// DependsOn implements [tensile.Depender].
+func (o *UCIOption[T]) DependsOn() ([]tensile.Identity, error) {
+	return []tensile.Identity{
+		UCISectionIdentity(o.Config, o.Section),
+	}, nil
 }
 
 // Notifies implements [tensile.Notifier].
