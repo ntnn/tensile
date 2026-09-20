@@ -13,6 +13,7 @@ import (
 var (
 	_ tensile.Identifier = (*UCIDeleteAnonymousSections)(nil)
 	_ tensile.Validator  = (*UCIDeleteAnonymousSections)(nil)
+	_ tensile.Notifier   = (*UCIDeleteAnonymousSections)(nil)
 	_ tensile.Executor   = (*UCIDeleteAnonymousSections)(nil)
 )
 
@@ -47,6 +48,15 @@ func (d *UCIDeleteAnonymousSections) Validate(_ tensile.Wire) error {
 // Identity implements [tensile.Identifier].
 func (d *UCIDeleteAnonymousSections) Identity() tensile.Identity {
 	return UCIDeleteAnonymousSectionsIdentity(d.Config, d.Type)
+}
+
+// Notifies implements [tensile.Notifier].
+// Staged deletions notify the config's commit and the global one.
+func (d *UCIDeleteAnonymousSections) Notifies() ([]tensile.Identity, error) {
+	return []tensile.Identity{
+		UCICommitIdentity(d.Config),
+		UCICommitIdentity(""),
+	}, nil
 }
 
 // NeedsExecution implements [tensile.Executor].
