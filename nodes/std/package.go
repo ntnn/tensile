@@ -10,6 +10,7 @@ import (
 var _ tensile.Identifier = (*Package)(nil)
 var _ tensile.Validator = (*Package)(nil)
 var _ tensile.Depender = (*Package)(nil)
+var _ tensile.Serializer = (*Package)(nil)
 var _ tensile.Executor = (*Package)(nil)
 
 // PackageIdentity returns the identity of the node managing the named package.
@@ -67,6 +68,16 @@ func (p *Package) Identity() tensile.Identity {
 // Package lists are updated first when a [PackageManagerUpdate] node is enqueued.
 func (p *Package) DependsOn() ([]tensile.Identity, error) {
 	return []tensile.Identity{PackageManagerUpdateIdentity()}, nil
+}
+
+// SerializesOn implements [tensile.Serializer].
+// If a manager is set explicitly the serialization key is per manager.
+// If it is empty the key is shared for all package manager.
+func (p *Package) SerializesOn() string {
+	if p.Manager != "" {
+		return "package-" + p.Manager
+	}
+	return "package"
 }
 
 // NeedsExecution implements [tensile.Executor].
