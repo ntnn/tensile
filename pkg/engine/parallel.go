@@ -37,6 +37,7 @@ type Parallel struct {
 
 	work    *queue.Work
 	summary *Summary
+	records []NodeSummary
 }
 
 // NewParallel creates a new Parallel execution engine.
@@ -53,6 +54,12 @@ func (p *Parallel) Summary() *Summary {
 	return p.summary
 }
 
+// Records returns the per-node execution records.
+// Only complete after Execute returned.
+func (p *Parallel) Records() []NodeSummary {
+	return p.records
+}
+
 // Execute executes the nodes in the work queue.
 func (p *Parallel) Execute(ctx context.Context) error {
 	p.opts.Logger.Info("starting engine", "workers", p.opts.Workers)
@@ -64,20 +71,27 @@ func (p *Parallel) Execute(ctx context.Context) error {
 
 	g, ctx := errgroup.WithContext(ctx)
 	items := p.work.Chan(ctx)
-	for range p.opts.Workers {
+	locals := make([][]NodeSummary, p.opts.Workers)
+	for i := range p.opts.Workers {
 		g.Go(func() error {
 			for item := range items {
 				if item.Err != nil {
 					return item.Err
 				}
-				if err := executeNode(ctx, p.opts.Options, p.work, p.summary, item.Node); err != nil {
+				ns, err := executeNode(ctx, p.opts.Options, p.work, item.Node)
+				locals[i] = append(locals[i], ns)
+				if err != nil {
 					return err
 				}
 			}
 			return nil
 		})
 	}
-	if err := g.Wait(); err != nil {
+	err := g.Wait()
+	for _, local := range locals {
+		p.records = append(p.records, local...)
+	}
+	if err != nil {
 		return err
 	}
 

@@ -12,8 +12,26 @@ import (
 	"github.com/ntnn/tensile/pkg/storage"
 )
 
-// executeNode validates and executes a single node and marks it done in the work queue.
-func executeNode(ctx context.Context, opts Options, work *queue.Work, summary *Summary, node *tensile.Node) error {
+// executeNode executes a single node via runNode and records outcome,
+// error and total wall time in the returned NodeSummary.
+func executeNode(ctx context.Context, opts Options, work *queue.Work, node *tensile.Node) (NodeSummary, error) {
+	ns := NodeSummary{
+		Identity: node.Identity(),
+		Start:    time.Now(),
+	}
+	// TODO(ntnn): refactor
+	err := runNode(ctx, opts, work, node, &ns)
+	ns.End = time.Now()
+	ns.Err = err
+	if err != nil {
+		ns.Outcome = OutcomeFailed
+	}
+	return ns, err
+}
+
+// runNode validates and executes a single node and marks it done in the
+// work queue, filling the outcome into ns.
+func runNode(ctx context.Context, opts Options, work *queue.Work, node *tensile.Node, ns *NodeSummary) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -28,8 +46,6 @@ func executeNode(ctx context.Context, opts Options, work *queue.Work, summary *S
 			deps:    work.Dependencies(node.Identity()),
 		}),
 	}
-
-	start := time.Now()
 
 	if err := node.Validate(wire); err != nil {
 		return fmt.Errorf("node validation failed: %w", err)
@@ -46,6 +62,7 @@ func executeNode(ctx context.Context, opts Options, work *queue.Work, summary *S
 			return err
 		}
 		work.MarkDone(node, false)
+		ns.Outcome = OutcomeSkipped
 		return nil
 	}
 
@@ -55,7 +72,7 @@ func executeNode(ctx context.Context, opts Options, work *queue.Work, summary *S
 			return err
 		}
 		work.MarkDone(node, true)
-		summary.NodesExecuted.Add(1)
+		ns.Outcome = OutcomeNoop
 		return nil
 	}
 
@@ -68,7 +85,7 @@ func executeNode(ctx context.Context, opts Options, work *queue.Work, summary *S
 		return err
 	}
 	work.MarkDone(node, true)
-	summary.NodesExecuted.Add(1)
+	ns.Outcome = OutcomeExecuted
 	return nil
 }
 
