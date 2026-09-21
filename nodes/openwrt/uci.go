@@ -16,6 +16,16 @@ func uciNotFound(out []byte) bool {
 	return strings.Contains(string(out), "Entry not found")
 }
 
+// uciSerializeKey builds the serialization key for a config.
+//
+// UCI stages configs in a delta file per config, so concurrent uci
+// operations fight over this delta file.
+// Anything mutating the state of a UCI config needs to serialize on
+// this key, otherwise changes may get silently lost.
+func uciSerializeKey(config string) string {
+	return "uci-" + config
+}
+
 // parseUCIValues parses uci show values into their string values.
 //
 // uci show renders option values single-quoted and space-separated:

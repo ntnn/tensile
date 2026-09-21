@@ -15,6 +15,7 @@ var (
 	_ tensile.Validator  = (*UCIDeleteAnonymousSections)(nil)
 	_ tensile.Notifier   = (*UCIDeleteAnonymousSections)(nil)
 	_ tensile.Executor   = (*UCIDeleteAnonymousSections)(nil)
+	_ tensile.Serializer = (*UCIDeleteAnonymousSections)(nil)
 )
 
 // UCIDeleteAnonymousSectionsIdentity returns the identity of the UCIDeleteAnonymousSectionsIdentity node.
@@ -57,6 +58,11 @@ func (d *UCIDeleteAnonymousSections) Notifies() ([]tensile.Identity, error) {
 		UCICommitIdentity(d.Config),
 		UCICommitIdentity(""),
 	}, nil
+}
+
+// SerializesOn implements [tensile.Serializer].
+func (d *UCIDeleteAnonymousSections) SerializesOn() []string {
+	return []string{uciSerializeKey(d.Config)}
 }
 
 // NeedsExecution implements [tensile.Executor].

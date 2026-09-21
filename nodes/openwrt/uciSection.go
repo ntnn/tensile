@@ -16,6 +16,7 @@ var (
 	_ tensile.Depender   = (*UCISection)(nil)
 	_ tensile.Notifier   = (*UCISection)(nil)
 	_ tensile.Executor   = (*UCISection)(nil)
+	_ tensile.Serializer = (*UCISection)(nil)
 )
 
 // UCISectionIdentity returns the identity of the node managing the named section.
@@ -77,6 +78,11 @@ func (s *UCISection) Notifies() ([]tensile.Identity, error) {
 		UCICommitIdentity(s.Config),
 		UCICommitIdentity(""),
 	}, nil
+}
+
+// SerializesOn implements [tensile.Serializer].
+func (s *UCISection) SerializesOn() []string {
+	return []string{uciSerializeKey(s.Config)}
 }
 
 // NeedsExecution implements [tensile.Executor].

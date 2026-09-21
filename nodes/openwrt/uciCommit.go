@@ -13,6 +13,7 @@ import (
 var (
 	_ tensile.Identifier = (*UCICommit)(nil)
 	_ tensile.Executor   = (*UCICommit)(nil)
+	_ tensile.Serializer = (*UCICommit)(nil)
 )
 
 // UCICommitIdentity returns the identity of the node committing config.
@@ -35,6 +36,18 @@ type UCICommit struct {
 // Identity implements [tensile.Identifier].
 func (u *UCICommit) Identity() tensile.Identity {
 	return UCICommitIdentity(u.Config)
+}
+
+// SerializesOn implements [tensile.Serializer].
+func (u *UCICommit) SerializesOn() []string {
+	// A global commit commits all configs, so if a graph contains both
+	// UCICommit and UCICommit[config="myconfig"] they need to both lock
+	// a common key - `uci` to prevent both mutating the `myconfig`
+	// config at the same time.
+	if u.Config == "" {
+		return []string{"uci"}
+	}
+	return []string{"uci", uciSerializeKey(u.Config)}
 }
 
 // NeedsExecution implements [tensile.Executor].

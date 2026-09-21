@@ -18,6 +18,7 @@ var (
 	_ tensile.Depender   = (*UCIOption[string])(nil)
 	_ tensile.Notifier   = (*UCIOption[string])(nil)
 	_ tensile.Executor   = (*UCIOption[string])(nil)
+	_ tensile.Serializer = (*UCIOption[string])(nil)
 )
 
 // UCIValue are the value types storable in a UCI option.
@@ -87,6 +88,11 @@ func (o *UCIOption[T]) Notifies() ([]tensile.Identity, error) {
 		UCICommitIdentity(o.Config),
 		UCICommitIdentity(""),
 	}, nil
+}
+
+// SerializesOn implements [tensile.Serializer].
+func (o *UCIOption[T]) SerializesOn() []string {
+	return []string{uciSerializeKey(o.Config)}
 }
 
 // NeedsExecution implements [tensile.Executor].
