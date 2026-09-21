@@ -47,6 +47,14 @@ func (ns NodeSummary) Duration() time.Duration {
 	return ns.End.Sub(ns.Start)
 }
 
+// stage runs fn and adds its duration to Stages under st.
+func (ns *NodeSummary) stage(st Stage, fn func() error) error {
+	start := time.Now()
+	err := fn()
+	ns.Stages[st] += time.Since(start)
+	return err
+}
+
 // Summary is the summary of a run.
 type Summary struct {
 	// Start is the timestamp when the run started.
