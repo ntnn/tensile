@@ -42,6 +42,12 @@ func TestPackagePacman(t *testing.T) {
 	exit, out = env.Exec(t, "pacman", "-Q", "tree")
 	assert.Zero(t, exit, "tree must be installed: %s", out)
 
+	exit, out = env.Exec(t, "pacman", "-Q", "jc")
+	assert.Zero(t, exit, "jc must be installed: %s", out)
+
+	exit, out = env.Exec(t, "pacman", "-Q", "bc")
+	assert.Zero(t, exit, "bc must be installed: %s", out)
+
 	exit, out = env.Exec(t, "pacman", "-Q", "less")
 	assert.NotZero(t, exit, "less must be removed: %s", out)
 

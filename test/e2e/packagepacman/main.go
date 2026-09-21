@@ -23,12 +23,14 @@ func run(ctx context.Context) error {
 	preinstalled := &std.Package{Name: "gzip"}
 	// not installed, must be installed
 	install := &std.Package{Name: "tree"}
+	install2 := &std.Package{Name: "jc"}
+	install3 := &std.Package{Name: "bc"}
 	// installed by the test beforehand, must be removed
 	remove := &std.Package{Name: "less", State: std.PackageAbsent}
 	// not installed, must stay absent as a no-op
 	absent := &std.Package{Name: "jq", State: std.PackageAbsent}
 
-	if err := q.Enqueue(preinstalled, install, remove, absent); err != nil {
+	if err := q.Enqueue(preinstalled, install, install2, install3, remove, absent); err != nil {
 		return err
 	}
 
@@ -37,8 +39,8 @@ func run(ctx context.Context) error {
 		return err
 	}
 
-	seq := engine.NewSequential(work, engine.Options{})
-	if err := seq.Execute(ctx); err != nil {
+	par := engine.NewParallel(work, engine.ParallelOptions{})
+	if err := par.Execute(ctx); err != nil {
 		return err
 	}
 

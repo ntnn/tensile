@@ -87,6 +87,7 @@ func (q *Queue) Build() (*Work, error) { //nolint:cyclop
 	work.cond = sync.NewCond(&work.lock)
 	work.done = make(map[tensile.Identity]bool)
 	work.dependencies = make(map[tensile.Identity][]tensile.Identity)
+	work.held = make(map[string]tensile.Identity)
 
 	// edge adds a directed edge from one identity to another and
 	// records it as a runtime dependency, so manual and automatic

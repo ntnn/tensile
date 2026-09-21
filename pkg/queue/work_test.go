@@ -494,3 +494,84 @@ func TestQueue_NestedGroupNotifiesThroughParent(t *testing.T) {
 
 	work.MarkDone(item.Node, true)
 }
+
+// serialNode is a testNode with a serialization key.
+type serialNode struct {
+	testNode
+
+	Key string
+}
+
+func (n serialNode) SerializesOn() string {
+	return n.Key
+}
+
+func TestWork_ChanSerializesSameKey(t *testing.T) {
+	t.Parallel()
+
+	a := serialNode{Name: "a", Key: "mgr"}
+	b := serialNode{Name: "b", Key: "mgr"}
+	work := buildWork(t, a, b)
+
+	items := work.Chan(t.Context())
+
+	first := <-items
+	require.NoError(t, first.Err)
+	require.NotNil(t, first.Node)
+
+	select {
+	case item := <-items:
+		t.Fatalf("node yielded while %s holds the key: %+v", first.Node.Identity(), item)
+	case <-time.After(50 * time.Millisecond):
+	}
+
+	work.MarkDone(first.Node, true)
+
+	second := <-items
+	require.NoError(t, second.Err)
+	require.NotNil(t, second.Node)
+	assert.NotEqual(t, first.Node.Identity(), second.Node.Identity())
+
+	work.MarkDone(second.Node, true)
+
+	_, open := <-items
+	assert.False(t, open, "channel must be closed after all nodes were yielded")
+}
+
+func TestWork_ChanOverlapsDifferentKeys(t *testing.T) {
+	t.Parallel()
+
+	a := serialNode{Name: "a", Key: "pacman"}
+	b := serialNode{Name: "b", Key: "opkg"}
+	work := buildWork(t, a, b)
+
+	items := work.Chan(t.Context())
+
+	// both nodes must be yielded without any MarkDone in between
+	first := <-items
+	require.NoError(t, first.Err)
+	require.NotNil(t, first.Node)
+
+	second := <-items
+	require.NoError(t, second.Err)
+	require.NotNil(t, second.Node)
+	assert.NotEqual(t, first.Node.Identity(), second.Node.Identity())
+}
+
+func TestWork_ChanOverlapsEmptyKeys(t *testing.T) {
+	t.Parallel()
+
+	a := serialNode{Name: "a"}
+	b := testNode{Name: "b"}
+	work := buildWork(t, a, b)
+
+	items := work.Chan(t.Context())
+
+	first := <-items
+	require.NoError(t, first.Err)
+	require.NotNil(t, first.Node)
+
+	second := <-items
+	require.NoError(t, second.Err)
+	require.NotNil(t, second.Node)
+}
