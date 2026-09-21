@@ -27,6 +27,10 @@ type Work struct {
 	// done maps node identities to whether the node was executed.
 	done  map[tensile.Identity]bool
 	order []*tensile.Node
+
+	// hels maps serialization keys to the identities of nodes that are
+	// currently being executed
+	held map[string]tensile.Identity
 }
 
 // Dependencies returns the identities of the direct dependencies of
@@ -60,6 +64,11 @@ func (w *Work) get() *tensile.Node {
 			continue
 		}
 
+		if w.isHeld(node) {
+			i++
+			continue
+		}
+
 		w.order = append(w.order[:i], w.order[i+1:]...)
 
 		if node.Identity().Kind() == barrierKind {
@@ -77,6 +86,9 @@ func (w *Work) get() *tensile.Node {
 			continue
 		}
 
+		if key := node.SerializesOn(); key != "" {
+			w.held[key] = node.Identity()
+		}
 		return node
 	}
 
@@ -169,12 +181,25 @@ func (w *Work) isReady(node *tensile.Node) bool {
 	return true
 }
 
+// isHeld reports whether the serialization key is held by a yielded node.
+func (w *Work) isHeld(node *tensile.Node) bool {
+	key := node.SerializesOn()
+	if key == "" {
+		return false
+	}
+	_, held := w.held[key]
+	return held
+}
+
 // MarkDone marks the given node as done and records whether it was executed.
 // It should be called after a node has been handled.
 func (w *Work) MarkDone(node *tensile.Node, executed bool) {
 	w.lock.Lock()
 	defer w.lock.Unlock()
 	w.done[node.Identity()] = executed
+	if key := node.SerializesOn(); key != "" {
+		delete(w.held, key)
+	}
 	w.cond.Broadcast()
 }
 
