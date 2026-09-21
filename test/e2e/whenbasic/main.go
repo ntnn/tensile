@@ -89,7 +89,7 @@ func runGated(ctx context.Context) error {
 		return err
 	}
 
-	if err := engine.NewSequential(work, engine.Options{}).Execute(ctx); err != nil {
+	if err := engine.NewParallel(work, engine.ParallelOptions{}).Execute(ctx); err != nil {
 		return fmt.Errorf("gated queue failed: %w", err)
 	}
 
@@ -128,7 +128,7 @@ func runUndeclaredDep(ctx context.Context) error {
 		return err
 	}
 
-	err = engine.NewSequential(work, engine.Options{}).Execute(ctx)
+	err = engine.NewParallel(work, engine.ParallelOptions{}).Execute(ctx)
 	if err == nil {
 		return errors.New("undeclared dependency read must fail")
 	}

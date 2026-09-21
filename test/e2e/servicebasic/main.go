@@ -61,7 +61,7 @@ func run(ctx context.Context) error {
 		return err
 	}
 
-	seq := engine.NewSequential(work, engine.Options{})
+	seq := engine.NewParallel(work, engine.ParallelOptions{})
 	if err := seq.Execute(ctx); err != nil {
 		return err
 	}
