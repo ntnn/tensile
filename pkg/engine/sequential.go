@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"time"
 
 	"github.com/ntnn/tensile/pkg/queue"
 )
@@ -33,6 +34,12 @@ func (s *Sequential) Summary() *Summary {
 // Execute executes the nodes in the work queue.
 func (s *Sequential) Execute(ctx context.Context) error {
 	s.opts.Logger.Info("starting engine")
+
+	s.summary.Start = time.Now()
+	defer func() {
+		s.summary.End = time.Now()
+	}()
+
 	for {
 		s.opts.Logger.Debug("getting next node from work queue")
 		node, done := s.work.Get()

@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"runtime"
+	"time"
 
 	"github.com/ntnn/tensile/pkg/queue"
 	"golang.org/x/sync/errgroup"
@@ -55,6 +56,11 @@ func (p *Parallel) Summary() *Summary {
 // Execute executes the nodes in the work queue.
 func (p *Parallel) Execute(ctx context.Context) error {
 	p.opts.Logger.Info("starting engine", "workers", p.opts.Workers)
+
+	p.summary.Start = time.Now()
+	defer func() {
+		p.summary.End = time.Now()
+	}()
 
 	g, ctx := errgroup.WithContext(ctx)
 	items := p.work.Chan(ctx)

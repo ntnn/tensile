@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"time"
 
 	"github.com/ntnn/tensile"
 	"github.com/ntnn/tensile/pkg/queue"
@@ -27,6 +28,8 @@ func executeNode(ctx context.Context, opts Options, work *queue.Work, summary *S
 			deps:    work.Dependencies(node.Identity()),
 		}),
 	}
+
+	start := time.Now()
 
 	if err := node.Validate(wire); err != nil {
 		return fmt.Errorf("node validation failed: %w", err)
@@ -52,7 +55,7 @@ func executeNode(ctx context.Context, opts Options, work *queue.Work, summary *S
 			return err
 		}
 		work.MarkDone(node, true)
-		summary.IncrementNodesExecuted()
+		summary.NodesExecuted.Add(1)
 		return nil
 	}
 
@@ -65,7 +68,7 @@ func executeNode(ctx context.Context, opts Options, work *queue.Work, summary *S
 		return err
 	}
 	work.MarkDone(node, true)
-	summary.IncrementNodesExecuted()
+	summary.NodesExecuted.Add(1)
 	return nil
 }
 
