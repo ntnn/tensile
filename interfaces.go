@@ -45,6 +45,22 @@ type Notifier interface {
 	Notifies() ([]Identity, error)
 }
 
+// Serializer is the interface to be satisfied by a [Node] whose
+// lifecycle must not overlap with other nodes with the same key.
+//
+// This is resolved during scheduling in the work queue, not at runtime in the engine.
+// Meaning for each key yielded by a number of nodes even when multiple
+// of them are ready only one of them is being scheduled to be executed
+// at a time.
+//
+// E.g. package managers often have an internal lock that prevents
+// parallel execution of Package nodes.
+type Serializer interface {
+	// SerializesOn returns the key to serialize on.
+	// Empty means no serialization.
+	SerializesOn() string
+}
+
 // Reporter is the interface to be satisfied by a [Node] when it reports an output.
 type Reporter interface {
 	// Report returns the node's output.

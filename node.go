@@ -114,6 +114,15 @@ func (n *Node) Notifies() ([]Identity, error) {
 	return notifier.Notifies()
 }
 
+// SerializesOn calls .SerializesOn on the wrapped node if it implements it.
+func (n *Node) SerializesOn() string {
+	serializer, ok := n.wrapped.(Serializer)
+	if !ok {
+		return ""
+	}
+	return serializer.SerializesOn()
+}
+
 // Report calls .Report on the wrapped node if it implements it.
 // The bool reports whether the wrapped node is a [Reporter].
 func (n *Node) Report(wire Wire) (any, bool, error) {
