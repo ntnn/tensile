@@ -115,10 +115,10 @@ func (n *Node) Notifies() ([]Identity, error) {
 }
 
 // SerializesOn calls .SerializesOn on the wrapped node if it implements it.
-func (n *Node) SerializesOn() string {
+func (n *Node) SerializesOn() []string {
 	serializer, ok := n.wrapped.(Serializer)
 	if !ok {
-		return ""
+		return []string{}
 	}
 	return serializer.SerializesOn()
 }

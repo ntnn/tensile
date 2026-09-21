@@ -56,9 +56,9 @@ type Notifier interface {
 // E.g. package managers often have an internal lock that prevents
 // parallel execution of Package nodes.
 type Serializer interface {
-	// SerializesOn returns the key to serialize on.
+	// SerializesOn returns the keys to serialize on.
 	// Empty means no serialization.
-	SerializesOn() string
+	SerializesOn() []string
 }
 
 // Reporter is the interface to be satisfied by a [Node] when it reports an output.

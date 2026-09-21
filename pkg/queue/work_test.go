@@ -495,22 +495,22 @@ func TestQueue_NestedGroupNotifiesThroughParent(t *testing.T) {
 	work.MarkDone(item.Node, true)
 }
 
-// serialNode is a testNode with a serialization key.
+// serialNode is a testNode with serialization keys.
 type serialNode struct {
 	testNode
 
-	Key string
+	Keys []string
 }
 
-func (n serialNode) SerializesOn() string {
-	return n.Key
+func (n serialNode) SerializesOn() []string {
+	return n.Keys
 }
 
 func TestWork_ChanSerializesSameKey(t *testing.T) {
 	t.Parallel()
 
-	a := serialNode{Name: "a", Key: "mgr"}
-	b := serialNode{Name: "b", Key: "mgr"}
+	a := serialNode{Name: "a", Keys: []string{"mgr"}}
+	b := serialNode{Name: "b", Keys: []string{"mgr"}}
 	work := buildWork(t, a, b)
 
 	items := work.Chan(t.Context())
@@ -538,11 +538,51 @@ func TestWork_ChanSerializesSameKey(t *testing.T) {
 	assert.False(t, open, "channel must be closed after all nodes were yielded")
 }
 
+func TestWork_ChanSerializesMultiKey(t *testing.T) {
+	t.Parallel()
+
+	// commit-all pattern: the multi-key node contends with holders of
+	// either key
+	for name, other := range map[string]serialNode{
+		"coarse": {Name: "coarse", Keys: []string{"uci"}},
+		"fine":   {Name: "fine", Keys: []string{"uci-a"}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			all := serialNode{Name: "all", Keys: []string{"uci", "uci-a"}}
+			work := buildWork(t, all, other)
+
+			items := work.Chan(t.Context())
+
+			first := <-items
+			require.NoError(t, first.Err)
+			require.NotNil(t, first.Node)
+
+			select {
+			case item := <-items:
+				t.Fatalf("node yielded while %s holds a shared key: %+v", first.Node.Identity(), item)
+			case <-time.After(50 * time.Millisecond):
+			}
+
+			work.MarkDone(first.Node, true)
+
+			second := <-items
+			require.NoError(t, second.Err)
+			require.NotNil(t, second.Node)
+			work.MarkDone(second.Node, true)
+
+			_, open := <-items
+			assert.False(t, open, "channel must be closed after all nodes were yielded")
+		})
+	}
+}
+
 func TestWork_ChanOverlapsDifferentKeys(t *testing.T) {
 	t.Parallel()
 
-	a := serialNode{Name: "a", Key: "pacman"}
-	b := serialNode{Name: "b", Key: "opkg"}
+	a := serialNode{Name: "a", Keys: []string{"pacman"}}
+	b := serialNode{Name: "b", Keys: []string{"opkg"}}
 	work := buildWork(t, a, b)
 
 	items := work.Chan(t.Context())

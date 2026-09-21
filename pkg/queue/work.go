@@ -86,7 +86,10 @@ func (w *Work) get() *tensile.Node {
 			continue
 		}
 
-		if key := node.SerializesOn(); key != "" {
+		for _, key := range node.SerializesOn() {
+			if key == "" {
+				continue
+			}
 			w.held[key] = node.Identity()
 		}
 		return node
@@ -181,14 +184,14 @@ func (w *Work) isReady(node *tensile.Node) bool {
 	return true
 }
 
-// isHeld reports whether the serialization key is held by a yielded node.
+// isHeld reports whether any serialization key is held by another node.
 func (w *Work) isHeld(node *tensile.Node) bool {
-	key := node.SerializesOn()
-	if key == "" {
-		return false
+	for _, key := range node.SerializesOn() {
+		if _, held := w.held[key]; held {
+			return true
+		}
 	}
-	_, held := w.held[key]
-	return held
+	return false
 }
 
 // MarkDone marks the given node as done and records whether it was executed.
@@ -197,7 +200,7 @@ func (w *Work) MarkDone(node *tensile.Node, executed bool) {
 	w.lock.Lock()
 	defer w.lock.Unlock()
 	w.done[node.Identity()] = executed
-	if key := node.SerializesOn(); key != "" {
+	for _, key := range node.SerializesOn() {
 		delete(w.held, key)
 	}
 	w.cond.Broadcast()

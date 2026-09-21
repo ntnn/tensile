@@ -73,11 +73,11 @@ func (p *Package) DependsOn() ([]tensile.Identity, error) {
 // SerializesOn implements [tensile.Serializer].
 // If a manager is set explicitly the serialization key is per manager.
 // If it is empty the key is shared for all package manager.
-func (p *Package) SerializesOn() string {
+func (p *Package) SerializesOn() []string {
 	if p.Manager != "" {
-		return "package-" + p.Manager
+		return []string{"package-" + p.Manager}
 	}
-	return "package"
+	return []string{"package"}
 }
 
 // NeedsExecution implements [tensile.Executor].
