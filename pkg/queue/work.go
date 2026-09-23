@@ -21,14 +21,14 @@ type Work struct {
 	dependencies map[tensile.Identity][]tensile.Identity
 	// handlers maps handler identities to the identities of nodes notifying them
 	handlers map[tensile.Identity][]tensile.Identity
+	// order is the order in which the nodes should be yielded
+	order []*tensile.Node
 
 	lock sync.RWMutex
 	cond *sync.Cond
 	// done maps node identities to whether the node was executed.
-	done  map[tensile.Identity]bool
-	order []*tensile.Node
-
-	// hels maps serialization keys to the identities of nodes that are
+	done map[tensile.Identity]bool
+	// held maps serialization keys to the identities of nodes that are
 	// currently being executed
 	held map[string]tensile.Identity
 }
@@ -38,7 +38,6 @@ func newWork() *Work {
 	work := new(Work)
 	work.cond = sync.NewCond(&work.lock)
 	work.done = make(map[tensile.Identity]bool)
-	work.dependencies = make(map[tensile.Identity][]tensile.Identity)
 	work.held = make(map[string]tensile.Identity)
 	return work
 }

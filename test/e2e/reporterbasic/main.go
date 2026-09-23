@@ -54,9 +54,7 @@ func run(ctx context.Context) error {
 		},
 	}
 
-	if err := q.Add(dir, file, cmd, fileConsumer, cmdConsumer); err != nil {
-		return err
-	}
+	q.Add(dir, file, cmd, fileConsumer, cmdConsumer)
 
 	work, err := q.Build()
 	if err != nil {

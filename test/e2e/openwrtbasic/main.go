@@ -29,12 +29,8 @@ func run(ctx context.Context) error {
 		Creates: "/opt/e2e/command-ran",
 	}
 
-	if err := q.Add(dir, file, cmd); err != nil {
-		return err
-	}
-	if err := q.DependsOn(cmd, dir); err != nil {
-		return err
-	}
+	q.Add(dir, file, cmd)
+	q.DependsOn(cmd, dir)
 
 	work, err := q.Build()
 	if err != nil {

@@ -40,13 +40,8 @@ func run(ctx context.Context) error {
 		Args:    []any{42},
 	}
 
-	if err := q.Add(print1, print2); err != nil {
-		return err
-	}
-
-	if err := q.DependsOn(print1, print2); err != nil {
-		return err
-	}
+	q.Add(print1, print2)
+	q.DependsOn(print1, print2)
 
 	work, err := q.Build()
 	if err != nil {
