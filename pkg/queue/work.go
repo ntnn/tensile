@@ -33,6 +33,16 @@ type Work struct {
 	held map[string]tensile.Identity
 }
 
+// newWork returns a Work with initialized internals.
+func newWork() *Work {
+	work := new(Work)
+	work.cond = sync.NewCond(&work.lock)
+	work.done = make(map[tensile.Identity]bool)
+	work.dependencies = make(map[tensile.Identity][]tensile.Identity)
+	work.held = make(map[string]tensile.Identity)
+	return work
+}
+
 // Dependencies returns the identities of the direct dependencies of
 // the node with the given identity.
 func (w *Work) Dependencies(identity tensile.Identity) []tensile.Identity {
