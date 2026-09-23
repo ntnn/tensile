@@ -14,12 +14,12 @@ import (
 )
 
 func main() {
-	if err := run(); err != nil {
+	if err := run(context.Background()); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func run() error {
+func run(ctx context.Context) error {
 	fDebug := false
 	flag.BoolVar(&fDebug, "debug", false, "enable debug logging")
 	flag.Parse()
@@ -60,12 +60,13 @@ func run() error {
 		},
 	)
 
-	if err := seq.Execute(context.Background()); err != nil {
+	if err := seq.Execute(ctx); err != nil {
 		return err
 	}
 
 	summary := seq.Summary()
-	fmt.Printf("Execution summary: %+v\n", summary)
+	slog.InfoContext(ctx, "run finished", "summary", summary)
+	fmt.Println(summary)
 
 	return nil
 }

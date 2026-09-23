@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"time"
 
 	"github.com/ntnn/tensile/pkg/queue"
 )
@@ -14,6 +15,7 @@ type Sequential struct {
 
 	work    *queue.Work
 	summary *Summary
+	records []NodeSummary
 }
 
 // NewSequential creates a new Sequential execution engine.
@@ -30,9 +32,21 @@ func (s *Sequential) Summary() *Summary {
 	return s.summary
 }
 
+// Records returns the per-node execution records.
+func (s *Sequential) Records() []NodeSummary {
+	return s.records
+}
+
 // Execute executes the nodes in the work queue.
 func (s *Sequential) Execute(ctx context.Context) error {
 	s.opts.Logger.Info("starting engine")
+
+	s.summary.Start = time.Now()
+	defer func() {
+		s.summary.End = time.Now()
+		s.summary.Analyze(s.records)
+	}()
+
 	for {
 		s.opts.Logger.Debug("getting next node from work queue")
 		node, done := s.work.Get()
@@ -41,7 +55,9 @@ func (s *Sequential) Execute(ctx context.Context) error {
 			return nil
 		}
 
-		if err := executeNode(ctx, s.opts, s.work, s.summary, node); err != nil {
+		ns, err := executeNode(ctx, s.opts, s.work, node)
+		s.records = append(s.records, ns)
+		if err != nil {
 			return err
 		}
 	}

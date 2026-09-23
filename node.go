@@ -1,5 +1,7 @@
 package tensile
 
+import "log/slog"
+
 // Node is a single step to be executed by an engine.
 type Node struct {
 	wrapped  any
@@ -65,6 +67,12 @@ func (n *Node) enabled(wire Wire) (bool, error) {
 // Identity returns the identity of the wrapped node.
 func (n *Node) Identity() Identity {
 	return n.identity
+}
+
+// LogValue implements [slog.LogValuer].
+// LogValue just defers to the LogValue of the nodes identity.
+func (n *Node) LogValue() slog.Value {
+	return n.identity.LogValue()
 }
 
 // Validate calls .Validate on the wrapped node if it implements it.

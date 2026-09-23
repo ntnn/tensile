@@ -100,8 +100,6 @@ func (id Identity) String() string {
 }
 
 // LogValue implements [slog.LogValuer].
-// Identities log as a group of kind and key/value pairs so structured
-// handlers emit parseable output instead of an escaped string.
 func (id Identity) LogValue() slog.Value {
 	attrs := []slog.Attr{slog.String("kind", id.kind)}
 	for _, pair := range id.pairs {

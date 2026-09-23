@@ -2,7 +2,6 @@ package engine
 
 import (
 	"log/slog"
-	"sync"
 
 	"github.com/ntnn/tensile"
 	"github.com/ntnn/tensile/pkg/storage"
@@ -30,24 +29,4 @@ func (o Options) WithDefaults() Options {
 		o.Backend = storage.NewDefaultBackend[tensile.Identity]()
 	}
 	return o
-}
-
-// Summary is the summary of an execution.
-type Summary struct {
-	mu            sync.Mutex
-	nodesExecuted int
-}
-
-// IncrementNodesExecuted safely increments the count of nodes executed.
-func (s *Summary) IncrementNodesExecuted() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.nodesExecuted++
-}
-
-// NodesExecuted returns the number of nodes that were executed.
-func (s *Summary) NodesExecuted() int {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.nodesExecuted
 }
