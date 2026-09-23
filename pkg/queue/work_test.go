@@ -387,27 +387,25 @@ func TestQueue_DeclaredDependencyOnGroupIdentity(t *testing.T) {
 	assert.Equal(t, nodeIdentity(t, depender), item.Node.Identity())
 }
 
-func TestQueue_BuildErrorsOnDuplicateAcrossLevels(t *testing.T) {
+func TestQueue_AddErrorsOnDuplicateAcrossLevels(t *testing.T) {
 	t.Parallel()
 
 	a := testNode{Name: "a"}
 	group := testGroup(t, "group", a)
 
 	q := queue.New()
-	require.NoError(t, q.Add(a, group))
-	_, err := q.Build()
+	err := q.Add(a, group)
 	assert.Error(t, err, "the same node at top level and in a group must error")
 }
 
-func TestQueue_BuildErrorsOnSelfContainingGroup(t *testing.T) {
+func TestQueue_AddErrorsOnSelfContainingGroup(t *testing.T) {
 	t.Parallel()
 
 	group := tensile.NewGroup("group")
 	require.NoError(t, group.Add(group))
 
 	q := queue.New()
-	require.NoError(t, q.Add(group))
-	_, err := q.Build()
+	err := q.Add(group)
 	assert.Error(t, err, "a group containing itself must error")
 }
 

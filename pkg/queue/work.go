@@ -81,15 +81,6 @@ func (w *Work) get() *tensile.Node {
 
 		w.order = append(w.order[:i], w.order[i+1:]...)
 
-		if node.Identity().Kind() == barrierKind {
-			// Barriers only order the graph and are completed silently.
-			// An end barrier has all of its groups nodes as
-			// a dependency and may be used as a notifier for a handler,
-			// so set true if any of its nodes was executed.
-			w.done[node.Identity()] = w.wasNotified(node)
-			continue
-		}
-
 		if w.isHandler(node) && !w.wasNotified(node) {
 			// No notifying node was executed, skip the handler.
 			w.done[node.Identity()] = false

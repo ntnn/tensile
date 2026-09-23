@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"hash/fnv"
-	"sync"
 
 	"github.com/ntnn/tensile"
 	"gonum.org/v1/gonum/graph/simple"
@@ -36,48 +35,159 @@ func (g graphNode) ID() int64 {
 // dependencies for execution.
 type Queue struct {
 	graph tensile.Graph
+	// members maps group identities to their member node identities
+	members map[tensile.Identity][]tensile.Identity
 }
 
 // New returns a new [Queue].
 func New() *Queue {
-	return &Queue{}
+	return &Queue{
+		members: map[tensile.Identity][]tensile.Identity{},
+	}
 }
 
 // Add adds values as [tensile.Node] to the queue.
+// [tensile.Group] are dissolved into their members.
 func (q *Queue) Add(nodes ...tensile.Identifier) error {
-	return q.graph.Add(nodes...)
+	for _, node := range nodes {
+		if group, isGroup := node.(*tensile.Group); isGroup {
+			if err := q.addGroup(group); err != nil {
+				return err
+			}
+			continue
+		}
+		if err := q.addNode(node); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// addNode adds a single non-group value.
+func (q *Queue) addNode(node tensile.Identifier) error {
+	if _, isGroup := q.members[node.Identity()]; isGroup {
+		return fmt.Errorf("node %s collides with a group in the queue", node.Identity())
+	}
+	return q.graph.Add(node)
+}
+
+// addGroup dissolves a group into its member nodes, recording the
+// membership for dependency and notification resolution.
+func (q *Queue) addGroup(group *tensile.Group) error {
+	identity := group.Identity()
+	if _, exists := q.members[identity]; exists {
+		return fmt.Errorf("group %s already exists in the queue", identity)
+	}
+	if _, exists := q.graph.Get(identity); exists {
+		return fmt.Errorf("group %s collides with a node in the queue", identity)
+	}
+	// reserve before recursing to error on self-containing groups
+	q.members[identity] = nil
+
+	members := []tensile.Identity{}
+	for _, raw := range group.Nodes() {
+		if err := q.Add(raw); err != nil {
+			return err
+		}
+		members = append(members, q.resolve(raw.Identity())...)
+	}
+	q.members[identity] = members
+
+	for _, pair := range group.Edges() {
+		if err := q.edges(pair[0], pair[1]); err != nil {
+			return err
+		}
+	}
+
+	for handler, notifiers := range group.Handlers() {
+		if err := q.notify(handler, notifiers); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// resolve expands a group identity to its member identities.
+// Non-group identities resolve to themselves.
+func (q *Queue) resolve(identity tensile.Identity) []tensile.Identity {
+	if members, isGroup := q.members[identity]; isGroup {
+		return members
+	}
+	return []tensile.Identity{identity}
+}
+
+// edges adds dependency edges, expanding groups on both sides.
+func (q *Queue) edges(from, to tensile.Identity) error {
+	for _, f := range q.resolve(from) {
+		for _, t := range q.resolve(to) {
+			if err := q.graph.DependsOn(t, f); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// notify registers resolved notifiers for the handler.
+func (q *Queue) notify(handler tensile.Identity, notifiers []tensile.Identity) error {
+	raw, exists := q.graph.Get(handler)
+	if !exists {
+		return fmt.Errorf("handler %s is not in the queue", handler)
+	}
+	asserted, isHandler := raw.(*tensile.Handler)
+	if !isHandler {
+		return fmt.Errorf("node %s is not a handler", handler)
+	}
+
+	for _, notifier := range notifiers {
+		for _, resolved := range q.resolve(notifier) {
+			if err := q.graph.NotifiedBy(asserted, resolved); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 // DependsOn adds a dependency from node to each of the nodes in dependsOn.
 // All referenced nodes must have been added.
 func (q *Queue) DependsOn(node tensile.Identifier, dependsOn ...tensile.Identifier) error {
-	return q.graph.DependsOn(node, dependsOn...)
+	for _, dep := range dependsOn {
+		if err := q.edges(dep.Identity(), node.Identity()); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // RequiredBy is like [Queue.DependsOn] but adds a dependency from each
 // of the nodes in requiredBy to node.
 // All referenced nodes must have been added.
 func (q *Queue) RequiredBy(node tensile.Identifier, requiredBy ...tensile.Identifier) error {
-	return q.graph.RequiredBy(node, requiredBy...)
+	for _, req := range requiredBy {
+		if err := q.edges(node.Identity(), req.Identity()); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // NotifiedBy adds the notifiers as notifiers for the handler.
 // If either the handler or notifiers are not in the queue an error is returned.
 func (q *Queue) NotifiedBy(handler *tensile.Handler, notifiers ...tensile.Identifier) error {
-	return q.graph.NotifiedBy(handler, notifiers...)
+	identities := make([]tensile.Identity, len(notifiers))
+	for i, notifier := range notifiers {
+		identities[i] = notifier.Identity()
+	}
+	return q.notify(handler.Identity(), identities)
 }
 
 // Build returns the nodes in the queue in the order they should be
 // executed. If there is a cycle in the graph, an error is returned.
 func (q *Queue) Build() (*Work, error) { //nolint:cyclop
-	d := newDecomposition()
-	if _, err := d.walk(&q.graph); err != nil {
-		return nil, err
-	}
-
 	nodes := make(map[tensile.Identity]*tensile.Node)
 	directed := simple.NewDirectedGraph()
-	for _, raw := range d.flat.Nodes() {
+	for _, raw := range q.graph.Nodes() {
 		node := tensile.NewNode(raw)
 		nodes[node.Identity()] = node
 		directed.AddNode(graphNode{id: graphID(node.Identity()), node: node})
@@ -113,7 +223,7 @@ func (q *Queue) Build() (*Work, error) { //nolint:cyclop
 	work.handlers = resolveNotifies(claimed, notifies)
 
 	// Add the manual notifiers
-	for handler, notifiers := range d.flat.Handlers() {
+	for handler, notifiers := range q.graph.Handlers() {
 		work.handlers[handler] = append(work.handlers[handler], notifiers...)
 	}
 
@@ -124,17 +234,9 @@ func (q *Queue) Build() (*Work, error) { //nolint:cyclop
 		}
 	}
 
-	// Barrier start and end nodes of each group are referenced by the group identity.
-	groups := make(map[tensile.Identity][]tensile.Identity, len(d.groups))
-	for identity, enclosing := range d.groups {
-		groups[identity] = []tensile.Identity{
-			enclosing.start.Identity(),
-			enclosing.end.Identity(),
-		}
-	}
-
 	// Iterate over all nodes and check if any dependency they declare is claimed by another node.
 	// If so add an edge from the provider to the depender.
+	// A dependency on a group identity resolves to the group's members.
 	for identity, node := range nodes {
 		dependencies, err := node.DependsOn()
 		if err != nil {
@@ -146,14 +248,14 @@ func (q *Queue) Build() (*Work, error) { //nolint:cyclop
 				edge(owner, identity)
 				continue
 			}
-			for _, barrier := range groups[dep] {
-				edge(barrier, identity)
+			for _, member := range q.members[dep] {
+				edge(member, identity)
 			}
 		}
 	}
 
 	// Add the declared edges.
-	for _, declared := range d.flat.Edges() {
+	for _, declared := range q.graph.Edges() {
 		edge(declared[0], declared[1])
 	}
 
