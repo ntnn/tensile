@@ -44,6 +44,7 @@ func (s *Sequential) Execute(ctx context.Context) error {
 	s.summary.Start = time.Now()
 	defer func() {
 		s.summary.End = time.Now()
+		s.summary.Analyze(s.records)
 	}()
 
 	for {

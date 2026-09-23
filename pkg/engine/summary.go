@@ -1,6 +1,10 @@
 package engine
 
 import (
+	"fmt"
+	"maps"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/ntnn/tensile"
@@ -16,6 +20,14 @@ const (
 	StageExecute        Stage = "execute"
 	StageReport         Stage = "report"
 )
+
+// stageOrder is the execution order of stages for rendering.
+var stageOrder = []Stage{
+	StageValidate,
+	StageNeedsExecution,
+	StageExecute,
+	StageReport,
+}
 
 // Outcome is the result of a single node execution.
 type Outcome string
@@ -55,10 +67,88 @@ func (ns *NodeSummary) stage(st Stage, fn func() error) error {
 	return err
 }
 
-// Summary is the summary of a run.
+// Summary is the computed result of a run over its node records.
 type Summary struct {
 	// Start is the timestamp when the run started.
 	Start time.Time
 	// End is the timestamp when the run finished.
 	End time.Time
+
+	// Records are the records most of the values are computed from.
+	Records []NodeSummary
+
+	// Nodes is the number of node records.
+	Nodes int
+	// ByOutcome counts nodes per outcome.
+	ByOutcome map[Outcome]int
+	// StageAvgByKind is the average stage duration per node kind.
+	StageAvgByKind map[string]map[Stage]time.Duration
+	// StageTotals is the total time spent per stage.
+	StageTotals map[Stage]time.Duration
+}
+
+// Duration returns the total wall time of the node execution.
+func (s *Summary) Duration() time.Duration {
+	return s.End.Sub(s.Start)
+}
+
+// Analyze processes [NodeSummary] to get insights into the overall run.
+// Repeated calls of Analyze will overwrite previous results.
+func (s *Summary) Analyze(records []NodeSummary) {
+	s.Records = records
+	s.Nodes = len(records)
+	s.ByOutcome = map[Outcome]int{}
+	s.StageAvgByKind = map[string]map[Stage]time.Duration{}
+	s.StageTotals = map[Stage]time.Duration{}
+
+	counts := map[string]map[Stage]int{}
+	for _, record := range records {
+		s.ByOutcome[record.Outcome]++
+
+		kind := record.Identity.Kind()
+		if s.StageAvgByKind[kind] == nil {
+			s.StageAvgByKind[kind] = map[Stage]time.Duration{}
+			counts[kind] = map[Stage]int{}
+		}
+		for stage, duration := range record.Stages {
+			s.StageTotals[stage] += duration
+			s.StageAvgByKind[kind][stage] += duration
+			counts[kind][stage]++
+		}
+	}
+
+	for kind, stages := range s.StageAvgByKind {
+		for stage := range stages {
+			stages[stage] /= time.Duration(counts[kind][stage])
+		}
+	}
+}
+
+// String implements [fmt.Stringer].
+// It renders human-readable multi-line output.
+func (s Summary) String() string {
+	var b strings.Builder
+
+	fmt.Fprintf(&b, "run: %s, %d nodes\n", s.Duration(), s.Nodes)
+
+	b.WriteString("outcomes:\n")
+	for _, outcome := range slices.Sorted(maps.Keys(s.ByOutcome)) {
+		fmt.Fprintf(&b, "  %s: %d\n", outcome, s.ByOutcome[outcome])
+	}
+
+	b.WriteString("stage totals:\n")
+	for _, stage := range stageOrder {
+		fmt.Fprintf(&b, "  %s: %s\n", stage, s.StageTotals[stage])
+	}
+
+	b.WriteString("stage averages per kind:\n")
+	for _, kind := range slices.Sorted(maps.Keys(s.StageAvgByKind)) {
+		fmt.Fprintf(&b, "  %s:\n", kind)
+		stages := s.StageAvgByKind[kind]
+		for _, stage := range stageOrder {
+			fmt.Fprintf(&b, "    %s: %s\n", stage, stages[stage])
+		}
+	}
+
+	return strings.TrimSuffix(b.String(), "\n")
 }

@@ -67,6 +67,7 @@ func (p *Parallel) Execute(ctx context.Context) error {
 	p.summary.Start = time.Now()
 	defer func() {
 		p.summary.End = time.Now()
+		p.summary.Analyze(p.records)
 	}()
 
 	g, ctx := errgroup.WithContext(ctx)

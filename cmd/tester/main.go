@@ -65,7 +65,7 @@ func run() error {
 	}
 
 	summary := seq.Summary()
-	fmt.Printf("Execution summary: %+v\n", summary)
+	fmt.Println(summary)
 
 	return nil
 }
