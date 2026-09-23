@@ -1,6 +1,8 @@
 package queue
 
 import (
+	"slices"
+
 	"github.com/ntnn/tensile"
 	"github.com/ntnn/tensile/pkg/graph"
 )
@@ -16,6 +18,11 @@ type Queue struct {
 	nodes    []tensile.Identifier
 	deps     []graph.Edge[tensile.Identity]
 	notifies []notification
+	// subqueues maps [NamedQueue] identities to their node identities
+	subqueues map[tensile.Identity][]tensile.Identity
+	// breadcrumbs maps node identities to the [NamedQueue] chain they
+	// were added through, innermost first
+	breadcrumbs map[tensile.Identity][]tensile.Identity
 }
 
 // New returns a new [Queue].
@@ -25,7 +32,49 @@ func New() *Queue {
 
 // Add adds values as [tensile.Node] to the queue.
 func (q *Queue) Add(nodes ...tensile.Identifier) {
-	q.nodes = append(q.nodes, nodes...)
+	for _, node := range nodes {
+		if nq, ok := node.(*NamedQueue); ok {
+			q.addNamed(nq)
+			continue
+		}
+		q.nodes = append(q.nodes, node)
+	}
+}
+
+// addNamed dissolves the named queue, merging its intents and
+// memberships and extending each member's breadcrumb with the queue.
+func (q *Queue) addNamed(nq *NamedQueue) {
+	if q.subqueues == nil {
+		q.subqueues = map[tensile.Identity][]tensile.Identity{}
+		q.breadcrumbs = map[tensile.Identity][]tensile.Identity{}
+	}
+
+	q.nodes = append(q.nodes, nq.nodes...)
+	q.deps = append(q.deps, nq.deps...)
+	q.notifies = append(q.notifies, nq.notifies...)
+
+	// map existing subqueues from subqueue
+	for identity, subqueues := range nq.subqueues {
+		if _, exists := q.subqueues[identity]; exists {
+			// A NamedQueue might be added to other NamedQueues and hence is already registered.
+			// This will error - but it will error at build time.
+			// TODO(ntnn): Add some test cases for duplicate NamedQueues
+			continue
+		}
+		q.subqueues[identity] = subqueues
+	}
+	// add the subqueue itself
+	identities := nq.identities()
+	q.subqueues[nq.Identity()] = identities
+
+	// and add the breadcrumbs to see where nodes came from
+	for _, identity := range identities {
+		if _, exists := q.breadcrumbs[identity]; exists {
+			// keep the first breadcrumb, duplicate nodes error at build
+			continue
+		}
+		q.breadcrumbs[identity] = append(slices.Clone(nq.breadcrumbs[identity]), nq.Identity())
+	}
 }
 
 // DependsOn makes node dependent on each node in dependsOn.
@@ -66,6 +115,9 @@ func (q *Queue) NotifiedBy(handler *tensile.Handler, notifiers ...tensile.Identi
 // Build returns a [Work] with the added [tensile.Node], dependencies and notifications.
 func (q *Queue) Build() (*Work, error) {
 	b := newBuild()
+	if err := b.addSubqueues(q.subqueues, q.breadcrumbs); err != nil {
+		return nil, err
+	}
 	if err := b.addNodes(q.nodes); err != nil {
 		return nil, err
 	}

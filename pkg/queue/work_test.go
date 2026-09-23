@@ -348,3 +348,361 @@ func TestWork_ChanOverlapsEmptyKeys(t *testing.T) {
 	require.NoError(t, second.Err)
 	require.NotNil(t, second.Node)
 }
+
+// namedQueue builds a NamedQueue with the given name and nodes.
+func namedQueue(t *testing.T, name string, nodes ...tensile.Identifier) *queue.NamedQueue {
+	t.Helper()
+	nq := queue.NewNamed(tensile.AsIdentity("queue", "name", name))
+	nq.Add(nodes...)
+	return nq
+}
+
+// notifyNode is a node notifying targets.
+type notifyNode struct {
+	Name   string
+	Notify []tensile.Identity
+}
+
+func (n notifyNode) Identity() tensile.Identity {
+	return tensile.AsIdentity("test", "name", n.Name)
+}
+
+func (n notifyNode) Notifies() ([]tensile.Identity, error) {
+	return n.Notify, nil
+}
+
+func TestQueue_AddDissolvesNamedQueue(t *testing.T) {
+	t.Parallel()
+
+	a := testNode{Name: "a"}
+	b := testNode{Name: "b"}
+	work := buildWork(t, namedQueue(t, "sub", a, b))
+
+	seen := map[tensile.Identity]bool{}
+	for item := range work.Chan(t.Context()) {
+		require.NoError(t, item.Err)
+		seen[item.Node.Identity()] = true
+		work.MarkDone(item.Node, true)
+	}
+	want := map[tensile.Identity]bool{
+		nodeIdentity(t, a): true,
+		nodeIdentity(t, b): true,
+	}
+	assert.Equal(t, want, seen, "member nodes must be yielded, the subqueue must not")
+}
+
+func TestQueue_DependsOnNamedQueueWaitsForAllMembers(t *testing.T) {
+	t.Parallel()
+
+	a := testNode{Name: "a"}
+	b := testNode{Name: "b"}
+	sub := namedQueue(t, "sub", a, b)
+	depender := testNode{Name: "depender"}
+
+	q := queue.New()
+	q.Add(sub, depender)
+	q.DependsOn(depender, sub)
+	work, err := q.Build()
+	require.NoError(t, err)
+
+	items := work.Chan(t.Context())
+
+	for range 2 {
+		item := <-items
+		require.NoError(t, item.Err)
+		require.NotEqual(t, nodeIdentity(t, depender), item.Node.Identity(),
+			"depender must wait for all subqueue members")
+		work.MarkDone(item.Node, true)
+	}
+
+	item := <-items
+	require.NoError(t, item.Err)
+	assert.Equal(t, nodeIdentity(t, depender), item.Node.Identity())
+}
+
+func TestQueue_NamedQueueDependsOnNodeGatesAllMembers(t *testing.T) {
+	t.Parallel()
+
+	a := testNode{Name: "a"}
+	sub := namedQueue(t, "sub", a)
+	dep := testNode{Name: "dep"}
+
+	q := queue.New()
+	q.Add(sub, dep)
+	q.DependsOn(sub, dep)
+	work, err := q.Build()
+	require.NoError(t, err)
+
+	items := work.Chan(t.Context())
+
+	item := <-items
+	require.NoError(t, item.Err)
+	require.Equal(t, nodeIdentity(t, dep), item.Node.Identity(),
+		"members must wait for the subqueue's dependency")
+	work.MarkDone(item.Node, true)
+
+	item = <-items
+	require.NoError(t, item.Err)
+	assert.Equal(t, nodeIdentity(t, a), item.Node.Identity())
+}
+
+func TestQueue_NestedNamedQueueDependencyWaitsForAllMembers(t *testing.T) {
+	t.Parallel()
+
+	a := testNode{Name: "a"}
+	inner := namedQueue(t, "inner", a)
+	b := testNode{Name: "b"}
+	outer := namedQueue(t, "outer", inner, b)
+	depender := testNode{Name: "depender"}
+
+	q := queue.New()
+	q.Add(outer, depender)
+	q.DependsOn(depender, outer)
+	work, err := q.Build()
+	require.NoError(t, err)
+
+	items := work.Chan(t.Context())
+
+	for range 2 {
+		item := <-items
+		require.NoError(t, item.Err)
+		require.NotEqual(t, nodeIdentity(t, depender), item.Node.Identity(),
+			"depender must wait for members of nested subqueues")
+		work.MarkDone(item.Node, true)
+	}
+
+	item := <-items
+	require.NoError(t, item.Err)
+	assert.Equal(t, nodeIdentity(t, depender), item.Node.Identity())
+}
+
+func TestQueue_NotifiedByNamedQueueFiresOnMemberExecution(t *testing.T) {
+	t.Parallel()
+
+	a := testNode{Name: "a"}
+	sub := namedQueue(t, "sub", a)
+	handler := tensile.NewHandler(testNode{Name: "handler"})
+
+	q := queue.New()
+	q.Add(sub, handler)
+	q.NotifiedBy(handler, sub)
+	work, err := q.Build()
+	require.NoError(t, err)
+
+	items := work.Chan(t.Context())
+
+	item := <-items
+	require.NoError(t, item.Err)
+	require.Equal(t, nodeIdentity(t, a), item.Node.Identity())
+	work.MarkDone(item.Node, true)
+
+	item = <-items
+	require.NoError(t, item.Err)
+	require.NotNil(t, item.Node, "handler must be yielded after a member executed")
+	assert.Equal(t, handler.Identity(), item.Node.Identity())
+	work.MarkDone(item.Node, true)
+}
+
+func TestQueue_NotifiedByNamedQueueSkippedWithoutExecution(t *testing.T) {
+	t.Parallel()
+
+	a := testNode{Name: "a"}
+	sub := namedQueue(t, "sub", a)
+	handler := tensile.NewHandler(testNode{Name: "handler"})
+
+	q := queue.New()
+	q.Add(sub, handler)
+	q.NotifiedBy(handler, sub)
+	work, err := q.Build()
+	require.NoError(t, err)
+
+	items := work.Chan(t.Context())
+
+	item := <-items
+	require.NoError(t, item.Err)
+	require.Equal(t, nodeIdentity(t, a), item.Node.Identity())
+	work.MarkDone(item.Node, false)
+
+	got, open := <-items
+	assert.False(t, open, "handler without executed member must be skipped: %+v", got)
+}
+
+func TestQueue_DeclaredDependencyOnNamedQueue(t *testing.T) {
+	t.Parallel()
+
+	a := testNode{Name: "a"}
+	sub := namedQueue(t, "sub", a)
+	depender := testNode{
+		Name:     "depender",
+		DependOn: []tensile.Identity{sub.Identity()},
+	}
+	work := buildWork(t, sub, depender)
+
+	items := work.Chan(t.Context())
+
+	item := <-items
+	require.NoError(t, item.Err)
+	require.Equal(t, nodeIdentity(t, a), item.Node.Identity(),
+		"member must be yielded before the declarative depender")
+	work.MarkDone(item.Node, true)
+
+	item = <-items
+	require.NoError(t, item.Err)
+	assert.Equal(t, nodeIdentity(t, depender), item.Node.Identity())
+}
+
+func TestQueue_DependsOnClaimResolvesToClaimer(t *testing.T) {
+	t.Parallel()
+
+	ref := tensile.AsIdentity("testres", "name", "claimdep")
+	provider := testNode{Name: "provider", Conflict: []tensile.Identity{ref}}
+	depender := testNode{Name: "depender"}
+
+	q := queue.New()
+	q.Add(provider, depender)
+	q.DependsOn(depender, ref)
+	work, err := q.Build()
+	require.NoError(t, err)
+
+	items := work.Chan(t.Context())
+
+	item := <-items
+	require.NoError(t, item.Err)
+	require.Equal(t, nodeIdentity(t, provider), item.Node.Identity(),
+		"manual dependency on a claim must resolve to the claiming node")
+	work.MarkDone(item.Node, true)
+
+	item = <-items
+	require.NoError(t, item.Err)
+	assert.Equal(t, nodeIdentity(t, depender), item.Node.Identity())
+}
+
+func TestQueue_ImplicitNotifyClaimedTargetOrdersClaimer(t *testing.T) {
+	t.Parallel()
+
+	target := tensile.AsIdentity("testres", "name", "notifytarget")
+	claimer := testNode{Name: "claimer", Conflict: []tensile.Identity{target}}
+	notifier := notifyNode{
+		Name:   "notifier",
+		Notify: []tensile.Identity{target},
+	}
+
+	q := queue.New()
+	q.Add(claimer, notifier)
+	work, err := q.Build()
+	require.NoError(t, err)
+
+	items := work.Chan(t.Context())
+
+	item := <-items
+	require.NoError(t, item.Err)
+	require.Equal(t, nodeIdentity(t, notifier), item.Node.Identity(),
+		"claimer of a notified identity must wait for the notifier")
+	work.MarkDone(item.Node, true)
+
+	item = <-items
+	require.NoError(t, item.Err)
+	assert.Equal(t, nodeIdentity(t, claimer), item.Node.Identity())
+}
+
+func TestQueue_BuildErrorsOnUnknownDependency(t *testing.T) {
+	t.Parallel()
+
+	a := testNode{Name: "a"}
+	missing := testNode{Name: "missing"}
+
+	q := queue.New()
+	q.Add(a)
+	q.DependsOn(a, missing)
+	_, err := q.Build()
+	assert.ErrorContains(t, err, "has not been added",
+		"a manual dependency on an unknown node must error, not vanish")
+}
+
+func TestQueue_BuildErrorsOnUnknownNotifier(t *testing.T) {
+	t.Parallel()
+
+	handler := tensile.NewHandler(testNode{Name: "handler"})
+	missing := testNode{Name: "missing"}
+
+	q := queue.New()
+	q.Add(handler)
+	q.NotifiedBy(handler, missing)
+	_, err := q.Build()
+	assert.ErrorContains(t, err, "has not been added")
+}
+
+func TestQueue_BuildErrorsOnDuplicateMembership(t *testing.T) {
+	t.Parallel()
+
+	a := testNode{Name: "a"}
+	first := namedQueue(t, "first", a)
+	second := namedQueue(t, "second", a)
+
+	q := queue.New()
+	q.Add(first, second)
+	_, err := q.Build()
+	require.Error(t, err, "the same node in two subqueues must error")
+	require.ErrorContains(t, err, "already claimed")
+	assert.ErrorContains(t, err, `queue[name="first"]`,
+		"error must name the first membership")
+}
+
+func TestQueue_BuildErrorsOnDuplicateMembershipNestedBreadcrumb(t *testing.T) {
+	t.Parallel()
+
+	a := testNode{Name: "a"}
+	inner := namedQueue(t, "inner", a)
+	outer := namedQueue(t, "outer", inner)
+	other := namedQueue(t, "other", a)
+
+	q := queue.New()
+	q.Add(outer, other)
+	_, err := q.Build()
+	require.Error(t, err)
+	require.ErrorContains(t, err, `queue[name="inner"]`,
+		"breadcrumb must name the innermost subqueue")
+	assert.ErrorContains(t, err, `queue[name="outer"]`,
+		"breadcrumb must name the parent subqueue")
+}
+
+func TestQueue_BuildErrorsOnNodeCollidingWithNamedQueue(t *testing.T) {
+	t.Parallel()
+
+	a := testNode{Name: "a"}
+	sub := namedQueue(t, "sub", a)
+	collider := tensile.NewNode(sub.Identity())
+
+	q := queue.New()
+	q.Add(sub, collider)
+	_, err := q.Build()
+	assert.ErrorContains(t, err, "already claimed")
+}
+
+func TestQueue_BuildErrorsOnNamedQueueAddedTwice(t *testing.T) {
+	t.Parallel()
+
+	a := testNode{Name: "a"}
+	sub := namedQueue(t, "sub", a)
+
+	q := queue.New()
+	q.Add(sub, sub)
+	_, err := q.Build()
+	assert.Error(t, err, "the same subqueue added twice must error")
+}
+
+func TestQueue_BuildErrorsOnNotifyingNamedQueue(t *testing.T) {
+	t.Parallel()
+
+	a := testNode{Name: "a"}
+	sub := namedQueue(t, "sub", a)
+	notifier := notifyNode{
+		Name:   "notifier",
+		Notify: []tensile.Identity{sub.Identity()},
+	}
+
+	q := queue.New()
+	q.Add(sub, notifier)
+	_, err := q.Build()
+	assert.Error(t, err, "subqueues cannot be notified")
+}
