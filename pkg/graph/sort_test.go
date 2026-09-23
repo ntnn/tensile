@@ -11,10 +11,11 @@ func TestGraph_TopoSort(t *testing.T) {
 	t.Parallel()
 
 	cases := map[string]struct {
-		nodes     []string
-		edges     []Edge[string]
-		want      []string
-		wantCycle []string
+		nodes       []string
+		edges       []Edge[string]
+		want        []string
+		wantParents map[string][]string
+		wantCycle   []string
 	}{
 		"empty": {
 			want: []string{},
@@ -26,6 +27,10 @@ func TestGraph_TopoSort(t *testing.T) {
 				{From: "b", To: "c"},
 			},
 			want: []string{"a", "b", "c"},
+			wantParents: map[string][]string{
+				"b": {"a"},
+				"c": {"b"},
+			},
 		},
 		"diamond": {
 			nodes: []string{"d", "c", "b", "a"},
@@ -89,7 +94,7 @@ func TestGraph_TopoSort(t *testing.T) {
 				require.NoError(t, g.AddEdge(edge.From, edge.To))
 			}
 
-			sorted, err := g.TopoSort()
+			sorted, parents, err := g.TopoSort()
 			if cas.wantCycle != nil {
 				var cycleErr *CycleError[string]
 				require.ErrorAs(t, err, &cycleErr)
@@ -99,6 +104,9 @@ func TestGraph_TopoSort(t *testing.T) {
 			}
 			require.NoError(t, err)
 			assert.Equal(t, cas.want, sorted)
+			if cas.wantParents != nil {
+				assert.Equal(t, cas.wantParents, parents)
+			}
 		})
 	}
 }

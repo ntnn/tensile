@@ -20,15 +20,19 @@ func (e *CycleError[K]) Error() string {
 	return "cycle detected: " + strings.Join(parts, " -> ")
 }
 
-// TopoSort returns the keys ordered so that for every edge From comes before To.
+// TopoSort returns the keys ordered so that for every edge From comes before To,
+// and for every key its direct parents.
 // Returns a [CycleError] if the graph contains a cycle.
-func (g *Graph[K, V]) TopoSort() ([]K, error) {
+func (g *Graph[K, V]) TopoSort() ([]K, map[K][]K, error) {
 	// map a node to its children
 	children := make(map[K][]K, len(g.nodes))
+	// map a node to its parents
+	parents := make(map[K][]K, len(g.nodes))
 	// number of pending parents of a node
 	pendingParents := make(map[K]int, len(g.nodes))
 	for _, edge := range g.edges {
 		children[edge.From] = append(children[edge.From], edge.To)
+		parents[edge.To] = append(parents[edge.To], edge.From)
 		pendingParents[edge.To]++
 	}
 
@@ -56,21 +60,14 @@ func (g *Graph[K, V]) TopoSort() ([]K, error) {
 
 	// check that no nodes are left
 	if len(sorted) != len(g.order) {
-		return nil, &CycleError[K]{Cycle: g.cycle(pendingParents)}
+		return nil, nil, &CycleError[K]{Cycle: g.cycle(parents, pendingParents)}
 	}
-	return sorted, nil
+	return sorted, parents, nil
 }
 
 // cycle walks one dependency cycle among the leftover nodes to try and
 // detect the cycle leading to the leftover nodes.
-func (g *Graph[K, V]) cycle(pendingParents map[K]int) []K {
-	parents := make(map[K][]K)
-	for _, edge := range g.edges {
-		if pendingParents[edge.From] > 0 && pendingParents[edge.To] > 0 {
-			parents[edge.To] = append(parents[edge.To], edge.From)
-		}
-	}
-
+func (g *Graph[K, V]) cycle(parents map[K][]K, pendingParents map[K]int) []K {
 	var start K
 	found := false
 	for _, key := range g.order {

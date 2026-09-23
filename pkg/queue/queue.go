@@ -1,40 +1,18 @@
 package queue
 
 import (
-	"errors"
 	"fmt"
-	"hash/fnv"
 
 	"github.com/ntnn/tensile"
-	"gonum.org/v1/gonum/graph/simple"
-	"gonum.org/v1/gonum/graph/topo"
+	"github.com/ntnn/tensile/pkg/graph"
 )
-
-// graphID hashes an identity into the int64 ID space gonum requires.
-func graphID(identity tensile.Identity) int64 {
-	h := fnv.New64a()
-	_, err := h.Write([]byte(identity.String()))
-	if err != nil {
-		// fnv.Write never errors, if it does there's something seriously wrong.
-		panic(err)
-	}
-	return int64(h.Sum64()) //nolint:gosec // deliberate wraparound, only used as opaque ID
-}
-
-// graphNode adapts a [tensile.Node] to [graph.Node].
-type graphNode struct {
-	id   int64
-	node *tensile.Node
-}
-
-func (g graphNode) ID() int64 {
-	return g.id
-}
 
 // Queue aggregates [tensile.Node] and then orders them based on their
 // dependencies for execution.
 type Queue struct {
-	graph tensile.Graph
+	graph graph.Graph[tensile.Identity, tensile.Identifier]
+	// handlers maps handler identities to their manual notifiers
+	handlers map[tensile.Identity][]tensile.Identity
 	// members maps group identities to their member node identities
 	members map[tensile.Identity][]tensile.Identity
 }
@@ -42,7 +20,8 @@ type Queue struct {
 // New returns a new [Queue].
 func New() *Queue {
 	return &Queue{
-		members: map[tensile.Identity][]tensile.Identity{},
+		handlers: map[tensile.Identity][]tensile.Identity{},
+		members:  map[tensile.Identity][]tensile.Identity{},
 	}
 }
 
@@ -65,10 +44,17 @@ func (q *Queue) Add(nodes ...tensile.Identifier) error {
 
 // addNode adds a single non-group value.
 func (q *Queue) addNode(node tensile.Identifier) error {
-	if _, isGroup := q.members[node.Identity()]; isGroup {
-		return fmt.Errorf("node %s collides with a group in the queue", node.Identity())
+	identity := node.Identity()
+	if _, isGroup := q.members[identity]; isGroup {
+		return fmt.Errorf("node %s collides with a group in the queue", identity)
 	}
-	return q.graph.Add(node)
+	if err := q.graph.Add(identity, node); err != nil {
+		return fmt.Errorf("adding node: %w", err)
+	}
+	if _, isHandler := node.(*tensile.Handler); isHandler {
+		q.handlers[identity] = []tensile.Identity{}
+	}
+	return nil
 }
 
 // addGroup dissolves a group into its member nodes, recording the
