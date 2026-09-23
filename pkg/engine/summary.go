@@ -2,6 +2,7 @@ package engine
 
 import (
 	"fmt"
+	"log/slog"
 	"maps"
 	"slices"
 	"strings"
@@ -151,4 +152,37 @@ func (s Summary) String() string {
 	}
 
 	return strings.TrimSuffix(b.String(), "\n")
+}
+
+// LogValue implements [slog.LogValuer].
+func (s Summary) LogValue() slog.Value {
+	outcomes := make([]slog.Attr, 0, len(s.ByOutcome))
+	for _, outcome := range slices.Sorted(maps.Keys(s.ByOutcome)) {
+		outcomes = append(outcomes, slog.Int(string(outcome), s.ByOutcome[outcome]))
+	}
+
+	totals := make([]slog.Attr, 0, len(stageOrder))
+	for _, stage := range stageOrder {
+		totals = append(totals, slog.Duration(string(stage), s.StageTotals[stage]))
+	}
+
+	avgs := make([]slog.Attr, 0, len(s.StageAvgByKind))
+	for _, kind := range slices.Sorted(maps.Keys(s.StageAvgByKind)) {
+		stages := s.StageAvgByKind[kind]
+		attrs := make([]slog.Attr, 0, len(stageOrder))
+		for _, stage := range stageOrder {
+			attrs = append(attrs, slog.Duration(string(stage), stages[stage]))
+		}
+		avgs = append(avgs, slog.Attr{Key: kind, Value: slog.GroupValue(attrs...)})
+	}
+
+	return slog.GroupValue(
+		slog.Time("start", s.Start),
+		slog.Time("end", s.End),
+		slog.Duration("duration", s.Duration()),
+		slog.Int("nodes", s.Nodes),
+		slog.Attr{Key: "outcomes", Value: slog.GroupValue(outcomes...)},
+		slog.Attr{Key: "stageTotals", Value: slog.GroupValue(totals...)},
+		slog.Attr{Key: "stageAvgByKind", Value: slog.GroupValue(avgs...)},
+	)
 }
