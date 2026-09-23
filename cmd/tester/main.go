@@ -40,7 +40,7 @@ func run(ctx context.Context) error {
 		Args:    []any{42},
 	}
 
-	if err := q.Enqueue(print1, print2); err != nil {
+	if err := q.Add(print1, print2); err != nil {
 		return err
 	}
 

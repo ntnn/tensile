@@ -31,7 +31,7 @@ func run(ctx context.Context) error {
 		Running: &running,
 	}
 
-	if err := q.Enqueue(crontab, service); err != nil {
+	if err := q.Add(crontab, service); err != nil {
 		return err
 	}
 	if err := q.DependsOn(service, crontab); err != nil {

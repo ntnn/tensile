@@ -32,7 +32,7 @@ func (n testNode) DependsOn() ([]tensile.Identity, error) {
 func buildWork(t *testing.T, nodes ...tensile.Identifier) *queue.Work {
 	t.Helper()
 	q := queue.New()
-	require.NoError(t, q.Enqueue(nodes...))
+	require.NoError(t, q.Add(nodes...))
 	work, err := q.Build()
 	require.NoError(t, err)
 	return work
@@ -47,7 +47,7 @@ func buildNotifiedWork(t *testing.T) (*queue.Work, tensile.Identity, *tensile.Ha
 	handler := tensile.NewHandler(testNode{Name: "handler"})
 
 	q := queue.New()
-	require.NoError(t, q.Enqueue(node, handler))
+	require.NoError(t, q.Add(node, handler))
 	require.NoError(t, q.NotifiedBy(handler, node))
 
 	work, err := q.Build()
@@ -69,7 +69,7 @@ func TestQueue_BuildErrorsOnSharedConflictIdentity(t *testing.T) {
 	b := testNode{Name: "b", Conflict: []tensile.Identity{ref}}
 
 	q := queue.New()
-	require.NoError(t, q.Enqueue(a, b))
+	require.NoError(t, q.Add(a, b))
 	_, err := q.Build()
 	require.ErrorContains(t, err, "conflict")
 }
@@ -81,7 +81,7 @@ func TestQueue_BuildErrorsOnConflictWithNodeIdentity(t *testing.T) {
 	b := testNode{Name: "b", Conflict: []tensile.Identity{nodeIdentity(t, a)}}
 
 	q := queue.New()
-	require.NoError(t, q.Enqueue(a, b))
+	require.NoError(t, q.Add(a, b))
 	_, err := q.Build()
 	require.ErrorContains(t, err, "conflict")
 }
@@ -203,7 +203,7 @@ func TestWork_ChanBlocksManualDependencyUntilDone(t *testing.T) {
 	second := testNode{Name: "second"}
 
 	q := queue.New()
-	require.NoError(t, q.Enqueue(first, second))
+	require.NoError(t, q.Add(first, second))
 	require.NoError(t, q.DependsOn(second, first))
 	work, err := q.Build()
 	require.NoError(t, err)
@@ -317,7 +317,7 @@ func TestQueue_DependsOnGroupWaitsForAllMembers(t *testing.T) {
 	depender := testNode{Name: "depender"}
 
 	q := queue.New()
-	require.NoError(t, q.Enqueue(group, depender))
+	require.NoError(t, q.Add(group, depender))
 	require.NoError(t, q.DependsOn(depender, group))
 	work, err := q.Build()
 	require.NoError(t, err)
@@ -345,7 +345,7 @@ func TestQueue_GroupDependsOnNodeGatesAllMembers(t *testing.T) {
 	dep := testNode{Name: "dep"}
 
 	q := queue.New()
-	require.NoError(t, q.Enqueue(group, dep))
+	require.NoError(t, q.Add(group, dep))
 	require.NoError(t, q.DependsOn(group, dep))
 	work, err := q.Build()
 	require.NoError(t, err)
@@ -394,7 +394,7 @@ func TestQueue_BuildErrorsOnDuplicateAcrossLevels(t *testing.T) {
 	group := testGroup(t, "group", a)
 
 	q := queue.New()
-	require.NoError(t, q.Enqueue(a, group))
+	require.NoError(t, q.Add(a, group))
 	_, err := q.Build()
 	assert.Error(t, err, "the same node at top level and in a group must error")
 }
@@ -406,7 +406,7 @@ func TestQueue_BuildErrorsOnSelfContainingGroup(t *testing.T) {
 	require.NoError(t, group.Add(group))
 
 	q := queue.New()
-	require.NoError(t, q.Enqueue(group))
+	require.NoError(t, q.Add(group))
 	_, err := q.Build()
 	assert.Error(t, err, "a group containing itself must error")
 }
@@ -419,7 +419,7 @@ func TestQueue_GroupNotifiesHandlerWhenMemberExecuted(t *testing.T) {
 	handler := tensile.NewHandler(testNode{Name: "handler"})
 
 	q := queue.New()
-	require.NoError(t, q.Enqueue(group, handler))
+	require.NoError(t, q.Add(group, handler))
 	require.NoError(t, q.NotifiedBy(handler, group))
 
 	work, err := q.Build()
@@ -447,7 +447,7 @@ func TestQueue_GroupDoesNotNotifyHandlerWithoutExecution(t *testing.T) {
 	handler := tensile.NewHandler(testNode{Name: "handler"})
 
 	q := queue.New()
-	require.NoError(t, q.Enqueue(group, handler))
+	require.NoError(t, q.Add(group, handler))
 	require.NoError(t, q.NotifiedBy(handler, group))
 
 	work, err := q.Build()
@@ -473,7 +473,7 @@ func TestQueue_NestedGroupNotifiesThroughParent(t *testing.T) {
 	handler := tensile.NewHandler(testNode{Name: "handler"})
 
 	q := queue.New()
-	require.NoError(t, q.Enqueue(outer, handler))
+	require.NoError(t, q.Add(outer, handler))
 	require.NoError(t, q.NotifiedBy(handler, outer))
 
 	work, err := q.Build()

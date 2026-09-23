@@ -80,7 +80,7 @@ func runGated(ctx context.Context) error {
 		Dep:  disabled.Identity(),
 	}
 
-	if err := q.Enqueue(dir, facts, enabled, disabled, consumer); err != nil {
+	if err := q.Add(dir, facts, enabled, disabled, consumer); err != nil {
 		return err
 	}
 
@@ -119,7 +119,7 @@ func runUndeclaredDep(ctx context.Context) error {
 		},
 	)
 
-	if err := q.Enqueue(facts, gated); err != nil {
+	if err := q.Add(facts, gated); err != nil {
 		return err
 	}
 

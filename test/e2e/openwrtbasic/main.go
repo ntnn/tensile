@@ -29,7 +29,7 @@ func run(ctx context.Context) error {
 		Creates: "/opt/e2e/command-ran",
 	}
 
-	if err := q.Enqueue(dir, file, cmd); err != nil {
+	if err := q.Add(dir, file, cmd); err != nil {
 		return err
 	}
 	if err := q.DependsOn(cmd, dir); err != nil {

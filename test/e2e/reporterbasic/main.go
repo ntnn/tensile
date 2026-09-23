@@ -54,7 +54,7 @@ func run(ctx context.Context) error {
 		},
 	}
 
-	if err := q.Enqueue(dir, file, cmd, fileConsumer, cmdConsumer); err != nil {
+	if err := q.Add(dir, file, cmd, fileConsumer, cmdConsumer); err != nil {
 		return err
 	}
 

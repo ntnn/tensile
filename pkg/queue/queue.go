@@ -43,8 +43,8 @@ func New() *Queue {
 	return &Queue{}
 }
 
-// Enqueue adds values as [tensile.Node] to the queue.
-func (q *Queue) Enqueue(nodes ...tensile.Identifier) error {
+// Add adds values as [tensile.Node] to the queue.
+func (q *Queue) Add(nodes ...tensile.Identifier) error {
 	return q.graph.Add(nodes...)
 }
 

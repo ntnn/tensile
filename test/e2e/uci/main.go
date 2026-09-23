@@ -115,7 +115,7 @@ func run(ctx context.Context) error {
 	commit := tensile.NewHandler(&openwrt.UCICommit{Config: config})
 	commitAll := tensile.NewHandler(&openwrt.UCICommit{})
 
-	if err := q.Enqueue(
+	if err := q.Add(
 		wipe, srv, srvName, obsolete,
 		hello, port, ignore, dns, ports, legacy,
 		other, greet,
