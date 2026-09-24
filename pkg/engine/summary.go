@@ -52,6 +52,7 @@ type NodeSummary struct {
 	Start    time.Time
 	End      time.Time
 	Stages   map[Stage]time.Duration
+	Diff     tensile.Diff
 	Err      error
 }
 
