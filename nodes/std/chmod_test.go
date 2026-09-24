@@ -17,8 +17,10 @@ func TestChmod_NeedsExecutionMissing(t *testing.T) {
 		FileMode: 0o644,
 	}
 
-	_, _, err := c.NeedsExecution(nil)
-	assert.Error(t, err, "a missing path should be an error")
+	needs, d, err := c.NeedsExecution(nil)
+	require.NoError(t, err)
+	assert.True(t, needs, "a missing path needs execution")
+	assert.Equal(t, "mode: (absent) -> -rw-r--r--", d.String())
 }
 
 func TestChmod_ExecuteCycle(t *testing.T) {

@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/ntnn/tensile"
+	"github.com/ntnn/tensile/pkg/diff"
 )
 
 var _ tensile.Identifier = (*Dir)(nil)
@@ -74,11 +75,10 @@ func (d *Dir) DependsOn() ([]tensile.Identity, error) {
 	return ParentDirIdentities(d.Path), nil
 }
 
-// NeedsExecution implements [tensile.Executor].
-func (d *Dir) NeedsExecution(s tensile.Wire) (bool, tensile.Diff, error) {
+func (d *Dir) needsExecution(wire tensile.Wire) (bool, *diff.FieldChange, error) {
 	info, err := os.Stat(d.Path)
 	if os.IsNotExist(err) {
-		return true, nil, nil
+		return true, &diff.FieldChange{Field: "directory", Old: diff.Absent, New: d.FileMode.String()}, nil
 	}
 	if err != nil {
 		return false, nil, fmt.Errorf("error checking directory: %w", err)
@@ -86,7 +86,20 @@ func (d *Dir) NeedsExecution(s tensile.Wire) (bool, tensile.Diff, error) {
 	if !info.IsDir() {
 		return false, nil, fmt.Errorf("%q exists but is not a directory", d.Path)
 	}
-	return d.Chmod.NeedsExecution(s)
+	return false, nil, nil
+}
+
+// NeedsExecution implements [tensile.Executor].
+func (d *Dir) NeedsExecution(wire tensile.Wire) (bool, tensile.Diff, error) {
+	dirNeeds, dirChange, err := d.needsExecution(wire)
+	if err != nil {
+		return false, nil, err
+	}
+	chmodNeeds, chmodChange, err := d.Chmod.needsExecution(wire)
+	if err != nil {
+		return false, nil, err
+	}
+	return dirNeeds || chmodNeeds, diff.NewFieldChanges(dirChange, chmodChange), nil
 }
 
 // Execute implements [tensile.Executor].

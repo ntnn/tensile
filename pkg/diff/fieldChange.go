@@ -22,6 +22,20 @@ type FieldChanges struct {
 	Fields []FieldChange
 }
 
+// NewFieldChanges returns a valid [FieldChanges].
+// A nil in changes is skipped silently.
+func NewFieldChanges(changes ...*FieldChange) *FieldChanges {
+	fc := new(FieldChanges)
+	fc.Fields = make([]FieldChange, 0, len(changes))
+	for _, change := range changes {
+		if change == nil {
+			continue
+		}
+		fc.Fields = append(fc.Fields, *change)
+	}
+	return fc
+}
+
 // String renders one "field: old -> new" line per change.
 func (d FieldChanges) String() string {
 	var b strings.Builder
