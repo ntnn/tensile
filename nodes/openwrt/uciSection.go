@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/ntnn/tensile"
+	"github.com/ntnn/tensile/pkg/diff"
 )
 
 var (
@@ -92,10 +93,29 @@ func (s *UCISection) NeedsExecution(c tensile.Wire) (bool, tensile.Diff, error) 
 		return false, nil, err
 	}
 
-	if s.desired() == UCIAbsent {
-		return exists, nil, nil
+	d := &diff.FieldChange{
+		Field: s.path(),
+		Old:   diff.Absent,
+		New:   diff.Absent,
 	}
-	return !exists || sectionType != s.Type, nil, nil
+
+	if exists {
+		d.Old = sectionType
+	}
+
+	if s.desired() == UCIAbsent {
+		if !exists {
+			return false, nil, nil
+		}
+		return true, diff.NewFieldChanges(d), nil
+	}
+
+	if exists && sectionType == s.Type {
+		return false, nil, nil
+	}
+	d.New = s.Type
+
+	return true, diff.NewFieldChanges(d), nil
 }
 
 // Execute implements [tensile.Executor].
