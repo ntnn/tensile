@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github.com/ntnn/tensile"
+	"github.com/ntnn/tensile/pkg/diff"
 )
 
 var _ tensile.Identifier = (*Chmod)(nil)
@@ -27,10 +28,18 @@ func (c Chmod) DependsOn() ([]tensile.Identity, error) {
 	return ParentDirIdentities(c.Path), nil
 }
 
+func (c Chmod) needsExecution(_ tensile.Wire) (bool, *diff.FieldChange, error) {
+	needs, current, desired, err := chmodNeedsExecution(c.Path, c.FileMode)
+	if err != nil || !needs {
+		return needs, nil, err
+	}
+	return true, &diff.FieldChange{Field: "mode", Old: current, New: desired}, nil
+}
+
 // NeedsExecution implements [tensile.Executor].
-func (c Chmod) NeedsExecution(_ tensile.Wire) (bool, tensile.Diff, error) {
-	needs, err := chmodNeedsExecution(c.Path, c.FileMode)
-	return needs, nil, err
+func (c Chmod) NeedsExecution(wire tensile.Wire) (bool, tensile.Diff, error) {
+	needs, change, err := c.needsExecution(wire)
+	return needs, diff.NewFieldChanges(change), err
 }
 
 // Execute implements [tensile.Executor].
