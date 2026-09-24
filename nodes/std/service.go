@@ -3,8 +3,10 @@ package std
 import (
 	"errors"
 	"fmt"
+	"strconv"
 
 	"github.com/ntnn/tensile"
+	"github.com/ntnn/tensile/pkg/diff"
 )
 
 var _ tensile.Identifier = (*Service)(nil)
@@ -55,13 +57,26 @@ func (s *Service) NeedsExecution(c tensile.Wire) (bool, tensile.Diff, error) {
 		return false, nil, fmt.Errorf("error checking service status: %w", err)
 	}
 
+	var enabled, running *diff.FieldChange
 	if s.Enabled != nil && status.Enabled != *s.Enabled {
-		return true, nil, nil
+		enabled = &diff.FieldChange{
+			Field: "enabled",
+			Old:   strconv.FormatBool(status.Enabled),
+			New:   strconv.FormatBool(*s.Enabled),
+		}
 	}
 	if s.Running != nil && status.Active != *s.Running {
-		return true, nil, nil
+		running = &diff.FieldChange{
+			Field: "running",
+			Old:   strconv.FormatBool(status.Active),
+			New:   strconv.FormatBool(*s.Running),
+		}
 	}
-	return false, nil, nil
+
+	if enabled == nil && running == nil {
+		return false, nil, nil
+	}
+	return true, diff.NewFieldChanges(enabled, running), nil
 }
 
 // Execute implements [tensile.Executor].
