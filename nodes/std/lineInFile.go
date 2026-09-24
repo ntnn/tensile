@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/ntnn/tensile"
+	"github.com/ntnn/tensile/pkg/diff"
 )
 
 var _ tensile.Identifier = (*LineInFile)(nil)
@@ -21,6 +22,7 @@ var _ tensile.Executor = (*LineInFile)(nil)
 type LineInFile struct {
 	Path string
 	// Regexp locates the line to replace.
+	// If multiple lines match the regex the last match is considered.
 	// Empty matches Line verbatim.
 	Regexp string
 	Line   string
@@ -57,11 +59,23 @@ func (l *LineInFile) NeedsExecution(_ tensile.Wire) (bool, tensile.Diff, error) 
 		return false, nil, err
 	}
 
-	result, err := l.apply(content)
+	lines := splitLines(content)
+	match, err := l.match(lines)
 	if err != nil {
 		return false, nil, err
 	}
-	return result != content, nil, nil
+
+	d := &diff.FieldChange{Field: "line", Old: diff.Absent, New: l.Line}
+	if match == -1 {
+		return true, diff.NewFieldChanges(d), nil
+	}
+
+	d.Old = lines[match]
+	if d.New == d.Old {
+		return false, nil, nil
+	}
+
+	return true, diff.NewFieldChanges(d), nil
 }
 
 // Execute implements [tensile.Executor].
@@ -96,30 +110,45 @@ func (l *LineInFile) read() (string, error) {
 	return string(content), nil
 }
 
-// apply returns content with Line replacing the last match of Regexp,
-// or appended when nothing matches.
-func (l *LineInFile) apply(content string) (string, error) {
+// splitLines splits content into lines, nil for empty content.
+func splitLines(content string) []string {
+	if content == "" {
+		return nil
+	}
+	return strings.Split(strings.TrimSuffix(content, "\n"), "\n")
+}
+
+// match returns the index of the last line matching Regexp, -1 when none.
+// An empty Regexp matches Line verbatim.
+func (l *LineInFile) match(lines []string) (int, error) {
 	re, err := regexp.Compile(l.Regexp)
 	if err != nil {
-		return "", fmt.Errorf("compiling Regexp: %w", err)
-	}
-
-	lines := strings.Split(strings.TrimSuffix(content, "\n"), "\n")
-	if content == "" {
-		lines = nil
+		return -1, fmt.Errorf("compiling Regexp: %w", err)
 	}
 
 	match := -1
 	for i, line := range lines {
-		if l.Regexp == "" {
+		switch {
+		case l.Regexp != "":
+			if re.MatchString(line) {
+				match = i
+			}
+		default:
 			if line == l.Line {
 				match = i
 			}
-			continue
 		}
-		if re.MatchString(line) {
-			match = i
-		}
+	}
+	return match, nil
+}
+
+// apply returns content with Line replacing the last match of Regexp,
+// or appended when nothing matches.
+func (l *LineInFile) apply(content string) (string, error) {
+	lines := splitLines(content)
+	match, err := l.match(lines)
+	if err != nil {
+		return "", err
 	}
 
 	if match >= 0 {
