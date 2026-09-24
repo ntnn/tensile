@@ -706,6 +706,33 @@ func TestQueue_BuildErrorsOnNotifyingNamedQueue(t *testing.T) {
 	assert.Error(t, err, "subqueues cannot be notified")
 }
 
+func TestQueue_ImplicitNotifyHandlerAddedAfterNotifier(t *testing.T) {
+	t.Parallel()
+
+	handler := tensile.NewHandler(testNode{Name: "handler"})
+	notifier := notifyNode{
+		Name:   "notifier",
+		Notify: []tensile.Identity{handler.Identity()},
+	}
+
+	q := New()
+	q.Add(notifier, handler)
+	work, err := q.Build()
+	require.NoError(t, err)
+
+	items := work.Chan(t.Context())
+
+	item := <-items
+	require.NoError(t, item.Err)
+	require.Equal(t, nodeIdentity(t, notifier), item.Node.Identity())
+	work.MarkDone(item.Node, true)
+
+	item = <-items
+	require.NoError(t, item.Err)
+	require.NotNil(t, item.Node, "handler must fire if it was added after its notifier")
+	assert.Equal(t, handler.Identity(), item.Node.Identity())
+}
+
 func TestQueue_BreadcrumbsSimpleNesting(t *testing.T) {
 	t.Parallel()
 

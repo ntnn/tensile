@@ -134,7 +134,9 @@ func (b *build) addNode(identifier tensile.Identifier) error {
 
 	// add as handler
 	if _, isHandler := identifier.(*tensile.Handler); isHandler {
-		b.handlers[identity] = []tensile.Identity{}
+		if _, exists := b.handlers[identity]; !exists {
+			b.handlers[identity] = []tensile.Identity{}
+		}
 	}
 
 	// add as notifier for implicitly notified nodes
