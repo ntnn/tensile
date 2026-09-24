@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/ntnn/tensile"
+	"github.com/ntnn/tensile/pkg/diff"
 )
 
 var (
@@ -71,7 +72,15 @@ func (d *UCIDeleteAnonymousSections) NeedsExecution(c tensile.Wire) (bool, tensi
 	if err != nil {
 		return false, nil, err
 	}
-	return len(paths) > 0, nil, nil
+	if len(paths) == 0 {
+		return false, nil, nil
+	}
+
+	fields := make([]diff.FieldChange, len(paths))
+	for i, path := range paths {
+		fields[i] = diff.FieldChange{Field: path, Old: d.Type, New: diff.Absent}
+	}
+	return true, diff.FieldChanges{Fields: fields}, nil
 }
 
 // Execute implements [tensile.Executor].
