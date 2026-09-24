@@ -843,6 +843,57 @@ func TestQueue_BreadcrumbsQueueAddedDirectlyAndNested(t *testing.T) {
 	q.Add(outer, inner)
 
 	_, err := q.Build()
-	require.ErrorContains(t, err, "already claimed")
-	assert.ErrorContains(t, err, `queue[name="inner"]->queue[name="outer"]`)
+	require.ErrorContains(t, err, "multiple NamedQueue using the same identity")
+	assert.ErrorContains(t, err, `queue[name="inner"]`)
+}
+
+func TestQueue_BuildErrorsOnNamedQueueIdentityReuse(t *testing.T) {
+	t.Parallel()
+
+	a := testNode{Name: "a"}
+	b := testNode{Name: "b"}
+	first := namedQueue(t, "reused", a)
+	second := namedQueue(t, "reused", b)
+
+	q := New()
+	q.Add(first, second)
+
+	_, err := q.Build()
+	assert.Error(t, err, "reusing a NamedQueue identity must error")
+}
+
+func TestQueue_BuildErrorsOnNamedQueueIdentityReuseNested(t *testing.T) {
+	t.Parallel()
+
+	a := testNode{Name: "a"}
+	aq := namedQueue(t, "aq", a)
+
+	inner := namedQueue(t, "inner", aq)
+	mid := namedQueue(t, "mid", inner, aq)
+	outer := namedQueue(t, "outer", mid)
+
+	q := New()
+	q.Add(outer)
+
+	assert.Equal(t,
+		map[tensile.Identity][]tensile.Identity{
+			aq.Identity():    {a.Identity()},
+			inner.Identity(): {a.Identity()},
+			mid.Identity():   {a.Identity(), a.Identity()},
+			outer.Identity(): {a.Identity(), a.Identity()},
+		},
+		q.subqueues,
+		"reused subqueue flattens its member into mid and outer twice",
+	)
+	assert.Equal(t,
+		map[tensile.Identity][]tensile.Identity{
+			a.Identity(): {aq.Identity(), inner.Identity(), mid.Identity(), outer.Identity()},
+		},
+		q.breadcrumbs,
+		"breadcrumbs must chain innermost first",
+	)
+
+	_, err := q.Build()
+	require.ErrorContains(t, err, "multiple NamedQueue using the same identity")
+	assert.ErrorContains(t, err, `queue[name="aq"]`)
 }

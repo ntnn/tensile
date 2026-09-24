@@ -1,6 +1,7 @@
 package queue
 
 import (
+	"fmt"
 	"slices"
 
 	"github.com/ntnn/tensile"
@@ -20,6 +21,9 @@ type Queue struct {
 	notifies []notification
 	// subqueues maps [NamedQueue] identities to their node identities
 	subqueues map[tensile.Identity][]tensile.Identity
+	// duplicates tracks duplicate [NamedQueue] identities since
+	// subqueues is a map and .Add cannot error
+	duplicates []tensile.Identity
 	// breadcrumbs maps node identities to the [NamedQueue] chain they
 	// were added through, innermost first
 	breadcrumbs map[tensile.Identity][]tensile.Identity
@@ -52,19 +56,21 @@ func (q *Queue) addNamed(nq *NamedQueue) {
 	q.nodes = append(q.nodes, nq.nodes...)
 	q.deps = append(q.deps, nq.deps...)
 	q.notifies = append(q.notifies, nq.notifies...)
+	q.duplicates = append(q.duplicates, nq.duplicates...)
 
 	// map existing subqueues from subqueue
 	for identity, subqueues := range nq.subqueues {
 		if _, exists := q.subqueues[identity]; exists {
-			// A NamedQueue might be added to other NamedQueues and hence is already registered.
-			// This will error - but it will error at build time.
-			// TODO(ntnn): Add some test cases for duplicate NamedQueues
+			q.duplicates = append(q.duplicates, identity)
 			continue
 		}
 		q.subqueues[identity] = subqueues
 	}
 	// add the subqueue itself
 	identities := nq.identities()
+	if _, exists := q.subqueues[nq.Identity()]; exists {
+		q.duplicates = append(q.duplicates, nq.Identity())
+	}
 	q.subqueues[nq.Identity()] = identities
 
 	// and add the breadcrumbs to see where nodes came from
@@ -114,6 +120,10 @@ func (q *Queue) NotifiedBy(handler *tensile.Handler, notifiers ...tensile.Identi
 
 // Build returns a [Work] with the added [tensile.Node], dependencies and notifications.
 func (q *Queue) Build() (*Work, error) {
+	if len(q.duplicates) > 0 {
+		return nil, fmt.Errorf("multiple NamedQueue using the same identity in graph: %v", q.duplicates)
+	}
+
 	b := newBuild()
 	if err := b.addSubqueues(q.subqueues, q.breadcrumbs); err != nil {
 		return nil, err

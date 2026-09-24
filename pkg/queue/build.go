@@ -87,6 +87,9 @@ func (b *build) addSubqueues(
 		if claimer, claimed := b.claimed[identity]; claimed {
 			return fmt.Errorf("identity %s is already claimed by %s", identity, b.describe(claimer))
 		}
+		if _, exists := b.subqueues[identity]; exists {
+			return fmt.Errorf("subqueue %s already exists", identity)
+		}
 		b.claimed[identity] = identity
 		b.subqueues[identity] = nodes
 	}
