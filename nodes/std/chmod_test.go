@@ -3,6 +3,7 @@ package std
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -20,7 +21,12 @@ func TestChmod_NeedsExecutionMissing(t *testing.T) {
 	needs, d, err := c.NeedsExecution(nil)
 	require.NoError(t, err)
 	assert.True(t, needs, "a missing path needs execution")
-	assert.Equal(t, "mode: (absent) -> -rw-r--r--", d.String())
+	// windows masks to the owner write bit
+	want := "mode: (absent) -> -rw-r--r--"
+	if runtime.GOOS == "windows" {
+		want = "mode: (absent) -> --w-------"
+	}
+	assert.Equal(t, want, d.String())
 }
 
 func TestChmod_ExecuteCycle(t *testing.T) {
