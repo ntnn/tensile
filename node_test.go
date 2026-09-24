@@ -22,13 +22,13 @@ func (n *condNode) DependsOn() ([]Identity, error) {
 	return n.deps, nil
 }
 
-func (n *condNode) NeedsExecution(_ Wire) (bool, error) {
-	return true, nil
+func (n *condNode) NeedsExecution(_ Wire) (bool, Diff, error) {
+	return true, nil, nil
 }
 
-func (n *condNode) Execute(_ Wire) error {
+func (n *condNode) Execute(_ Wire) (Diff, error) {
 	n.executed++
-	return nil
+	return nil, nil //nolint:nilnil // nil Diff is valid
 }
 
 func (n *condNode) Report(_ Wire) (any, error) {
@@ -47,11 +47,12 @@ func TestWhen_DisabledSkipsExecutionButReports(t *testing.T) {
 		wrapped,
 	)
 
-	needs, err := node.NeedsExecution(wire)
+	needs, _, err := node.NeedsExecution(wire)
 	require.NoError(t, err)
 	assert.False(t, needs, "disabled node must not need execution")
 
-	require.NoError(t, node.Execute(wire))
+	_, err = node.Execute(wire)
+	require.NoError(t, err)
 	assert.Zero(t, wrapped.executed, "disabled node must not execute")
 
 	output, ok, err := node.Report(wire)
@@ -72,11 +73,12 @@ func TestWhen_EnabledPassesThrough(t *testing.T) {
 		wrapped,
 	)
 
-	needs, err := node.NeedsExecution(wire)
+	needs, _, err := node.NeedsExecution(wire)
 	require.NoError(t, err)
 	assert.True(t, needs)
 
-	require.NoError(t, node.Execute(wire))
+	_, err = node.Execute(wire)
+	require.NoError(t, err)
 	assert.Equal(t, 1, wrapped.executed)
 
 	output, ok, err := node.Report(wire)
@@ -97,9 +99,10 @@ func TestWhen_ConditionErrorPropagates(t *testing.T) {
 		&condNode{},
 	)
 
-	_, err := node.NeedsExecution(wire)
+	_, _, err := node.NeedsExecution(wire)
 	require.ErrorIs(t, err, errCond)
-	require.ErrorIs(t, node.Execute(wire), errCond)
+	_, err = node.Execute(wire)
+	require.ErrorIs(t, err, errCond)
 	require.ErrorIs(t, node.Validate(wire), errCond)
 }
 

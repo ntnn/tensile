@@ -111,7 +111,7 @@ func TestUCIDeleteAnonymousSections_NeedsExecution(t *testing.T) {
 				},
 			}
 
-			got, err := del.NeedsExecution(testWire(t))
+			got, _, err := del.NeedsExecution(testWire(t))
 			if cas.wantErr {
 				require.Error(t, err)
 				return
@@ -132,7 +132,8 @@ func TestUCIDeleteAnonymousSections_Execute(t *testing.T) {
 		run:    fakeUCIShow(t, &deleted),
 	}
 
-	require.NoError(t, del.Execute(testWire(t)))
+	_, err := del.Execute(testWire(t))
+	require.NoError(t, err)
 	assert.Equal(t, []string{"dhcp.cfg02host", "dhcp.cfg03host"}, deleted,
 		"anonymous sections deleted by id, named section kept")
 }

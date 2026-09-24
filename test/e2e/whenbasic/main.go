@@ -158,17 +158,17 @@ func (w *writeReport) DependsOn() ([]tensile.Identity, error) {
 	return []tensile.Identity{w.Dep}, nil
 }
 
-func (w *writeReport) NeedsExecution(_ tensile.Wire) (bool, error) {
-	return true, nil
+func (w *writeReport) NeedsExecution(_ tensile.Wire) (bool, tensile.Diff, error) {
+	return true, nil, nil
 }
 
-func (w *writeReport) Execute(wire tensile.Wire) error {
+func (w *writeReport) Execute(wire tensile.Wire) (tensile.Diff, error) {
 	out, err := wire.Storage().Get[std.FileContentOutput](w.Dep)
 	if err != nil {
-		return fmt.Errorf("reading output of %s: %w", w.Dep, err)
+		return nil, fmt.Errorf("reading output of %s: %w", w.Dep, err)
 	}
 	if err := os.WriteFile(w.Path, []byte(out.SHA256), reportFileMode); err != nil {
-		return fmt.Errorf("writing report to %s: %w", w.Path, err)
+		return nil, fmt.Errorf("writing report to %s: %w", w.Path, err)
 	}
-	return nil
+	return nil, nil //nolint:nilnil // nil Diff is valid
 }

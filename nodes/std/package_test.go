@@ -98,7 +98,7 @@ func TestPackage_NeedsExecution(t *testing.T) {
 				Manager: name,
 			}
 
-			needs, err := p.NeedsExecution(testWire(t))
+			needs, _, err := p.NeedsExecution(testWire(t))
 			require.NoError(t, err)
 			assert.Equal(t, cas.expected, needs)
 		})
@@ -138,7 +138,8 @@ func TestPackage_Execute(t *testing.T) {
 				State:   cas.state,
 				Manager: name,
 			}
-			require.NoError(t, p.Execute(testWire(t)))
+			_, err := p.Execute(testWire(t))
+			require.NoError(t, err)
 
 			if cas.wantInstall {
 				assert.Equal(t, "pkg", installed)
@@ -159,6 +160,6 @@ func TestPackage_NeedsExecutionUnknownManager(t *testing.T) {
 		Manager: "does-not-exist",
 	}
 
-	_, err := p.NeedsExecution(testWire(t))
+	_, _, err := p.NeedsExecution(testWire(t))
 	assert.Error(t, err, "an unknown manager should be an error")
 }

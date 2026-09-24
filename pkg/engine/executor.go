@@ -57,7 +57,7 @@ func (e *Executor) run() error {
 
 	if err := e.summary.stage(StageNeedsExecution, func() error {
 		var err error
-		e.needsExecution, err = e.Node.NeedsExecution(e.Wire)
+		e.needsExecution, _, err = e.Node.NeedsExecution(e.Wire)
 		//nolint:wrapcheck // wrapped by caller
 		return err
 	}); err != nil {
@@ -75,7 +75,9 @@ func (e *Executor) run() error {
 	}
 
 	if err := e.summary.stage(StageExecute, func() error {
-		return e.Node.Execute(e.Wire)
+		_, err := e.Node.Execute(e.Wire)
+		//nolint:wrapcheck // wrapped by caller
+		return err
 	}); err != nil {
 		return fmt.Errorf("failed to execute node %s: %w", e.Node.Identity(), err)
 	}

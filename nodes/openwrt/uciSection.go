@@ -86,35 +86,35 @@ func (s *UCISection) SerializesOn() []string {
 }
 
 // NeedsExecution implements [tensile.Executor].
-func (s *UCISection) NeedsExecution(c tensile.Wire) (bool, error) {
+func (s *UCISection) NeedsExecution(c tensile.Wire) (bool, tensile.Diff, error) {
 	sectionType, exists, err := s.current(c.Context())
 	if err != nil {
-		return false, err
+		return false, nil, err
 	}
 
 	if s.desired() == UCIAbsent {
-		return exists, nil
+		return exists, nil, nil
 	}
-	return !exists || sectionType != s.Type, nil
+	return !exists || sectionType != s.Type, nil, nil
 }
 
 // Execute implements [tensile.Executor].
-func (s *UCISection) Execute(c tensile.Wire) error {
+func (s *UCISection) Execute(c tensile.Wire) (tensile.Diff, error) {
 	ctx := c.Context()
 
 	if s.desired() == UCIAbsent {
 		out, err := s.uci(ctx, "delete", s.path())
 		if err != nil && !uciNotFound(out) {
-			return fmt.Errorf("uci delete %q: %w: %s", s.path(), err, strings.TrimSpace(string(out)))
+			return nil, fmt.Errorf("uci delete %q: %w: %s", s.path(), err, strings.TrimSpace(string(out)))
 		}
-		return nil
+		return nil, nil //nolint:nilnil // nil Diff is valid
 	}
 
 	out, err := s.uci(ctx, "set", s.path()+"="+s.Type)
 	if err != nil {
-		return fmt.Errorf("uci set %q: %w: %s", s.path(), err, strings.TrimSpace(string(out)))
+		return nil, fmt.Errorf("uci set %q: %w: %s", s.path(), err, strings.TrimSpace(string(out)))
 	}
-	return nil
+	return nil, nil //nolint:nilnil // nil Diff is valid
 }
 
 // current returns the section's type and whether the section exists.

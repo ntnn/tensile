@@ -28,7 +28,7 @@ func TestSymlink_NeedsExecutionMissing(t *testing.T) {
 		Target: "target",
 	}
 
-	needs, err := s.NeedsExecution(nil)
+	needs, _, err := s.NeedsExecution(nil)
 	require.NoError(t, err)
 	assert.True(t, needs, "a missing symlink needs execution")
 }
@@ -44,7 +44,7 @@ func TestSymlink_NeedsExecutionMatching(t *testing.T) {
 		Target: "target",
 	}
 
-	needs, err := s.NeedsExecution(nil)
+	needs, _, err := s.NeedsExecution(nil)
 	require.NoError(t, err)
 	assert.False(t, needs, "a symlink with matching target needs no execution")
 }
@@ -60,7 +60,7 @@ func TestSymlink_NeedsExecutionWrongTarget(t *testing.T) {
 		Target: "target",
 	}
 
-	needs, err := s.NeedsExecution(nil)
+	needs, _, err := s.NeedsExecution(nil)
 	require.NoError(t, err)
 	assert.True(t, needs, "a symlink with wrong target needs execution")
 }
@@ -76,7 +76,7 @@ func TestSymlink_NeedsExecutionNotASymlink(t *testing.T) {
 		Target: "target",
 	}
 
-	_, err := s.NeedsExecution(nil)
+	_, _, err := s.NeedsExecution(nil)
 	assert.Error(t, err, "a non-symlink at the path should be an error")
 }
 
@@ -89,7 +89,7 @@ func TestSymlink_ExecuteCreates(t *testing.T) {
 		Target: "target",
 	}
 
-	err := s.Execute(nil)
+	_, err := s.Execute(nil)
 	if err != nil && runtime.GOOS == "windows" {
 		t.Skipf("cannot create symlinks: %v", err)
 	}
@@ -110,7 +110,8 @@ func TestSymlink_ExecuteReplaces(t *testing.T) {
 		Path:   path,
 		Target: "target",
 	}
-	require.NoError(t, s.Execute(nil))
+	_, err := s.Execute(nil)
+	require.NoError(t, err)
 
 	target, err := os.Readlink(path)
 	require.NoError(t, err)

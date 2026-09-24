@@ -96,44 +96,44 @@ func (o *UCIOption[T]) SerializesOn() []string {
 }
 
 // NeedsExecution implements [tensile.Executor].
-func (o *UCIOption[T]) NeedsExecution(c tensile.Wire) (bool, error) {
+func (o *UCIOption[T]) NeedsExecution(c tensile.Wire) (bool, tensile.Diff, error) {
 	current, exists, err := o.current(c.Context())
 	if err != nil {
-		return false, err
+		return false, nil, err
 	}
 
 	if o.desired() == UCIAbsent {
-		return exists, nil
+		return exists, nil, nil
 	}
-	return !exists || !slices.Equal(current, o.values()), nil
+	return !exists || !slices.Equal(current, o.values()), nil, nil
 }
 
 // Execute implements [tensile.Executor].
-func (o *UCIOption[T]) Execute(c tensile.Wire) error {
+func (o *UCIOption[T]) Execute(c tensile.Wire) (tensile.Diff, error) {
 	ctx := c.Context()
 
 	if o.desired() == UCIAbsent {
-		return o.delete(ctx)
+		return nil, o.delete(ctx)
 	}
 
 	if !o.isList() {
 		out, err := o.uci(ctx, "set", o.path()+"="+o.values()[0])
 		if err != nil {
-			return fmt.Errorf("uci set %q: %w: %s", o.path(), err, strings.TrimSpace(string(out)))
+			return nil, fmt.Errorf("uci set %q: %w: %s", o.path(), err, strings.TrimSpace(string(out)))
 		}
-		return nil
+		return nil, nil //nolint:nilnil // nil Diff is valid
 	}
 
 	if err := o.delete(ctx); err != nil {
-		return err
+		return nil, err
 	}
 	for _, value := range o.values() {
 		out, err := o.uci(ctx, "add_list", o.path()+"="+value)
 		if err != nil {
-			return fmt.Errorf("uci add_list %q: %w: %s", o.path(), err, strings.TrimSpace(string(out)))
+			return nil, fmt.Errorf("uci add_list %q: %w: %s", o.path(), err, strings.TrimSpace(string(out)))
 		}
 	}
-	return nil
+	return nil, nil //nolint:nilnil // nil Diff is valid
 }
 
 // current returns the option's values and whether the option exists.

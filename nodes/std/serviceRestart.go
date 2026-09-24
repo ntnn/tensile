@@ -46,20 +46,20 @@ func (s *ServiceRestart) Identity() tensile.Identity {
 }
 
 // NeedsExecution implements [tensile.Executor].
-func (s *ServiceRestart) NeedsExecution(_ tensile.Wire) (bool, error) {
-	return true, nil
+func (s *ServiceRestart) NeedsExecution(_ tensile.Wire) (bool, tensile.Diff, error) {
+	return true, nil, nil
 }
 
 // Execute implements [tensile.Executor].
-func (s *ServiceRestart) Execute(c tensile.Wire) error {
+func (s *ServiceRestart) Execute(c tensile.Wire) (tensile.Diff, error) {
 	mgr, err := s.manager(c)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if err := mgr.Restart(c.Context(), s.Name); err != nil {
-		return fmt.Errorf("error restarting service: %w", err)
+		return nil, fmt.Errorf("error restarting service: %w", err)
 	}
-	return nil
+	return nil, nil //nolint:nilnil // nil Diff is valid
 }
 
 func (s *ServiceRestart) manager(c tensile.Wire) (ServiceManager, error) {

@@ -28,14 +28,14 @@ func (c Chown) DependsOn() ([]tensile.Identity, error) {
 }
 
 // NeedsExecution implements [tensile.Executor].
-func (c Chown) NeedsExecution(_ tensile.Wire) (bool, error) {
+func (c Chown) NeedsExecution(_ tensile.Wire) (bool, tensile.Diff, error) {
 	// TODO resolve owner and group names to numeric IDs
 	// TODO check if the current owner and group match the desired ones
-	return true, nil
+	return true, nil, nil
 }
 
 // Execute implements [tensile.Executor].
-func (c Chown) Execute(_ tensile.Wire) error {
+func (c Chown) Execute(_ tensile.Wire) (tensile.Diff, error) {
 	// TODO resolve owner and group names to numeric IDs
-	return os.Chown(c.Path, -1, -1)
+	return nil, os.Chown(c.Path, -1, -1)
 }

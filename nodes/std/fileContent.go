@@ -44,36 +44,36 @@ func (f *FileContent) DependsOn() ([]tensile.Identity, error) {
 }
 
 // NeedsExecution implements [tensile.Executor].
-func (f *FileContent) NeedsExecution(_ tensile.Wire) (bool, error) {
+func (f *FileContent) NeedsExecution(_ tensile.Wire) (bool, tensile.Diff, error) {
 	fd, err := os.Open(f.Path)
 	if os.IsNotExist(err) {
-		return true, nil
+		return true, nil, nil
 	}
 	if err != nil {
-		return false, fmt.Errorf("error opening file: %w", err)
+		return false, nil, fmt.Errorf("error opening file: %w", err)
 	}
 	defer fd.Close() //nolint:errcheck
 
 	hash := sha256.New()
 	if _, err := io.Copy(hash, fd); err != nil {
-		return false, fmt.Errorf("error hashing file: %w", err)
+		return false, nil, fmt.Errorf("error hashing file: %w", err)
 	}
 
-	return [sha256.Size]byte(hash.Sum(nil)) != sha256.Sum256([]byte(f.Content)), nil
+	return [sha256.Size]byte(hash.Sum(nil)) != sha256.Sum256([]byte(f.Content)), nil, nil
 }
 
 // Execute implements [tensile.Executor].
-func (f *FileContent) Execute(_ tensile.Wire) error {
+func (f *FileContent) Execute(_ tensile.Wire) (tensile.Diff, error) {
 	fd, err := os.Create(f.Path)
 	if err != nil {
-		return fmt.Errorf("error creating file: %w", err)
+		return nil, fmt.Errorf("error creating file: %w", err)
 	}
 	defer fd.Close() //nolint:errcheck
 
 	if _, err := fd.WriteString(f.Content); err != nil {
-		return fmt.Errorf("error writing to file: %w", err)
+		return nil, fmt.Errorf("error writing to file: %w", err)
 	}
-	return nil
+	return nil, nil //nolint:nilnil // nil Diff is valid
 }
 
 // Report implements [tensile.Reporter].

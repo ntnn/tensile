@@ -17,7 +17,7 @@ func TestChmod_NeedsExecutionMissing(t *testing.T) {
 		FileMode: 0o644,
 	}
 
-	_, err := c.NeedsExecution(nil)
+	_, _, err := c.NeedsExecution(nil)
 	assert.Error(t, err, "a missing path should be an error")
 }
 
@@ -37,13 +37,14 @@ func TestChmod_ExecuteCycle(t *testing.T) {
 		FileMode: 0o444,
 	}
 
-	needs, err := c.NeedsExecution(nil)
+	needs, _, err := c.NeedsExecution(nil)
 	require.NoError(t, err)
 	require.True(t, needs, "a file with wrong mode needs execution")
 
-	require.NoError(t, c.Execute(nil))
+	_, err = c.Execute(nil)
+	require.NoError(t, err)
 
-	needs, err = c.NeedsExecution(nil)
+	needs, _, err = c.NeedsExecution(nil)
 	require.NoError(t, err)
 	assert.False(t, needs, "a file with matching mode needs no execution")
 }
@@ -60,7 +61,7 @@ func TestChmod_NeedsExecutionDirTypeBits(t *testing.T) {
 		FileMode: 0o700 | os.ModeDir,
 	}
 
-	needs, err := c.NeedsExecution(nil)
+	needs, _, err := c.NeedsExecution(nil)
 	require.NoError(t, err)
 	assert.False(t, needs, "type bits must not be compared")
 }
@@ -77,7 +78,7 @@ func TestChmod_NeedsExecutionWrongMode(t *testing.T) {
 		FileMode: 0o640,
 	}
 
-	needs, err := c.NeedsExecution(nil)
+	needs, _, err := c.NeedsExecution(nil)
 	require.NoError(t, err)
 	assert.True(t, needs, "differing permission bits need execution")
 }

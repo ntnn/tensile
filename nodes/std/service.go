@@ -44,37 +44,37 @@ func (s *Service) Identity() tensile.Identity {
 }
 
 // NeedsExecution implements [tensile.Executor].
-func (s *Service) NeedsExecution(c tensile.Wire) (bool, error) {
+func (s *Service) NeedsExecution(c tensile.Wire) (bool, tensile.Diff, error) {
 	mgr, err := s.manager(c)
 	if err != nil {
-		return false, err
+		return false, nil, err
 	}
 
 	status, err := mgr.Status(c.Context(), s.Name)
 	if err != nil {
-		return false, fmt.Errorf("error checking service status: %w", err)
+		return false, nil, fmt.Errorf("error checking service status: %w", err)
 	}
 
 	if s.Enabled != nil && status.Enabled != *s.Enabled {
-		return true, nil
+		return true, nil, nil
 	}
 	if s.Running != nil && status.Active != *s.Running {
-		return true, nil
+		return true, nil, nil
 	}
-	return false, nil
+	return false, nil, nil
 }
 
 // Execute implements [tensile.Executor].
-func (s *Service) Execute(c tensile.Wire) error {
+func (s *Service) Execute(c tensile.Wire) (tensile.Diff, error) {
 	mgr, err := s.manager(c)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// unmanaged fields keep their current state
 	desired, err := mgr.Status(c.Context(), s.Name)
 	if err != nil {
-		return fmt.Errorf("error checking service status: %w", err)
+		return nil, fmt.Errorf("error checking service status: %w", err)
 	}
 	if s.Enabled != nil {
 		desired.Enabled = *s.Enabled
@@ -84,9 +84,9 @@ func (s *Service) Execute(c tensile.Wire) error {
 	}
 
 	if err := mgr.Apply(c.Context(), s.Name, desired); err != nil {
-		return fmt.Errorf("error applying service status: %w", err)
+		return nil, fmt.Errorf("error applying service status: %w", err)
 	}
-	return nil
+	return nil, nil //nolint:nilnil // nil Diff is valid
 }
 
 func (s *Service) manager(c tensile.Wire) (ServiceManager, error) {

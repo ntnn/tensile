@@ -66,21 +66,21 @@ func (d *UCIDeleteAnonymousSections) SerializesOn() []string {
 }
 
 // NeedsExecution implements [tensile.Executor].
-func (d *UCIDeleteAnonymousSections) NeedsExecution(c tensile.Wire) (bool, error) {
+func (d *UCIDeleteAnonymousSections) NeedsExecution(c tensile.Wire) (bool, tensile.Diff, error) {
 	paths, err := d.anonymous(c.Context())
 	if err != nil {
-		return false, err
+		return false, nil, err
 	}
-	return len(paths) > 0, nil
+	return len(paths) > 0, nil, nil
 }
 
 // Execute implements [tensile.Executor].
-func (d *UCIDeleteAnonymousSections) Execute(c tensile.Wire) error {
+func (d *UCIDeleteAnonymousSections) Execute(c tensile.Wire) (tensile.Diff, error) {
 	ctx := c.Context()
 
 	paths, err := d.anonymous(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// gather resolved IDs of anonymous sections
@@ -88,7 +88,7 @@ func (d *UCIDeleteAnonymousSections) Execute(c tensile.Wire) error {
 	for _, path := range paths {
 		id, err := d.resolve(ctx, path)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		ids = append(ids, id)
 	}
@@ -97,11 +97,11 @@ func (d *UCIDeleteAnonymousSections) Execute(c tensile.Wire) error {
 	for _, id := range ids {
 		out, err := d.uci(ctx, "delete", d.Config+"."+id)
 		if err != nil {
-			return fmt.Errorf("uci delete %q: %w: %s",
+			return nil, fmt.Errorf("uci delete %q: %w: %s",
 				d.Config+"."+id, err, strings.TrimSpace(string(out)))
 		}
 	}
-	return nil
+	return nil, nil //nolint:nilnil // nil Diff is valid
 }
 
 // anonymous returns the extended paths (config.@type[i]) of all anonymous sections of the type.

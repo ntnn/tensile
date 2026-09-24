@@ -28,17 +28,17 @@ func (p *PackageManagerUpdate) Identity() tensile.Identity {
 
 // NeedsExecution implements [tensile.Executor].
 // List staleness is not observable, so it always executes.
-func (p *PackageManagerUpdate) NeedsExecution(_ tensile.Wire) (bool, error) {
-	return true, nil
+func (p *PackageManagerUpdate) NeedsExecution(_ tensile.Wire) (bool, tensile.Diff, error) {
+	return true, nil, nil
 }
 
 // Execute implements [tensile.Executor].
-func (p *PackageManagerUpdate) Execute(c tensile.Wire) error {
+func (p *PackageManagerUpdate) Execute(c tensile.Wire) (tensile.Diff, error) {
 	var errs []error
 	for name, manager := range packageManagers.all() {
 		if err := manager.Update(c.Context()); err != nil {
 			errs = append(errs, fmt.Errorf("updating %q: %w", name, err))
 		}
 	}
-	return errors.Join(errs...)
+	return nil, errors.Join(errs...)
 }

@@ -38,7 +38,7 @@ func TestFileContent_NeedsExecution(t *testing.T) {
 				Content: cas.content,
 			}
 
-			needs, err := f.NeedsExecution(nil)
+			needs, _, err := f.NeedsExecution(nil)
 			require.NoError(t, err)
 			assert.Equal(t, cas.expected, needs)
 		})
