@@ -152,6 +152,23 @@ func (s Summary) String() string {
 		}
 	}
 
+	diffs := false
+	for _, record := range s.Records {
+		if record.Diff == nil {
+			continue
+		}
+		if !diffs {
+			b.WriteString("diffs:\n")
+			diffs = true
+		}
+		fmt.Fprintf(&b, "  %s:\n", record.Identity)
+		for line := range strings.Lines(record.Diff.String()) {
+			b.WriteString("    ")
+			b.WriteString(strings.TrimSuffix(line, "\n"))
+			b.WriteByte('\n')
+		}
+	}
+
 	return strings.TrimSuffix(b.String(), "\n")
 }
 
