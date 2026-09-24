@@ -1,4 +1,4 @@
-package queue_test
+package queue
 
 import (
 	"context"
@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/ntnn/tensile"
-	"github.com/ntnn/tensile/pkg/queue"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -29,9 +28,9 @@ func (n testNode) DependsOn() ([]tensile.Identity, error) {
 	return n.DependOn, nil
 }
 
-func buildWork(t *testing.T, nodes ...tensile.Identifier) *queue.Work {
+func buildWork(t *testing.T, nodes ...tensile.Identifier) *Work {
 	t.Helper()
-	q := queue.New()
+	q := New()
 	q.Add(nodes...)
 	work, err := q.Build()
 	require.NoError(t, err)
@@ -40,13 +39,13 @@ func buildWork(t *testing.T, nodes ...tensile.Identifier) *queue.Work {
 
 // buildNotifiedWork builds a Work with a single notifier node and a
 // handler notified by it, returning the work and the notifier's identity.
-func buildNotifiedWork(t *testing.T) (*queue.Work, tensile.Identity, *tensile.Handler) {
+func buildNotifiedWork(t *testing.T) (*Work, tensile.Identity, *tensile.Handler) {
 	t.Helper()
 
 	node := testNode{Name: "notifier"}
 	handler := tensile.NewHandler(testNode{Name: "handler"})
 
-	q := queue.New()
+	q := New()
 	q.Add(node, handler)
 	q.NotifiedBy(handler, node)
 
@@ -68,7 +67,7 @@ func TestQueue_BuildErrorsOnSharedConflictIdentity(t *testing.T) {
 	a := testNode{Name: "a", Conflict: []tensile.Identity{ref}}
 	b := testNode{Name: "b", Conflict: []tensile.Identity{ref}}
 
-	q := queue.New()
+	q := New()
 	q.Add(a, b)
 	_, err := q.Build()
 	require.ErrorContains(t, err, "already claimed")
@@ -80,7 +79,7 @@ func TestQueue_BuildErrorsOnConflictWithNodeIdentity(t *testing.T) {
 	a := testNode{Name: "a"}
 	b := testNode{Name: "b", Conflict: []tensile.Identity{nodeIdentity(t, a)}}
 
-	q := queue.New()
+	q := New()
 	q.Add(a, b)
 	_, err := q.Build()
 	require.ErrorContains(t, err, "already claimed")
@@ -202,7 +201,7 @@ func TestWork_ChanBlocksManualDependencyUntilDone(t *testing.T) {
 	first := testNode{Name: "first"}
 	second := testNode{Name: "second"}
 
-	q := queue.New()
+	q := New()
 	q.Add(first, second)
 	q.DependsOn(second, first)
 	work, err := q.Build()
@@ -350,9 +349,9 @@ func TestWork_ChanOverlapsEmptyKeys(t *testing.T) {
 }
 
 // namedQueue builds a NamedQueue with the given name and nodes.
-func namedQueue(t *testing.T, name string, nodes ...tensile.Identifier) *queue.NamedQueue {
+func namedQueue(t *testing.T, name string, nodes ...tensile.Identifier) *NamedQueue {
 	t.Helper()
-	nq := queue.NewNamed(tensile.AsIdentity("queue", "name", name))
+	nq := NewNamed(tensile.AsIdentity("queue", "name", name))
 	nq.Add(nodes...)
 	return nq
 }
@@ -399,7 +398,7 @@ func TestQueue_DependsOnNamedQueueWaitsForAllMembers(t *testing.T) {
 	sub := namedQueue(t, "sub", a, b)
 	depender := testNode{Name: "depender"}
 
-	q := queue.New()
+	q := New()
 	q.Add(sub, depender)
 	q.DependsOn(depender, sub)
 	work, err := q.Build()
@@ -427,7 +426,7 @@ func TestQueue_NamedQueueDependsOnNodeGatesAllMembers(t *testing.T) {
 	sub := namedQueue(t, "sub", a)
 	dep := testNode{Name: "dep"}
 
-	q := queue.New()
+	q := New()
 	q.Add(sub, dep)
 	q.DependsOn(sub, dep)
 	work, err := q.Build()
@@ -455,7 +454,7 @@ func TestQueue_NestedNamedQueueDependencyWaitsForAllMembers(t *testing.T) {
 	outer := namedQueue(t, "outer", inner, b)
 	depender := testNode{Name: "depender"}
 
-	q := queue.New()
+	q := New()
 	q.Add(outer, depender)
 	q.DependsOn(depender, outer)
 	work, err := q.Build()
@@ -483,7 +482,7 @@ func TestQueue_NotifiedByNamedQueueFiresOnMemberExecution(t *testing.T) {
 	sub := namedQueue(t, "sub", a)
 	handler := tensile.NewHandler(testNode{Name: "handler"})
 
-	q := queue.New()
+	q := New()
 	q.Add(sub, handler)
 	q.NotifiedBy(handler, sub)
 	work, err := q.Build()
@@ -510,7 +509,7 @@ func TestQueue_NotifiedByNamedQueueSkippedWithoutExecution(t *testing.T) {
 	sub := namedQueue(t, "sub", a)
 	handler := tensile.NewHandler(testNode{Name: "handler"})
 
-	q := queue.New()
+	q := New()
 	q.Add(sub, handler)
 	q.NotifiedBy(handler, sub)
 	work, err := q.Build()
@@ -558,7 +557,7 @@ func TestQueue_DependsOnClaimResolvesToClaimer(t *testing.T) {
 	provider := testNode{Name: "provider", Conflict: []tensile.Identity{ref}}
 	depender := testNode{Name: "depender"}
 
-	q := queue.New()
+	q := New()
 	q.Add(provider, depender)
 	q.DependsOn(depender, ref)
 	work, err := q.Build()
@@ -587,7 +586,7 @@ func TestQueue_ImplicitNotifyClaimedTargetOrdersClaimer(t *testing.T) {
 		Notify: []tensile.Identity{target},
 	}
 
-	q := queue.New()
+	q := New()
 	q.Add(claimer, notifier)
 	work, err := q.Build()
 	require.NoError(t, err)
@@ -611,7 +610,7 @@ func TestQueue_BuildErrorsOnUnknownDependency(t *testing.T) {
 	a := testNode{Name: "a"}
 	missing := testNode{Name: "missing"}
 
-	q := queue.New()
+	q := New()
 	q.Add(a)
 	q.DependsOn(a, missing)
 	_, err := q.Build()
@@ -625,7 +624,7 @@ func TestQueue_BuildErrorsOnUnknownNotifier(t *testing.T) {
 	handler := tensile.NewHandler(testNode{Name: "handler"})
 	missing := testNode{Name: "missing"}
 
-	q := queue.New()
+	q := New()
 	q.Add(handler)
 	q.NotifiedBy(handler, missing)
 	_, err := q.Build()
@@ -639,7 +638,7 @@ func TestQueue_BuildErrorsOnDuplicateMembership(t *testing.T) {
 	first := namedQueue(t, "first", a)
 	second := namedQueue(t, "second", a)
 
-	q := queue.New()
+	q := New()
 	q.Add(first, second)
 	_, err := q.Build()
 	require.Error(t, err, "the same node in two subqueues must error")
@@ -656,7 +655,7 @@ func TestQueue_BuildErrorsOnDuplicateMembershipNestedBreadcrumb(t *testing.T) {
 	outer := namedQueue(t, "outer", inner)
 	other := namedQueue(t, "other", a)
 
-	q := queue.New()
+	q := New()
 	q.Add(outer, other)
 	_, err := q.Build()
 	require.Error(t, err)
@@ -673,7 +672,7 @@ func TestQueue_BuildErrorsOnNodeCollidingWithNamedQueue(t *testing.T) {
 	sub := namedQueue(t, "sub", a)
 	collider := tensile.NewNode(sub.Identity())
 
-	q := queue.New()
+	q := New()
 	q.Add(sub, collider)
 	_, err := q.Build()
 	assert.ErrorContains(t, err, "already claimed")
@@ -685,7 +684,7 @@ func TestQueue_BuildErrorsOnNamedQueueAddedTwice(t *testing.T) {
 	a := testNode{Name: "a"}
 	sub := namedQueue(t, "sub", a)
 
-	q := queue.New()
+	q := New()
 	q.Add(sub, sub)
 	_, err := q.Build()
 	assert.Error(t, err, "the same subqueue added twice must error")
@@ -701,7 +700,7 @@ func TestQueue_BuildErrorsOnNotifyingNamedQueue(t *testing.T) {
 		Notify: []tensile.Identity{sub.Identity()},
 	}
 
-	q := queue.New()
+	q := New()
 	q.Add(sub, notifier)
 	_, err := q.Build()
 	assert.Error(t, err, "subqueues cannot be notified")
