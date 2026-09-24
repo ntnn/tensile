@@ -25,6 +25,7 @@ type Executor struct {
 
 	summary        NodeSummary
 	needsExecution bool
+	diff           tensile.Diff
 }
 
 // Run executes the node through its stages and returns the record.
@@ -57,7 +58,7 @@ func (e *Executor) run() error {
 
 	if err := e.summary.stage(StageNeedsExecution, func() error {
 		var err error
-		e.needsExecution, _, err = e.Node.NeedsExecution(e.Wire)
+		e.needsExecution, e.diff, err = e.Node.NeedsExecution(e.Wire)
 		//nolint:wrapcheck // wrapped by caller
 		return err
 	}); err != nil {
@@ -75,7 +76,12 @@ func (e *Executor) run() error {
 	}
 
 	if err := e.summary.stage(StageExecute, func() error {
-		_, err := e.Node.Execute(e.Wire)
+		diff, err := e.Node.Execute(e.Wire)
+		// To not override e.diff from NeedsExecution if it was returned
+		// with a nil value
+		if diff != nil {
+			e.diff = diff
+		}
 		//nolint:wrapcheck // wrapped by caller
 		return err
 	}); err != nil {
@@ -92,6 +98,7 @@ func (e *Executor) finish(outcome Outcome, changed bool) error {
 	}
 	e.Done(changed)
 	e.summary.Outcome = outcome
+	e.summary.Diff = e.diff
 	return nil
 }
 
