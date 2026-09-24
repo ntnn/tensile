@@ -705,3 +705,144 @@ func TestQueue_BuildErrorsOnNotifyingNamedQueue(t *testing.T) {
 	_, err := q.Build()
 	assert.Error(t, err, "subqueues cannot be notified")
 }
+
+func TestQueue_BreadcrumbsSimpleNesting(t *testing.T) {
+	t.Parallel()
+
+	a := testNode{Name: "a"}
+	b := testNode{Name: "b"}
+	inner := namedQueue(t, "inner", a)
+	outer := namedQueue(t, "outer", inner, b)
+
+	q := New()
+	q.Add(outer)
+
+	assert.Equal(t,
+		map[tensile.Identity][]tensile.Identity{
+			inner.Identity(): {a.Identity()},
+			outer.Identity(): {a.Identity(), b.Identity()},
+		},
+		q.subqueues,
+	)
+	assert.Equal(t,
+		map[tensile.Identity][]tensile.Identity{
+			a.Identity(): {inner.Identity(), outer.Identity()},
+			b.Identity(): {outer.Identity()},
+		},
+		q.breadcrumbs,
+		"breadcrumbs must chain innermost first",
+	)
+
+	_, err := q.Build()
+	require.NoError(t, err)
+}
+
+func TestQueue_BreadcrumbsDeepNesting(t *testing.T) {
+	t.Parallel()
+
+	a := testNode{Name: "a"}
+	inner := namedQueue(t, "inner", a)
+	mid := namedQueue(t, "mid", inner)
+	outer := namedQueue(t, "outer", mid)
+
+	q := New()
+	q.Add(outer)
+
+	assert.Equal(t,
+		map[tensile.Identity][]tensile.Identity{
+			inner.Identity(): {a.Identity()},
+			mid.Identity():   {a.Identity()},
+			outer.Identity(): {a.Identity()},
+		},
+		q.subqueues,
+	)
+	assert.Equal(t,
+		map[tensile.Identity][]tensile.Identity{
+			a.Identity(): {inner.Identity(), mid.Identity(), outer.Identity()},
+		},
+		q.breadcrumbs,
+		"breadcrumbs must chain innermost first",
+	)
+
+	_, err := q.Build()
+	require.NoError(t, err)
+}
+
+func TestQueue_BreadcrumbsDisjointDuplicate(t *testing.T) {
+	t.Parallel()
+
+	a := testNode{Name: "a"}
+	first := namedQueue(t, "first", a)
+	second := namedQueue(t, "second", a)
+
+	q := New()
+	q.Add(first, second)
+
+	assert.Equal(t,
+		map[tensile.Identity][]tensile.Identity{
+			a.Identity(): {first.Identity()},
+		},
+		q.breadcrumbs,
+		"the first membership must win",
+	)
+
+	_, err := q.Build()
+	require.ErrorContains(t, err, "already claimed")
+	assert.ErrorContains(t, err, `queue[name="first"]`, "error must name the first membership")
+}
+
+func TestQueue_BreadcrumbsSiblingsSharingNode(t *testing.T) {
+	t.Parallel()
+
+	a := testNode{Name: "a"}
+	inner1 := namedQueue(t, "inner1", a)
+	inner2 := namedQueue(t, "inner2", a)
+	outer := namedQueue(t, "outer", inner1, inner2)
+
+	q := New()
+	q.Add(outer)
+
+	assert.Equal(t,
+		map[tensile.Identity][]tensile.Identity{
+			a.Identity(): {inner1.Identity(), outer.Identity()},
+		},
+		q.breadcrumbs,
+		"the first membership must win",
+	)
+
+	_, err := q.Build()
+	require.ErrorContains(t, err, "already claimed")
+	assert.ErrorContains(t, err, `queue[name="inner1"]->queue[name="outer"]`)
+}
+
+func TestQueue_BreadcrumbsNodeDirectAndNested(t *testing.T) {
+	t.Parallel()
+
+	a := testNode{Name: "a"}
+	inner := namedQueue(t, "inner", a)
+	outer := namedQueue(t, "outer", inner, a)
+
+	q := New()
+	q.Add(outer)
+
+	_, err := q.Build()
+	require.ErrorContains(t, err, "already claimed")
+	assert.ErrorContains(t, err, `queue[name="inner"]->queue[name="outer"]`,
+		"the directly added duplicate is attributed to the subqueue membership",
+	)
+}
+
+func TestQueue_BreadcrumbsQueueAddedDirectlyAndNested(t *testing.T) {
+	t.Parallel()
+
+	a := testNode{Name: "a"}
+	inner := namedQueue(t, "inner", a)
+	outer := namedQueue(t, "outer", inner)
+
+	q := New()
+	q.Add(outer, inner)
+
+	_, err := q.Build()
+	require.ErrorContains(t, err, "already claimed")
+	assert.ErrorContains(t, err, `queue[name="inner"]->queue[name="outer"]`)
+}
