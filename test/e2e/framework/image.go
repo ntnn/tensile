@@ -1,5 +1,7 @@
 package framework
 
+import "io"
+
 // Image describes how to run a target OS as a container machine.
 type Image struct {
 	// Ref is the image to start the container with.
@@ -12,6 +14,9 @@ type Image struct {
 	SecurityOpt []string
 	// Tmpfs maps mount points to mount options.
 	Tmpfs map[string]string
+	// Files maps container paths to file content copied in before start.
+	// Wrap strings in [strings.NewReader].
+	Files map[string]io.Reader
 	// WaitCmd probes readiness inside the container.
 	// Exit codes 0 and 1 count as ready so a degraded systemd boot, common in containers, does not fail the wait.
 	WaitCmd []string
