@@ -31,6 +31,8 @@ type Work struct {
 	// held maps serialization keys to the identities of nodes that are
 	// currently being executed
 	held map[string]tensile.Identity
+	// doneOrder is the order in which nodes were marked done.
+	doneOrder []tensile.Identity
 }
 
 // newWork returns a Work with initialized internals.
@@ -46,6 +48,13 @@ func newWork() *Work {
 // the node with the given identity.
 func (w *Work) Dependencies(identity tensile.Identity) []tensile.Identity {
 	return slices.Clone(w.dependencies[identity])
+}
+
+// DoneOrder returns the order in which nodes were marked as done.
+func (w *Work) DoneOrder() []tensile.Identity {
+	w.lock.Lock()
+	defer w.lock.Unlock()
+	return slices.Clone(w.doneOrder)
 }
 
 // Get returns the next node that is ready to be executed.
@@ -203,6 +212,7 @@ func (w *Work) MarkDone(node *tensile.Node, executed bool) {
 	for _, key := range node.SerializesOn() {
 		delete(w.held, key)
 	}
+	w.doneOrder = append(w.doneOrder, node.Identity())
 	w.cond.Broadcast()
 }
 
