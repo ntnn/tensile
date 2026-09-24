@@ -107,6 +107,8 @@ func (b *build) addNodes(nodes []tensile.Identifier) error {
 }
 
 // addNodes registers the given node as [tensile.Node] in the graph and as handler if it is a [tensile.Handler].
+//
+//nolint:cyclop // it's mostly straight forward, could at most extract claimed identities
 func (b *build) addNode(identifier tensile.Identifier) error {
 	node := tensile.NewNode(identifier)
 	identity := node.Identity()
