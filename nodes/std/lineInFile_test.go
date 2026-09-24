@@ -113,7 +113,7 @@ func TestLineInFile_NeedsExecution(t *testing.T) {
 				require.NoError(t, os.WriteFile(cas.node.Path, []byte(*cas.onDisk), 0o600))
 			}
 
-			needs, err := cas.node.NeedsExecution(nil)
+			needs, _, err := cas.node.NeedsExecution(nil)
 			require.NoError(t, err)
 			assert.Equal(t, cas.expected, needs)
 		})
@@ -127,13 +127,14 @@ func TestLineInFile_Execute(t *testing.T) {
 	require.NoError(t, os.WriteFile(path, []byte("a=2\nx=0\n"), 0o600))
 
 	node := LineInFile{Path: path, Regexp: "^x=", Line: "x=1"}
-	require.NoError(t, node.Execute(nil))
+	_, err := node.Execute(nil)
+	require.NoError(t, err)
 
 	content, err := os.ReadFile(path) //nolint:gosec // path from t.TempDir
 	require.NoError(t, err)
 	assert.Equal(t, "a=2\nx=1\n", string(content))
 
-	needs, err := node.NeedsExecution(nil)
+	needs, _, err := node.NeedsExecution(nil)
 	require.NoError(t, err)
 	assert.False(t, needs, "execute must be idempotent")
 }
@@ -143,7 +144,8 @@ func TestLineInFile_ExecuteCreate(t *testing.T) {
 
 	path := filepath.Join(t.TempDir(), "file")
 	node := LineInFile{Path: path, Regexp: "^x=", Line: "x=1"}
-	require.NoError(t, node.Execute(nil))
+	_, err := node.Execute(nil)
+	require.NoError(t, err)
 
 	content, err := os.ReadFile(path) //nolint:gosec // path from t.TempDir
 	require.NoError(t, err)

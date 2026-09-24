@@ -10,7 +10,7 @@ import (
 func TestFacts_NeedsExecution(t *testing.T) {
 	t.Parallel()
 
-	needs, err := (&Facts{}).NeedsExecution(testWire(t))
+	needs, _, err := (&Facts{}).NeedsExecution(testWire(t))
 	require.NoError(t, err)
 	assert.False(t, needs, "facts must never execute")
 }

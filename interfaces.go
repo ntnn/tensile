@@ -1,5 +1,10 @@
 package tensile
 
+import (
+	"fmt"
+	"log/slog"
+)
+
 // Identifier is the interface that must be implemented by all [Node].
 type Identifier interface {
 	// Identity returns the node's identity.
@@ -68,6 +73,13 @@ type Reporter interface {
 	Report(wire Wire) (any, error)
 }
 
+// Diff describes a change a node would make or has made.
+// Implementations must render human-readable via String and structured via LogValue.
+type Diff interface {
+	fmt.Stringer
+	slog.LogValuer
+}
+
 // Executor is the interface to be satisfied by a [Node] to be executed.
 type Executor interface {
 	// NeedsExecution is run before Execute. NeedsExecution must not
@@ -76,7 +88,12 @@ type Executor interface {
 	//
 	// NeedsExecution is called e.g. for noop runs to check if any
 	// changes are needed.
-	NeedsExecution(wire Wire) (bool, error)
+	//
+	// The returned Diff is an optional description of the change that would be made during Execute.
+	// If the returned bool is false Diff may be nil.
+	// If the returned bool is true Diff may be nil.
+	NeedsExecution(wire Wire) (bool, Diff, error)
 	// Execute is called for the node to make the desired change.
-	Execute(wire Wire) error
+	// The returned Diff is an optional description of the change made and may be nil.
+	Execute(wire Wire) (Diff, error)
 }

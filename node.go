@@ -139,31 +139,31 @@ func (n *Node) Report(wire Wire) (any, bool, error) {
 }
 
 // NeedsExecution calls .NeedsExecution on the wrapped node if it implements it.
-func (n *Node) NeedsExecution(wire Wire) (bool, error) {
+func (n *Node) NeedsExecution(wire Wire) (bool, Diff, error) {
 	enabled, err := n.enabled(wire)
 	if err != nil {
-		return false, err
+		return false, nil, err
 	}
 	if !enabled {
-		return false, nil
+		return false, nil, nil
 	}
 	if executor, ok := n.wrapped.(Executor); ok {
 		return executor.NeedsExecution(wire)
 	}
-	return true, nil
+	return true, nil, nil
 }
 
 // Execute calls .Execute on the wrapped node if it implements it.
-func (n *Node) Execute(wire Wire) error {
+func (n *Node) Execute(wire Wire) (Diff, error) {
 	enabled, err := n.enabled(wire)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if !enabled {
-		return nil
+		return nil, nil //nolint:nilnil // nil Diff is valid
 	}
 	if executor, ok := n.wrapped.(Executor); ok {
 		return executor.Execute(wire)
 	}
-	return nil
+	return nil, nil //nolint:nilnil // nil Diff is valid
 }

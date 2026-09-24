@@ -52,7 +52,7 @@ func TestDir_NeedsExecutionMissing(t *testing.T) {
 	}
 	require.NoError(t, d.Validate(nil))
 
-	needs, err := d.NeedsExecution(nil)
+	needs, _, err := d.NeedsExecution(nil)
 	require.NoError(t, err)
 	assert.True(t, needs, "a missing directory needs execution")
 }
@@ -69,7 +69,7 @@ func TestDir_NeedsExecutionMatchingMode(t *testing.T) {
 	}
 	require.NoError(t, d.Validate(nil))
 
-	needs, err := d.NeedsExecution(nil)
+	needs, _, err := d.NeedsExecution(nil)
 	require.NoError(t, err)
 	assert.False(t, needs, "an existing directory with matching mode needs no execution")
 }
@@ -84,7 +84,7 @@ func TestDir_NeedsExecutionWrongMode(t *testing.T) {
 	d := &Dir{Path: path}
 	require.NoError(t, d.Validate(nil))
 
-	needs, err := d.NeedsExecution(nil)
+	needs, _, err := d.NeedsExecution(nil)
 	require.NoError(t, err)
 	assert.True(t, needs, "an existing directory with wrong mode needs execution")
 }
@@ -98,7 +98,7 @@ func TestDir_NeedsExecutionNotADir(t *testing.T) {
 	d := &Dir{Path: path}
 	require.NoError(t, d.Validate(nil))
 
-	_, err := d.NeedsExecution(nil)
+	_, _, err := d.NeedsExecution(nil)
 	assert.Error(t, err, "a non-directory at the path should be an error")
 }
 
@@ -111,7 +111,8 @@ func TestDir_ExecuteCreatesNested(t *testing.T) {
 		FileMode: 0o700 | os.ModeDir,
 	}
 	require.NoError(t, d.Validate(nil))
-	require.NoError(t, d.Execute(nil))
+	_, err := d.Execute(nil)
+	require.NoError(t, err)
 
 	info, err := os.Stat(path)
 	require.NoError(t, err)
@@ -129,7 +130,8 @@ func TestDir_ExecuteFixesMode(t *testing.T) {
 	require.NoError(t, os.Mkdir(path, 0o700))
 	d := &Dir{Path: path}
 	require.NoError(t, d.Validate(nil))
-	require.NoError(t, d.Execute(nil))
+	_, err := d.Execute(nil)
+	require.NoError(t, err)
 
 	info, err := os.Stat(path)
 	require.NoError(t, err)

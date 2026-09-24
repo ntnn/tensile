@@ -28,11 +28,12 @@ func (c Chmod) DependsOn() ([]tensile.Identity, error) {
 }
 
 // NeedsExecution implements [tensile.Executor].
-func (c Chmod) NeedsExecution(_ tensile.Wire) (bool, error) {
-	return chmodNeedsExecution(c.Path, c.FileMode)
+func (c Chmod) NeedsExecution(_ tensile.Wire) (bool, tensile.Diff, error) {
+	needs, err := chmodNeedsExecution(c.Path, c.FileMode)
+	return needs, nil, err
 }
 
 // Execute implements [tensile.Executor].
-func (c Chmod) Execute(_ tensile.Wire) error {
-	return chmodApply(c.Path, c.FileMode)
+func (c Chmod) Execute(_ tensile.Wire) (tensile.Diff, error) {
+	return nil, chmodApply(c.Path, c.FileMode)
 }

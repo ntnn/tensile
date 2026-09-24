@@ -139,7 +139,7 @@ func TestCommand_NeedsExecution(t *testing.T) {
 				}
 			}
 
-			got, err := command.NeedsExecution(&tensile.DefaultWire{})
+			got, _, err := command.NeedsExecution(&tensile.DefaultWire{})
 			require.NoError(t, err)
 			assert.Equal(t, cas.want, got)
 		})
@@ -162,7 +162,8 @@ func TestCommand_Execute(t *testing.T) {
 			},
 		}
 
-		require.NoError(t, command.Execute(&tensile.DefaultWire{}))
+		_, err := command.Execute(&tensile.DefaultWire{})
+		require.NoError(t, err)
 		assert.Equal(t, []string{"-c", "echo hi"}, gotArgs)
 	})
 
@@ -176,7 +177,7 @@ func TestCommand_Execute(t *testing.T) {
 			},
 		}
 
-		err := command.Execute(&tensile.DefaultWire{})
+		_, err := command.Execute(&tensile.DefaultWire{})
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "boom")
 	})
@@ -201,14 +202,15 @@ func TestCommand_ExecuteReal(t *testing.T) {
 	wire := &tensile.DefaultWire{}
 	require.NoError(t, command.Validate(wire))
 
-	needs, err := command.NeedsExecution(wire)
+	needs, _, err := command.NeedsExecution(wire)
 	require.NoError(t, err)
 	require.True(t, needs, "target missing, must need execution")
 
-	require.NoError(t, command.Execute(wire))
+	_, err = command.Execute(wire)
+	require.NoError(t, err)
 	assert.FileExists(t, target)
 
-	needs, err = command.NeedsExecution(wire)
+	needs, _, err = command.NeedsExecution(wire)
 	require.NoError(t, err)
 	assert.False(t, needs, "target exists, creates guard must skip")
 }

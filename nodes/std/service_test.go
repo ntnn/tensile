@@ -100,7 +100,7 @@ func TestService_NeedsExecution(t *testing.T) {
 				Manager: name,
 			}
 
-			needs, err := s.NeedsExecution(testWire(t))
+			needs, _, err := s.NeedsExecution(testWire(t))
 			require.NoError(t, err)
 			assert.Equal(t, cas.expected, needs)
 		})
@@ -126,7 +126,8 @@ func TestService_Execute(t *testing.T) {
 		Running: new(true),
 		Manager: "fake-execute",
 	}
-	require.NoError(t, s.Execute(testWire(t)))
+	_, err := s.Execute(testWire(t))
+	require.NoError(t, err)
 
 	assert.True(t, applied.Active, "managed field must be applied")
 	assert.True(t, applied.Enabled, "unmanaged field must keep current state")
@@ -141,6 +142,6 @@ func TestService_NeedsExecutionUnknownManager(t *testing.T) {
 		Manager: "does-not-exist",
 	}
 
-	_, err := s.NeedsExecution(testWire(t))
+	_, _, err := s.NeedsExecution(testWire(t))
 	assert.Error(t, err, "an unknown manager should be an error")
 }

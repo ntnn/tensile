@@ -52,29 +52,29 @@ func (u *UCICommit) SerializesOn() []string {
 
 // NeedsExecution implements [tensile.Executor].
 // Nothing staged means nothing to commit.
-func (u *UCICommit) NeedsExecution(c tensile.Wire) (bool, error) {
+func (u *UCICommit) NeedsExecution(c tensile.Wire) (bool, tensile.Diff, error) {
 	args := []string{"changes"}
 	if u.Config != "" {
 		args = append(args, u.Config)
 	}
 	out, err := u.uci(c.Context(), args...)
 	if err != nil {
-		return false, fmt.Errorf("uci changes: %w: %s", err, strings.TrimSpace(string(out)))
+		return false, nil, fmt.Errorf("uci changes: %w: %s", err, strings.TrimSpace(string(out)))
 	}
-	return len(bytes.TrimSpace(out)) > 0, nil
+	return len(bytes.TrimSpace(out)) > 0, nil, nil
 }
 
 // Execute implements [tensile.Executor].
-func (u *UCICommit) Execute(c tensile.Wire) error {
+func (u *UCICommit) Execute(c tensile.Wire) (tensile.Diff, error) {
 	args := []string{"commit"}
 	if u.Config != "" {
 		args = append(args, u.Config)
 	}
 	out, err := u.uci(c.Context(), args...)
 	if err != nil {
-		return fmt.Errorf("uci commit: %w: %s", err, strings.TrimSpace(string(out)))
+		return nil, fmt.Errorf("uci commit: %w: %s", err, strings.TrimSpace(string(out)))
 	}
-	return nil
+	return nil, nil //nolint:nilnil // nil Diff is valid
 }
 
 func (u *UCICommit) uci(ctx context.Context, args ...string) ([]byte, error) {

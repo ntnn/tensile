@@ -51,37 +51,37 @@ func (l *LineInFile) DependsOn() ([]tensile.Identity, error) {
 }
 
 // NeedsExecution implements [tensile.Executor].
-func (l *LineInFile) NeedsExecution(_ tensile.Wire) (bool, error) {
+func (l *LineInFile) NeedsExecution(_ tensile.Wire) (bool, tensile.Diff, error) {
 	content, err := l.read()
 	if err != nil {
-		return false, err
+		return false, nil, err
 	}
 
 	result, err := l.apply(content)
 	if err != nil {
-		return false, err
+		return false, nil, err
 	}
-	return result != content, nil
+	return result != content, nil, nil
 }
 
 // Execute implements [tensile.Executor].
-func (l *LineInFile) Execute(_ tensile.Wire) error {
+func (l *LineInFile) Execute(_ tensile.Wire) (tensile.Diff, error) {
 	content, err := l.read()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	result, err := l.apply(content)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// perms apply only on create, existing files keep theirs
 	if err := os.WriteFile(l.Path, []byte(result), 0o644); err != nil { //nolint:gosec,mnd
-		return fmt.Errorf("writing file: %w", err)
+		return nil, fmt.Errorf("writing file: %w", err)
 	}
 
-	return nil
+	return nil, nil //nolint:nilnil // nil Diff is valid
 }
 
 // read returns the file content, empty when the file is missing.

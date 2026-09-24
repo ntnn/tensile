@@ -75,27 +75,27 @@ func (d *Dir) DependsOn() ([]tensile.Identity, error) {
 }
 
 // NeedsExecution implements [tensile.Executor].
-func (d *Dir) NeedsExecution(s tensile.Wire) (bool, error) {
+func (d *Dir) NeedsExecution(s tensile.Wire) (bool, tensile.Diff, error) {
 	info, err := os.Stat(d.Path)
 	if os.IsNotExist(err) {
-		return true, nil
+		return true, nil, nil
 	}
 	if err != nil {
-		return false, fmt.Errorf("error checking directory: %w", err)
+		return false, nil, fmt.Errorf("error checking directory: %w", err)
 	}
 	if !info.IsDir() {
-		return false, fmt.Errorf("%q exists but is not a directory", d.Path)
+		return false, nil, fmt.Errorf("%q exists but is not a directory", d.Path)
 	}
 	return d.Chmod.NeedsExecution(s)
 }
 
 // Execute implements [tensile.Executor].
-func (d *Dir) Execute(s tensile.Wire) error {
+func (d *Dir) Execute(s tensile.Wire) (tensile.Diff, error) {
 	if err := os.MkdirAll(d.Path, d.FileMode.Perm()); err != nil {
-		return fmt.Errorf("error creating directory: %w", err)
+		return nil, fmt.Errorf("error creating directory: %w", err)
 	}
-	if err := d.Chmod.Execute(s); err != nil {
-		return fmt.Errorf("error setting mode: %w", err)
+	if _, err := d.Chmod.Execute(s); err != nil {
+		return nil, fmt.Errorf("error setting mode: %w", err)
 	}
-	return nil
+	return nil, nil //nolint:nilnil // nil Diff is valid
 }

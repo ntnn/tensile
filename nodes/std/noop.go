@@ -26,11 +26,11 @@ func (n *Noop) Identity() tensile.Identity {
 
 // NeedsExecution implements [tensile.Executor].
 // A Noop always executes so notifications propagate.
-func (n *Noop) NeedsExecution(_ tensile.Wire) (bool, error) {
-	return true, nil
+func (n *Noop) NeedsExecution(_ tensile.Wire) (bool, tensile.Diff, error) {
+	return true, nil, nil
 }
 
 // Execute implements [tensile.Executor].
-func (n *Noop) Execute(_ tensile.Wire) error {
-	return nil
+func (n *Noop) Execute(_ tensile.Wire) (tensile.Diff, error) {
+	return nil, nil //nolint:nilnil // nil Diff is valid
 }

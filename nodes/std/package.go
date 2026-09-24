@@ -81,40 +81,40 @@ func (p *Package) SerializesOn() []string {
 }
 
 // NeedsExecution implements [tensile.Executor].
-func (p *Package) NeedsExecution(c tensile.Wire) (bool, error) {
+func (p *Package) NeedsExecution(c tensile.Wire) (bool, tensile.Diff, error) {
 	mgr, err := p.manager(c)
 	if err != nil {
-		return false, err
+		return false, nil, err
 	}
 
 	installed, err := mgr.Installed(c.Context(), p.Name)
 	if err != nil {
-		return false, fmt.Errorf("error checking package status: %w", err)
+		return false, nil, fmt.Errorf("error checking package status: %w", err)
 	}
 
-	return installed != (p.desired() == PackagePresent), nil
+	return installed != (p.desired() == PackagePresent), nil, nil
 }
 
 // Execute implements [tensile.Executor].
-func (p *Package) Execute(c tensile.Wire) error {
+func (p *Package) Execute(c tensile.Wire) (tensile.Diff, error) {
 	mgr, err := p.manager(c)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	switch p.desired() {
 	case PackagePresent:
 		if err := mgr.Install(c.Context(), p.Name); err != nil {
-			return fmt.Errorf("error installing package: %w", err)
+			return nil, fmt.Errorf("error installing package: %w", err)
 		}
-		return nil
+		return nil, nil //nolint:nilnil // nil Diff is valid
 	case PackageAbsent:
 		if err := mgr.Remove(c.Context(), p.Name); err != nil {
-			return fmt.Errorf("error removing package: %w", err)
+			return nil, fmt.Errorf("error removing package: %w", err)
 		}
-		return nil
+		return nil, nil //nolint:nilnil // nil Diff is valid
 	default:
-		return fmt.Errorf("unhandled desired state: %q", p.desired())
+		return nil, fmt.Errorf("unhandled desired state: %q", p.desired())
 	}
 }
 

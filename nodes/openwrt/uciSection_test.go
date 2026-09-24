@@ -107,7 +107,7 @@ func TestUCISection_NeedsExecution(t *testing.T) {
 				},
 			}
 
-			got, err := section.NeedsExecution(testWire(t))
+			got, _, err := section.NeedsExecution(testWire(t))
 			if cas.wantErr {
 				require.Error(t, err)
 				return

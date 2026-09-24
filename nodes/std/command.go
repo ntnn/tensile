@@ -107,7 +107,7 @@ func (c *Command) Validate(_ tensile.Wire) error {
 }
 
 // NeedsExecution implements [tensile.Executor].
-func (c *Command) NeedsExecution(wire tensile.Wire) (bool, error) {
+func (c *Command) NeedsExecution(wire tensile.Wire) (bool, tensile.Diff, error) {
 	guards := []func(tensile.Wire) (bool, error){
 		c.createsGuard,
 		c.removesGuard,
@@ -117,13 +117,13 @@ func (c *Command) NeedsExecution(wire tensile.Wire) (bool, error) {
 	for _, guard := range guards {
 		skip, err := guard(wire)
 		if err != nil {
-			return false, err
+			return false, nil, err
 		}
 		if skip {
-			return false, nil
+			return false, nil, nil
 		}
 	}
-	return true, nil
+	return true, nil, nil
 }
 
 // createsGuard skips execution when the Creates path exists.
@@ -175,13 +175,13 @@ func (c *Command) onlyIfGuard(wire tensile.Wire) (bool, error) {
 }
 
 // Execute implements [tensile.Executor].
-func (c *Command) Execute(wire tensile.Wire) error {
+func (c *Command) Execute(wire tensile.Wire) (tensile.Diff, error) {
 	out, err := c.exec(wire, c.Command)
 	if err != nil {
-		return fmt.Errorf("running command: %w: %s", err, strings.TrimSpace(string(out)))
+		return nil, fmt.Errorf("running command: %w: %s", err, strings.TrimSpace(string(out)))
 	}
 	c.out = out
-	return nil
+	return nil, nil //nolint:nilnil // nil Diff is valid
 }
 
 // Report implements [tensile.Reporter].

@@ -126,7 +126,7 @@ func TestUCIOption_NeedsExecution_string(t *testing.T) {
 				run:   fake.run,
 			}
 
-			got, err := option.NeedsExecution(testWire(t))
+			got, _, err := option.NeedsExecution(testWire(t))
 			if cas.wantErr {
 				require.Error(t, err)
 				return
@@ -176,7 +176,7 @@ func TestUCIOption_NeedsExecution_list(t *testing.T) {
 				run:   fake.run,
 			}
 
-			got, err := option.NeedsExecution(testWire(t))
+			got, _, err := option.NeedsExecution(testWire(t))
 			require.NoError(t, err)
 			assert.Equal(t, cas.want, got)
 		})
@@ -193,7 +193,7 @@ func TestUCIOption_NeedsExecution_int(t *testing.T) {
 		run:   fake.run,
 	}
 
-	got, err := option.NeedsExecution(testWire(t))
+	got, _, err := option.NeedsExecution(testWire(t))
 	require.NoError(t, err)
 	assert.False(t, got)
 }
@@ -208,7 +208,7 @@ func TestUCIOption_NeedsExecution_bool(t *testing.T) {
 		run:   fake.run,
 	}
 
-	got, err := option.NeedsExecution(testWire(t))
+	got, _, err := option.NeedsExecution(testWire(t))
 	require.NoError(t, err)
 	assert.False(t, got)
 }
@@ -223,7 +223,7 @@ func TestUCIOption_NeedsExecution_intList(t *testing.T) {
 		run:   fake.run,
 	}
 
-	got, err := option.NeedsExecution(testWire(t))
+	got, _, err := option.NeedsExecution(testWire(t))
 	require.NoError(t, err)
 	assert.False(t, got)
 }
@@ -238,7 +238,8 @@ func TestUCIOption_Execute_scalar(t *testing.T) {
 		run:   fake.run,
 	}
 
-	require.NoError(t, option.Execute(testWire(t)))
+	_, err := option.Execute(testWire(t))
+	require.NoError(t, err)
 	assert.Equal(t, [][]string{{"set", "t.main.hello=world"}}, fake.calls)
 }
 
@@ -252,7 +253,8 @@ func TestUCIOption_Execute_list(t *testing.T) {
 		run:   fake.run,
 	}
 
-	require.NoError(t, option.Execute(testWire(t)))
+	_, err := option.Execute(testWire(t))
+	require.NoError(t, err)
 	assert.Equal(t, [][]string{
 		{"delete", "network.lan.dns"},
 		{"add_list", "network.lan.dns=192.168.178.5"},
@@ -270,7 +272,8 @@ func TestUCIOption_Execute_absent(t *testing.T) {
 		run:   fake.run,
 	}
 
-	require.NoError(t, option.Execute(testWire(t)))
+	_, err := option.Execute(testWire(t))
+	require.NoError(t, err)
 	assert.Equal(t, [][]string{{"delete", "t.main.legacy"}}, fake.calls)
 }
 
@@ -286,5 +289,6 @@ func TestUCIOption_Execute_deleteMissingIsNoop(t *testing.T) {
 		},
 	}
 
-	require.NoError(t, option.Execute(testWire(t)))
+	_, err := option.Execute(testWire(t))
+	require.NoError(t, err)
 }
