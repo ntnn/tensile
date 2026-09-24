@@ -1,41 +1,32 @@
 package queue
 
 import (
-	"errors"
 	"fmt"
-	"hash/fnv"
-	"sync"
+	"slices"
 
 	"github.com/ntnn/tensile"
-	"gonum.org/v1/gonum/graph/simple"
-	"gonum.org/v1/gonum/graph/topo"
+	"github.com/ntnn/tensile/pkg/graph"
 )
 
-// graphID hashes an identity into the int64 ID space gonum requires.
-func graphID(identity tensile.Identity) int64 {
-	h := fnv.New64a()
-	_, err := h.Write([]byte(identity.String()))
-	if err != nil {
-		// fnv.Write never errors, if it does there's something seriously wrong.
-		panic(err)
-	}
-	return int64(h.Sum64()) //nolint:gosec // deliberate wraparound, only used as opaque ID
+// notification records which nodes notify a handler.
+type notification struct {
+	handler   tensile.Identity
+	notifiers []tensile.Identity
 }
 
-// graphNode adapts a [tensile.Node] to [graph.Node].
-type graphNode struct {
-	id   int64
-	node *tensile.Node
-}
-
-func (g graphNode) ID() int64 {
-	return g.id
-}
-
-// Queue aggregates [tensile.Node] and then orders them based on their
-// dependencies for execution.
+// Queue records nodes, dependencies and notifications.
 type Queue struct {
-	graph tensile.Graph
+	nodes    []tensile.Identifier
+	deps     []graph.Edge[tensile.Identity]
+	notifies []notification
+	// subqueues maps [NamedQueue] identities to their node identities
+	subqueues map[tensile.Identity][]tensile.Identity
+	// duplicates tracks duplicate [NamedQueue] identities since
+	// subqueues is a map and .Add cannot error
+	duplicates []tensile.Identity
+	// breadcrumbs maps node identities to the [NamedQueue] chain they
+	// were added through, innermost first
+	breadcrumbs map[tensile.Identity][]tensile.Identity
 }
 
 // New returns a new [Queue].
@@ -43,216 +34,111 @@ func New() *Queue {
 	return &Queue{}
 }
 
-// Enqueue adds values as [tensile.Node] to the queue.
-func (q *Queue) Enqueue(nodes ...tensile.Identifier) error {
-	return q.graph.Add(nodes...)
+// Add adds values as [tensile.Node] to the queue.
+func (q *Queue) Add(nodes ...tensile.Identifier) {
+	for _, node := range nodes {
+		if nq, ok := node.(*NamedQueue); ok {
+			q.addNamed(nq)
+			continue
+		}
+		q.nodes = append(q.nodes, node)
+	}
 }
 
-// DependsOn adds a dependency from node to each of the nodes in dependsOn.
-// All referenced nodes must have been added.
-func (q *Queue) DependsOn(node tensile.Identifier, dependsOn ...tensile.Identifier) error {
-	return q.graph.DependsOn(node, dependsOn...)
+// addNamed dissolves the named queue, merging its intents and
+// memberships and extending each member's breadcrumb with the queue.
+func (q *Queue) addNamed(nq *NamedQueue) {
+	if q.subqueues == nil {
+		q.subqueues = map[tensile.Identity][]tensile.Identity{}
+		q.breadcrumbs = map[tensile.Identity][]tensile.Identity{}
+	}
+
+	q.nodes = append(q.nodes, nq.nodes...)
+	q.deps = append(q.deps, nq.deps...)
+	q.notifies = append(q.notifies, nq.notifies...)
+	q.duplicates = append(q.duplicates, nq.duplicates...)
+
+	// map existing subqueues from subqueue
+	for identity, subqueues := range nq.subqueues {
+		if _, exists := q.subqueues[identity]; exists {
+			q.duplicates = append(q.duplicates, identity)
+			continue
+		}
+		q.subqueues[identity] = subqueues
+	}
+	// add the subqueue itself
+	identities := nq.identities()
+	if _, exists := q.subqueues[nq.Identity()]; exists {
+		q.duplicates = append(q.duplicates, nq.Identity())
+	}
+	q.subqueues[nq.Identity()] = identities
+
+	// and add the breadcrumbs to see where nodes came from
+	for _, identity := range identities {
+		if _, exists := q.breadcrumbs[identity]; exists {
+			// keep the first breadcrumb, duplicate nodes error at build
+			continue
+		}
+		q.breadcrumbs[identity] = append(slices.Clone(nq.breadcrumbs[identity]), nq.Identity())
+	}
 }
 
-// RequiredBy is like [Queue.DependsOn] but adds a dependency from each
-// of the nodes in requiredBy to node.
-// All referenced nodes must have been added.
-func (q *Queue) RequiredBy(node tensile.Identifier, requiredBy ...tensile.Identifier) error {
-	return q.graph.RequiredBy(node, requiredBy...)
+// DependsOn makes node dependent on each node in dependsOn.
+func (q *Queue) DependsOn(node tensile.Identifier, dependsOn ...tensile.Identifier) {
+	for _, dep := range dependsOn {
+		q.deps = append(
+			q.deps,
+			graph.Edge[tensile.Identity]{
+				From: dep.Identity(),
+				To:   node.Identity(),
+			},
+		)
+	}
 }
 
-// NotifiedBy adds the notifiers as notifiers for the handler.
-// If either the handler or notifiers are not in the queue an error is returned.
-func (q *Queue) NotifiedBy(handler *tensile.Handler, notifiers ...tensile.Identifier) error {
-	return q.graph.NotifiedBy(handler, notifiers...)
+// RequiredBy is like [Queue.DependsOn] but makes each requiredBy dependent on node.
+func (q *Queue) RequiredBy(node tensile.Identifier, requiredBy ...tensile.Identifier) {
+	for _, req := range requiredBy {
+		q.deps = append(q.deps, graph.Edge[tensile.Identity]{
+			From: node.Identity(),
+			To:   req.Identity(),
+		})
+	}
 }
 
-// Build returns the nodes in the queue in the order they should be
-// executed. If there is a cycle in the graph, an error is returned.
-func (q *Queue) Build() (*Work, error) { //nolint:cyclop
-	d := newDecomposition()
-	if _, err := d.walk(&q.graph); err != nil {
+// NotifiedBy adds the notifiers as notifiers for handler.
+func (q *Queue) NotifiedBy(handler *tensile.Handler, notifiers ...tensile.Identifier) {
+	identities := make([]tensile.Identity, len(notifiers))
+	for i, notifier := range notifiers {
+		identities[i] = notifier.Identity()
+	}
+	q.notifies = append(q.notifies, notification{
+		handler:   handler.Identity(),
+		notifiers: identities,
+	})
+}
+
+// Build returns a [Work] with the added [tensile.Node], dependencies and notifications.
+func (q *Queue) Build() (*Work, error) {
+	if len(q.duplicates) > 0 {
+		return nil, fmt.Errorf("multiple NamedQueue using the same identity in graph: %v", q.duplicates)
+	}
+
+	b := newBuild()
+	if err := b.addSubqueues(q.subqueues, q.breadcrumbs); err != nil {
 		return nil, err
 	}
-
-	nodes := make(map[tensile.Identity]*tensile.Node)
-	directed := simple.NewDirectedGraph()
-	for _, raw := range d.flat.Nodes() {
-		node := tensile.NewNode(raw)
-		nodes[node.Identity()] = node
-		directed.AddNode(graphNode{id: graphID(node.Identity()), node: node})
-	}
-
-	work := new(Work)
-	work.cond = sync.NewCond(&work.lock)
-	work.done = make(map[tensile.Identity]bool)
-	work.dependencies = make(map[tensile.Identity][]tensile.Identity)
-	work.held = make(map[string]tensile.Identity)
-
-	// edge adds a directed edge from one identity to another and
-	// records it as a runtime dependency, so manual and automatic
-	// edges gate readiness the same way.
-	edge := func(from, to tensile.Identity) {
-		directed.SetEdge(directed.NewEdge(
-			directed.Node(graphID(from)),
-			directed.Node(graphID(to)),
-		))
-		work.dependencies[to] = append(work.dependencies[to], from)
-	}
-
-	// Build a map of identities to the node claiming them and collect notifications.
-	//
-	// A node provides a single identity - its own.
-	// But it may claim multiple identities to prevent conflicts, e.g.
-	// std.Symlink and std.File both claim the file identity to force an
-	// error when both target the same path.
-	//
-	// Duplicate claims are a conflict.
-	claimed, notifies, err := collect(nodes)
-	if err != nil {
+	if err := b.addNodes(q.nodes); err != nil {
 		return nil, err
 	}
-
-	// Build the handlers->notifiers map
-	work.handlers = resolveNotifies(claimed, notifies)
-
-	// Add the manual notifiers
-	for handler, notifiers := range d.flat.Handlers() {
-		work.handlers[handler] = append(work.handlers[handler], notifiers...)
+	if err := b.addDependencies(q.deps); err != nil {
+		return nil, err
 	}
-
-	// Handlers depend on their notifying nodes.
-	for handler, notifiers := range work.handlers {
-		for _, notifier := range notifiers {
-			edge(notifier, handler)
-		}
+	if err := b.addNotifies(q.notifies); err != nil {
+		return nil, err
 	}
-
-	// Barrier start and end nodes of each group are referenced by the group identity.
-	groups := make(map[tensile.Identity][]tensile.Identity, len(d.groups))
-	for identity, enclosing := range d.groups {
-		groups[identity] = []tensile.Identity{
-			enclosing.start.Identity(),
-			enclosing.end.Identity(),
-		}
+	if err := b.implicit(); err != nil {
+		return nil, err
 	}
-
-	// Iterate over all nodes and check if any dependency they declare is claimed by another node.
-	// If so add an edge from the provider to the depender.
-	for identity, node := range nodes {
-		dependencies, err := node.DependsOn()
-		if err != nil {
-			return nil, fmt.Errorf("failed to get dependencies for node %s: %w", identity, err)
-		}
-
-		for _, dep := range dependencies {
-			if owner, ok := claimed[dep]; ok {
-				edge(owner, identity)
-				continue
-			}
-			for _, barrier := range groups[dep] {
-				edge(barrier, identity)
-			}
-		}
-	}
-
-	// Add the declared edges.
-	for _, declared := range d.flat.Edges() {
-		edge(declared[0], declared[1])
-	}
-
-	sorted, err := topo.Sort(directed)
-	if err != nil {
-		return nil, fmt.Errorf("cycle detected in graph: %w", unpackCycles(err))
-	}
-
-	order := make([]*tensile.Node, len(sorted))
-	for i, node := range sorted {
-		order[i] = node.(graphNode).node
-	}
-	work.order = order
-
-	return work, nil
-}
-
-// unpackCycles translates the graph IDs in a topo.Unorderable error
-// into identities.
-func unpackCycles(err error) error {
-	var unorderable topo.Unorderable
-	if !errors.As(err, &unorderable) {
-		return err
-	}
-
-	cycles := make([]string, len(unorderable))
-	for i, cycle := range unorderable {
-		identities := make([]string, len(cycle))
-		for j, node := range cycle {
-			identities[j] = node.(graphNode).node.Identity().String()
-		}
-		cycles[i] = fmt.Sprintf("%v", identities)
-	}
-	return fmt.Errorf("%v", cycles)
-}
-
-// collect builds the map of conflict identities to the identity of the
-// node claiming them and the map of notifiers to their targets.
-func collect(nodes map[tensile.Identity]*tensile.Node) (
-	map[tensile.Identity]tensile.Identity,
-	map[tensile.Identity][]tensile.Identity,
-	error,
-) {
-	claimed := make(map[tensile.Identity]tensile.Identity)
-	notifies := make(map[tensile.Identity][]tensile.Identity)
-
-	claim := func(claim, owner tensile.Identity) error {
-		if existing, ok := claimed[claim]; ok && existing != owner {
-			return fmt.Errorf("nodes %s and %s conflict on %s", existing, owner, claim)
-		}
-		claimed[claim] = owner
-		return nil
-	}
-
-	for identity, node := range nodes {
-		if err := claim(identity, identity); err != nil {
-			return nil, nil, err
-		}
-
-		conflicts, err := node.Conflicts()
-		if err != nil {
-			return nil, nil, fmt.Errorf("failed to get conflicts for node %s: %w", identity, err)
-		}
-		for _, c := range conflicts {
-			if err := claim(c, identity); err != nil {
-				return nil, nil, err
-			}
-		}
-
-		notified, err := node.Notifies()
-		if err != nil {
-			return nil, nil, fmt.Errorf("failed to get notifications for node %s: %w", identity, err)
-		}
-		if len(notified) > 0 {
-			notifies[identity] = notified
-		}
-	}
-
-	return claimed, notifies, nil
-}
-
-// resolveNotifies resolves the notifier->handler map to a handler->notifier map.
-func resolveNotifies(
-	claimed map[tensile.Identity]tensile.Identity,
-	notifierToHandler map[tensile.Identity][]tensile.Identity,
-) map[tensile.Identity][]tensile.Identity {
-	ret := map[tensile.Identity][]tensile.Identity{}
-
-	for notifier, targets := range notifierToHandler {
-		for _, target := range targets {
-			if handler, ok := claimed[target]; ok {
-				ret[handler] = append(ret[handler], notifier)
-			}
-		}
-	}
-
-	return ret
+	return b.work()
 }

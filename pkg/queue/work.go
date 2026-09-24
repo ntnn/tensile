@@ -21,16 +21,25 @@ type Work struct {
 	dependencies map[tensile.Identity][]tensile.Identity
 	// handlers maps handler identities to the identities of nodes notifying them
 	handlers map[tensile.Identity][]tensile.Identity
+	// order is the order in which the nodes should be yielded
+	order []*tensile.Node
 
 	lock sync.RWMutex
 	cond *sync.Cond
 	// done maps node identities to whether the node was executed.
-	done  map[tensile.Identity]bool
-	order []*tensile.Node
-
-	// hels maps serialization keys to the identities of nodes that are
+	done map[tensile.Identity]bool
+	// held maps serialization keys to the identities of nodes that are
 	// currently being executed
 	held map[string]tensile.Identity
+}
+
+// newWork returns a Work with initialized internals.
+func newWork() *Work {
+	work := new(Work)
+	work.cond = sync.NewCond(&work.lock)
+	work.done = make(map[tensile.Identity]bool)
+	work.held = make(map[string]tensile.Identity)
+	return work
 }
 
 // Dependencies returns the identities of the direct dependencies of
@@ -70,15 +79,6 @@ func (w *Work) get() *tensile.Node {
 		}
 
 		w.order = append(w.order[:i], w.order[i+1:]...)
-
-		if node.Identity().Kind() == barrierKind {
-			// Barriers only order the graph and are completed silently.
-			// An end barrier has all of its groups nodes as
-			// a dependency and may be used as a notifier for a handler,
-			// so set true if any of its nodes was executed.
-			w.done[node.Identity()] = w.wasNotified(node)
-			continue
-		}
 
 		if w.isHandler(node) && !w.wasNotified(node) {
 			// No notifying node was executed, skip the handler.

@@ -30,9 +30,7 @@ func run(ctx context.Context) error {
 	// not installed, must stay absent as a no-op
 	absent := &std.Package{Name: "jq", State: std.PackageAbsent}
 
-	if err := q.Enqueue(preinstalled, install, install2, install3, remove, absent); err != nil {
-		return err
-	}
+	q.Add(preinstalled, install, install2, install3, remove, absent)
 
 	work, err := q.Build()
 	if err != nil {

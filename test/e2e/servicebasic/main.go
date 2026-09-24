@@ -49,12 +49,8 @@ func run(ctx context.Context) error {
 		Running: &running,
 	}
 
-	if err := q.Enqueue(dir, hello, link, unitFile, service); err != nil {
-		return err
-	}
-	if err := q.DependsOn(service, unitFile); err != nil {
-		return err
-	}
+	q.Add(dir, hello, link, unitFile, service)
+	q.DependsOn(service, unitFile)
 
 	work, err := q.Build()
 	if err != nil {

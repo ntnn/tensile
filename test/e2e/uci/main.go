@@ -115,20 +115,14 @@ func run(ctx context.Context) error {
 	commit := tensile.NewHandler(&openwrt.UCICommit{Config: config})
 	commitAll := tensile.NewHandler(&openwrt.UCICommit{})
 
-	if err := q.Enqueue(
+	q.Add(
 		wipe, srv, srvName, obsolete,
 		hello, port, ignore, dns, ports, legacy,
 		other, greet,
 		commit, commitAll,
-	); err != nil {
-		return err
-	}
-	if err := q.DependsOn(srvName, srv); err != nil {
-		return err
-	}
-	if err := q.DependsOn(greet, other); err != nil {
-		return err
-	}
+	)
+	q.DependsOn(srvName, srv)
+	q.DependsOn(greet, other)
 
 	work, err := q.Build()
 	if err != nil {

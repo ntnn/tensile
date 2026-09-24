@@ -7,7 +7,6 @@ tool github.com/ntnn/mindl
 require (
 	github.com/stretchr/testify v1.12.1
 	golang.org/x/sync v0.23.0
-	gonum.org/v1/gonum v0.17.0
 )
 
 require (

@@ -35,12 +35,8 @@ func run(ctx context.Context) error {
 		Command: "touch /opt/e2e/silent",
 	})
 
-	if err := q.Enqueue(dir, file, notified, silent); err != nil {
-		return err
-	}
-	if err := q.NotifiedBy(notified, file); err != nil {
-		return err
-	}
+	q.Add(dir, file, notified, silent)
+	q.NotifiedBy(notified, file)
 
 	work, err := q.Build()
 	if err != nil {
