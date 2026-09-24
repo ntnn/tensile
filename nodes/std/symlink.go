@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/ntnn/tensile"
+	"github.com/ntnn/tensile/pkg/diff"
 )
 
 var _ tensile.Identifier = (*Symlink)(nil)
@@ -37,7 +38,7 @@ func (s *Symlink) DependsOn() ([]tensile.Identity, error) {
 func (s *Symlink) NeedsExecution(_ tensile.Wire) (bool, tensile.Diff, error) {
 	info, err := os.Lstat(s.Path)
 	if os.IsNotExist(err) {
-		return true, nil, nil
+		return true, s.targetDiff(diff.Absent), nil
 	}
 	if err != nil {
 		return false, nil, fmt.Errorf("error checking symlink: %w", err)
@@ -50,7 +51,19 @@ func (s *Symlink) NeedsExecution(_ tensile.Wire) (bool, tensile.Diff, error) {
 	if err != nil {
 		return false, nil, fmt.Errorf("error reading symlink: %w", err)
 	}
-	return target != s.Target, nil, nil
+	if target == s.Target {
+		return false, nil, nil
+	}
+	return true, s.targetDiff(target), nil
+}
+
+// targetDiff builds the diff from the current target to the desired one.
+func (s *Symlink) targetDiff(current string) diff.FieldChanges {
+	return diff.FieldChanges{
+		Fields: []diff.FieldChange{
+			{Field: "target", Old: current, New: s.Target},
+		},
+	}
 }
 
 // Execute implements [tensile.Executor].
