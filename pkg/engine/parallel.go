@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"runtime"
+	"slices"
 	"time"
 
 	"github.com/ntnn/tensile/pkg/queue"
@@ -95,6 +96,17 @@ func (p *Parallel) Execute(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+
+	// Sort p.records to match the order in which they were marked done
+	order := p.work.DoneOrder()
+	slices.SortFunc(
+		p.records,
+		func(a, b NodeSummary) int {
+			idxA := slices.Index(order, a.Identity)
+			idxB := slices.Index(order, b.Identity)
+			return idxA - idxB
+		},
+	)
 
 	p.opts.Logger.Info("all nodes are done, stopping")
 	return nil
