@@ -152,14 +152,14 @@ func (s Summary) String() string {
 		}
 	}
 
-	diffs := false
+	b.WriteString("order:\n")
 	for _, record := range s.Records {
-		if record.Diff == nil {
+		if record.Outcome == OutcomeSkipped {
 			continue
 		}
-		if !diffs {
-			b.WriteString("diffs:\n")
-			diffs = true
+		if record.Diff == nil {
+			fmt.Fprintf(&b, "  %s\n", record.Identity)
+			continue
 		}
 		fmt.Fprintf(&b, "  %s:\n", record.Identity)
 		for line := range strings.Lines(record.Diff.String()) {
