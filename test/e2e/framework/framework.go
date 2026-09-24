@@ -18,7 +18,10 @@ type Env struct {
 	binPath   string
 }
 
-const containerFileMode = 0o755
+const (
+	containerFileMode       = 0o755
+	containerConfigFileMode = 0o644
+)
 
 // sharedContainers caches running containers by image ref.
 var (
@@ -73,10 +76,20 @@ func sharedContainer(image Image) (testcontainers.Container, error) {
 }
 
 func startContainer(ctx context.Context, image Image) (testcontainers.Container, error) {
+	files := make([]testcontainers.ContainerFile, 0, len(image.Files))
+	for path, content := range image.Files {
+		files = append(files, testcontainers.ContainerFile{
+			Reader:            content,
+			ContainerFilePath: path,
+			FileMode:          containerConfigFileMode,
+		})
+	}
+
 	return testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		Started:    true,
 		Image:      image.Ref,
 		Entrypoint: image.Entrypoint,
+		Files:      files,
 		WaitingFor: wait.ForExec(image.WaitCmd).WithExitCodeMatcher(ready),
 		HostConfigModifier: func(hc *container.HostConfig) {
 			hc.CgroupnsMode = container.CgroupnsModePrivate
