@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"log"
 	"log/slog"
+	"os"
+	"path/filepath"
 
 	"github.com/ntnn/tensile/nodes/std"
 	"github.com/ntnn/tensile/pkg/engine"
@@ -21,7 +23,9 @@ func main() {
 
 func run(ctx context.Context) error {
 	fDebug := false
+	fNoop := false
 	flag.BoolVar(&fDebug, "debug", false, "enable debug logging")
+	flag.BoolVar(&fNoop, "noop", false, "check only, do not modify")
 	flag.Parse()
 
 	q := queue.New()
@@ -43,6 +47,29 @@ func run(ctx context.Context) error {
 	q.Add(print1, print2)
 	q.DependsOn(print1, print2)
 
+	dir, err := os.MkdirTemp("", "tensile-tester-")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(dir) //nolint:errcheck
+
+	config := filepath.Join(dir, "config")
+	if err := os.WriteFile(config, []byte("a=1\nb=2\nc=3\n"), 0o600); err != nil { //nolint:mnd // test fixture
+		return err
+	}
+
+	q.Add(
+		&std.FileContent{
+			Path:    config,
+			Content: "a=1\nb=5\nc=3\nd=4\n",
+		},
+		&std.LineInFile{
+			Path:   config,
+			Regexp: "^b=",
+			Line:   "b=6",
+		},
+	)
+
 	work, err := q.Build()
 	if err != nil {
 		return err
@@ -51,7 +78,7 @@ func run(ctx context.Context) error {
 	seq := engine.NewSequential(
 		work,
 		engine.Options{
-			Noop: false,
+			Noop: fNoop,
 		},
 	)
 
