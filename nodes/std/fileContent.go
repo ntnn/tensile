@@ -3,10 +3,10 @@ package std
 import (
 	"crypto/sha256"
 	"fmt"
-	"io"
 	"os"
 
 	"github.com/ntnn/tensile"
+	"github.com/ntnn/tensile/pkg/diff"
 )
 
 var _ tensile.Identifier = (*FileContent)(nil)
@@ -45,21 +45,16 @@ func (f *FileContent) DependsOn() ([]tensile.Identity, error) {
 
 // NeedsExecution implements [tensile.Executor].
 func (f *FileContent) NeedsExecution(_ tensile.Wire) (bool, tensile.Diff, error) {
-	fd, err := os.Open(f.Path)
-	if os.IsNotExist(err) {
-		return true, nil, nil
-	}
-	if err != nil {
-		return false, nil, fmt.Errorf("error opening file: %w", err)
-	}
-	defer fd.Close() //nolint:errcheck
-
-	hash := sha256.New()
-	if _, err := io.Copy(hash, fd); err != nil {
-		return false, nil, fmt.Errorf("error hashing file: %w", err)
+	current, err := os.ReadFile(f.Path)
+	exists := err == nil
+	if err != nil && !os.IsNotExist(err) {
+		return false, nil, fmt.Errorf("error reading file: %w", err)
 	}
 
-	return [sha256.Size]byte(hash.Sum(nil)) != sha256.Sum256([]byte(f.Content)), nil, nil
+	if exists && string(current) == f.Content {
+		return false, nil, nil
+	}
+	return true, diff.Unified{Path: f.Path, Old: string(current), New: f.Content}, nil
 }
 
 // Execute implements [tensile.Executor].
