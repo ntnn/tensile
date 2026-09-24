@@ -22,7 +22,7 @@ test:
 
 .PHONY: test-e2e
 test-e2e:
-	cd test/e2e && $(GO) test -race -v ./...
+	cd test/e2e && $(GO) test -race -count 1 -v ./...
 
 $(GOLANGCI_LINT):
 	mkdir -p $(TOOLS_DIR)
