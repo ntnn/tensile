@@ -11,6 +11,7 @@ import (
 
 var _ tensile.Identifier = (*Dir)(nil)
 var _ tensile.Validator = (*Dir)(nil)
+var _ tensile.Conflictor = (*Dir)(nil)
 var _ tensile.Depender = (*Dir)(nil)
 var _ tensile.Executor = (*Dir)(nil)
 
@@ -75,7 +76,12 @@ func (d *Dir) DependsOn() ([]tensile.Identity, error) {
 	return ParentDirIdentities(d.Path), nil
 }
 
-func (d *Dir) needsExecution(wire tensile.Wire) (bool, *diff.FieldChange, error) {
+// Conflicts implements [tensile.Conflictor].
+func (d *Dir) Conflicts() ([]tensile.Identity, error) {
+	return []tensile.Identity{FileIdentity(d.Path)}, nil
+}
+
+func (d *Dir) needsExecution(_ tensile.Wire) (bool, *diff.FieldChange, error) {
 	info, err := os.Stat(d.Path)
 	if os.IsNotExist(err) {
 		return true, &diff.FieldChange{Field: "directory", Old: diff.Absent, New: d.FileMode.String()}, nil
