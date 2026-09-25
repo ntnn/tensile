@@ -35,8 +35,14 @@ func New() *Queue {
 }
 
 // Add adds values as [tensile.Node] to the queue.
+// A [NamedQueue] or the result of [NamedQueuer.Queue] is dissolved into
+// the queue instead of adding the value.
 func (q *Queue) Add(nodes ...tensile.Identifier) {
 	for _, node := range nodes {
+		if nqr, ok := node.(NamedQueuer); ok {
+			q.addNamed(nqr.Queue())
+			continue
+		}
 		if nq, ok := node.(*NamedQueue); ok {
 			q.addNamed(nq)
 			continue
