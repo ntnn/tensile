@@ -183,6 +183,28 @@ func TestUCIOption_NeedsExecution_list(t *testing.T) {
 	}
 }
 
+func TestUCIOption_NeedsExecution_listDiff(t *testing.T) {
+	t.Parallel()
+
+	fake := &fakeOption{out: "network.lan.dns='192.168.178.5' '1.1.1.1'\n"}
+	option := &UCIOption[[]string]{
+		Config: "network", Section: "lan", Option: "dns",
+		Value: []string{"192.168.178.5", "9.9.9.9"},
+		run:   fake.run,
+	}
+
+	got, d, err := option.NeedsExecution(testWire(t))
+	require.NoError(t, err)
+	require.True(t, got)
+	assert.Equal(t, `--- network.lan.dns
++++ network.lan.dns
+@@ -1,2 +1,2 @@
+ 192.168.178.5
+-1.1.1.1
++9.9.9.9
+`, d.String())
+}
+
 func TestUCIOption_NeedsExecution_int(t *testing.T) {
 	t.Parallel()
 

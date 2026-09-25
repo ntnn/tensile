@@ -103,29 +103,52 @@ func (o *UCIOption[T]) NeedsExecution(c tensile.Wire) (bool, tensile.Diff, error
 		return false, nil, err
 	}
 
-	d := &diff.FieldChange{
-		Field: o.path(),
-		Old:   diff.Absent,
-		New:   diff.Absent,
-	}
-
-	if exists {
-		d.Old = strings.Join(current, ", ")
-	}
-
 	if o.desired() == UCIAbsent {
 		if !exists {
 			return false, nil, nil
 		}
-		return true, diff.NewFieldChanges(d), nil
+		return true, o.diff(current, exists, nil, false), nil
 	}
 
 	if exists && slices.Equal(current, o.values()) {
 		return false, nil, nil
 	}
-	d.New = strings.Join(o.values(), ", ")
 
-	return true, diff.NewFieldChanges(d), nil
+	return true, o.diff(current, exists, o.values(), true), nil
+}
+
+// diff describes the change from old to new as:
+// a unified diff over members for lists.
+// a field change for scalars.
+func (o *UCIOption[T]) diff(old []string, oldExists bool, want []string, wantExists bool) tensile.Diff {
+	if o.isList() {
+		return diff.Unified{
+			Path: o.path(),
+			Old:  joinLines(old),
+			New:  joinLines(want),
+		}
+	}
+
+	d := &diff.FieldChange{
+		Field: o.path(),
+		Old:   diff.Absent,
+		New:   diff.Absent,
+	}
+	if oldExists {
+		d.Old = strings.Join(old, ", ")
+	}
+	if wantExists {
+		d.New = strings.Join(want, ", ")
+	}
+	return diff.NewFieldChanges(d)
+}
+
+// joinLines joins values with trailing newlines, empty input yields "".
+func joinLines(values []string) string {
+	if len(values) == 0 {
+		return ""
+	}
+	return strings.Join(values, "\n") + "\n"
 }
 
 // Execute implements [tensile.Executor].
