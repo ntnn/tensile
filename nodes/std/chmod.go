@@ -25,7 +25,10 @@ func (c Chmod) Identity() tensile.Identity {
 
 // DependsOn implements [tensile.Depender].
 func (c Chmod) DependsOn() ([]tensile.Identity, error) {
-	return ParentDirIdentities(c.Path), nil
+	return append(
+		ParentDirIdentities(c.Path),
+		FileIdentity(c.Path),
+	), nil
 }
 
 func (c Chmod) needsExecution(_ tensile.Wire) (bool, *diff.FieldChange, error) {
