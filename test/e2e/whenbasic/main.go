@@ -46,28 +46,33 @@ func runGated(ctx context.Context) error {
 	dir := &std.Dir{Path: "/opt/e2e"}
 	facts := &std.Facts{}
 
-	enabled := tensile.When(
-		tensile.Condition{
-			Reads: []tensile.Identity{facts.Identity()},
-			Cond: func(wire tensile.Wire) (bool, error) {
-				os, err := factsOS(wire)
-				return os == "linux", err
-			},
+	linuxCond := tensile.Cond(
+		func(wire tensile.Wire) (bool, error) {
+			os, err := factsOS(wire)
+			return os == "linux", err
 		},
+		facts.Identity(),
+	)
+	plan9Cond := tensile.Cond(
+		func(wire tensile.Wire) (bool, error) {
+			os, err := factsOS(wire)
+			return os == "plan9", err
+		},
+		facts.Identity(),
+	)
+
+	enabledFile := tensile.When(linuxCond, &std.File{Path: "/opt/e2e/when-true"})
+	enabled := tensile.When(
+		linuxCond,
 		&std.FileContent{
 			Path:    "/opt/e2e/when-true",
 			Content: "enabled\n",
 		},
 	)
 
+	disabledFile := tensile.When(plan9Cond, &std.File{Path: "/opt/e2e/when-false"})
 	disabled := tensile.When(
-		tensile.Cond(
-			func(wire tensile.Wire) (bool, error) {
-				os, err := factsOS(wire)
-				return os == "plan9", err
-			},
-			facts.Identity(),
-		),
+		plan9Cond,
 		&std.FileContent{
 			Path:    "/opt/e2e/when-false",
 			Content: "disabled\n",
@@ -80,7 +85,7 @@ func runGated(ctx context.Context) error {
 		Dep:  disabled.Identity(),
 	}
 
-	q.Add(dir, facts, enabled, disabled, consumer)
+	q.Add(dir, facts, enabledFile, enabled, disabledFile, disabled, consumer)
 
 	work, err := q.Build()
 	if err != nil {
