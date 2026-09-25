@@ -8,6 +8,8 @@ import (
 	"github.com/ntnn/tensile"
 )
 
+var _ tensile.Topology = (*Work)(nil)
+
 // Item is a single element yielded by [Work.Chan].
 // Exactly one field is set.
 type Item struct {
@@ -16,11 +18,14 @@ type Item struct {
 }
 
 // Work is the result of building a queue.
+// It implements [tensile.Topology] for graph introspection by nodes.
 type Work struct {
 	// dependencies maps node identities to the identities of the nodes they depend on
 	dependencies map[tensile.Identity][]tensile.Identity
 	// handlers maps handler identities to the identities of nodes notifying them
 	handlers map[tensile.Identity][]tensile.Identity
+	// claims maps claimed identities to the claiming node
+	claims map[tensile.Identity]tensile.Identity
 	// order is the order in which the nodes should be yielded
 	order []*tensile.Node
 
@@ -48,6 +53,12 @@ func newWork() *Work {
 // the node with the given identity.
 func (w *Work) Dependencies(identity tensile.Identity) []tensile.Identity {
 	return slices.Clone(w.dependencies[identity])
+}
+
+// Claimer implements [tensile.Topology], returning the node claiming identity.
+func (w *Work) Claimer(identity tensile.Identity) (tensile.Identity, bool) {
+	claimer, ok := w.claims[identity]
+	return claimer, ok
 }
 
 // DoneOrder returns the order in which nodes were marked as done.

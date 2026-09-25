@@ -282,6 +282,7 @@ func (b *build) work() (*Work, error) {
 
 	work := newWork()
 	work.dependencies = dependencies
+	work.claims = b.claimed
 
 	// map handlers to the claiming nodes, otherwise a notification
 	// doesn't trigger the intended node
