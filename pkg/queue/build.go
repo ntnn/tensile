@@ -24,6 +24,8 @@ type build struct {
 	execution graph.Graph[tensile.Identity, *tensile.Node]
 	// implicitDeps records the implicit dependencies of each node
 	implicitDeps map[tensile.Identity][]tensile.Identity
+	// implicitReqs records the identities each node is required by
+	implicitReqs map[tensile.Identity][]tensile.Identity
 	// claimed records which identities have been claimed by which nodes
 	claimed map[tensile.Identity]tensile.Identity
 	// handlers maps handler identities to their notifiers
@@ -38,6 +40,7 @@ type build struct {
 func newBuild() *build {
 	return &build{
 		implicitDeps: map[tensile.Identity][]tensile.Identity{},
+		implicitReqs: map[tensile.Identity][]tensile.Identity{},
 		claimed:      map[tensile.Identity]tensile.Identity{},
 		handlers:     map[tensile.Identity][]tensile.Identity{},
 		subqueues:    map[tensile.Identity][]tensile.Identity{},
@@ -157,6 +160,13 @@ func (b *build) addNode(identifier tensile.Identifier) error {
 	}
 	b.implicitDeps[identity] = deps
 
+	// add the implicit requisites for later processing
+	reqs, err := node.RequiredBy()
+	if err != nil {
+		return fmt.Errorf("error getting requisites for node %s: %w", b.describe(identity), err)
+	}
+	b.implicitReqs[identity] = reqs
+
 	return nil
 }
 
@@ -208,9 +218,23 @@ func (b *build) addNotifies(notifies []notification) error {
 
 // implicit adds the implicit edges between nodes as reported by the nodes themselves.
 // should be called after adding all nodes.
-//
-//nolint:cyclop // this is fine, the linter is just overzealous
 func (b *build) implicit() error {
+	if err := b.handleImplicitDeps(); err != nil {
+		return err
+	}
+
+	if err := b.handleImplicitReqs(); err != nil {
+		return err
+	}
+
+	if err := b.handleImplicitNotifications(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (b *build) handleImplicitDeps() error {
 	for identity, deps := range b.implicitDeps {
 		for _, dep := range deps {
 			resolved := b.resolve(dep)
@@ -227,7 +251,29 @@ func (b *build) implicit() error {
 			}
 		}
 	}
+	return nil
+}
 
+func (b *build) handleImplicitReqs() error {
+	for identity, reqs := range b.implicitReqs {
+		for _, req := range reqs {
+			resolved := b.resolve(req)
+			if len(resolved) == 0 {
+				// no node claimed the requisite identity, skip the implicit edge
+				continue
+			}
+			for _, claimer := range resolved {
+				if err := b.execution.AddEdge(identity, claimer); err != nil {
+					return fmt.Errorf("error adding implicit requisite edge from %s to %s: %w",
+						b.describe(identity), b.describe(claimer), err)
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func (b *build) handleImplicitNotifications() error {
 	for handler, notifiers := range b.handlers {
 		claimer, ok := b.claimed[handler]
 		if !ok {
@@ -243,7 +289,6 @@ func (b *build) implicit() error {
 			}
 		}
 	}
-
 	return nil
 }
 
@@ -256,6 +301,7 @@ func (b *build) work() (*Work, error) {
 
 	work := newWork()
 	work.dependencies = dependencies
+	work.claims = b.claimed
 
 	// map handlers to the claiming nodes, otherwise a notification
 	// doesn't trigger the intended node

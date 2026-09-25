@@ -24,7 +24,10 @@ func (c Chown) Identity() tensile.Identity {
 
 // DependsOn implements [tensile.Depender].
 func (c Chown) DependsOn() ([]tensile.Identity, error) {
-	return ParentDirIdentities(c.Path), nil
+	return append(
+		ParentDirIdentities(c.Path),
+		FileIdentity(c.Path),
+	), nil
 }
 
 // NeedsExecution implements [tensile.Executor].

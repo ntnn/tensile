@@ -109,6 +109,19 @@ func (n *Node) DependsOn() ([]Identity, error) {
 	return append(deps, n.when.Reads...), nil
 }
 
+// RequiredBy calls .RequiredBy on the wrapped node if it implements it.
+func (n *Node) RequiredBy() ([]Identity, error) {
+	requisite, ok := n.wrapped.(Requisite)
+	if !ok {
+		return []Identity{}, nil
+	}
+	nodes, err := requisite.RequiredBy()
+	if err != nil {
+		return nil, err
+	}
+	return nodes, nil
+}
+
 // Notifies calls .Notifies on the wrapped node if it implements it.
 func (n *Node) Notifies() ([]Identity, error) {
 	notifier, ok := n.wrapped.(Notifier)

@@ -11,9 +11,10 @@ import (
 )
 
 type testNode struct {
-	Name     string
-	Conflict []tensile.Identity
-	DependOn []tensile.Identity
+	Name      string
+	Conflict  []tensile.Identity
+	DependOn  []tensile.Identity
+	RequireBy []tensile.Identity
 }
 
 func (n testNode) Identity() tensile.Identity {
@@ -26,6 +27,10 @@ func (n testNode) Conflicts() ([]tensile.Identity, error) {
 
 func (n testNode) DependsOn() ([]tensile.Identity, error) {
 	return n.DependOn, nil
+}
+
+func (n testNode) RequiredBy() ([]tensile.Identity, error) {
+	return n.RequireBy, nil
 }
 
 func buildWork(t *testing.T, nodes ...tensile.Identifier) *Work {
@@ -574,6 +579,65 @@ func TestQueue_DependsOnClaimResolvesToClaimer(t *testing.T) {
 	item = <-items
 	require.NoError(t, item.Err)
 	assert.Equal(t, nodeIdentity(t, depender), item.Node.Identity())
+}
+
+func TestQueue_ImplicitRequiredByOrdersRequisiteFirst(t *testing.T) {
+	t.Parallel()
+
+	target := testNode{Name: "target"}
+	requisite := testNode{Name: "requisite", RequireBy: []tensile.Identity{nodeIdentity(t, target)}}
+	work := buildWork(t, target, requisite)
+
+	items := work.Chan(t.Context())
+
+	item := <-items
+	require.NoError(t, item.Err)
+	require.Equal(t, nodeIdentity(t, requisite), item.Node.Identity(),
+		"node naming a requisite target must run before the target")
+	work.MarkDone(item.Node, true)
+
+	item = <-items
+	require.NoError(t, item.Err)
+	assert.Equal(t, nodeIdentity(t, target), item.Node.Identity())
+}
+
+func TestQueue_ImplicitRequiredByClaimResolvesToClaimer(t *testing.T) {
+	t.Parallel()
+
+	ref := tensile.AsIdentity("testres", "name", "claimreq")
+	claimer := testNode{Name: "claimer", Conflict: []tensile.Identity{ref}}
+	requisite := testNode{Name: "requisite", RequireBy: []tensile.Identity{ref}}
+	work := buildWork(t, claimer, requisite)
+
+	items := work.Chan(t.Context())
+
+	item := <-items
+	require.NoError(t, item.Err)
+	require.Equal(t, nodeIdentity(t, requisite), item.Node.Identity(),
+		"requisite on a claim must resolve to the claiming node")
+	work.MarkDone(item.Node, true)
+
+	item = <-items
+	require.NoError(t, item.Err)
+	assert.Equal(t, nodeIdentity(t, claimer), item.Node.Identity())
+}
+
+func TestQueue_ImplicitRequiredByUnclaimedIsSkipped(t *testing.T) {
+	t.Parallel()
+
+	missing := tensile.AsIdentity("testres", "name", "unclaimedreq")
+	requisite := testNode{Name: "requisite", RequireBy: []tensile.Identity{missing}}
+	work := buildWork(t, requisite)
+
+	items := work.Chan(t.Context())
+
+	item := <-items
+	require.NoError(t, item.Err)
+	assert.Equal(t, nodeIdentity(t, requisite), item.Node.Identity(),
+		"a requisite on an unclaimed identity must be skipped")
+
+	_, open := <-items
+	assert.False(t, open)
 }
 
 func TestQueue_ImplicitNotifyClaimedTargetOrdersClaimer(t *testing.T) {

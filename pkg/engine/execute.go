@@ -29,6 +29,7 @@ func executeNode(ctx context.Context, opts Options, work *queue.Work, node *tens
 				node:    node.Identity(),
 				deps:    work.Dependencies(node.Identity()),
 			}),
+			Topo: work,
 		},
 		Store: opts.Backend.Store,
 		Done: func(changed bool) {

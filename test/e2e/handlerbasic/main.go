@@ -21,7 +21,7 @@ func run(ctx context.Context) error {
 	q := queue.New()
 
 	dir := &std.Dir{Path: "/opt/e2e"}
-	file := &std.FileContent{
+	file := &std.File{
 		Path:    "/opt/e2e/hello.txt",
 		Content: "hello from tensile\n",
 	}

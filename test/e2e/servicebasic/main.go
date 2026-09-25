@@ -30,7 +30,7 @@ func run(ctx context.Context) error {
 	q := queue.New()
 
 	dir := &std.Dir{Path: "/opt/e2e"}
-	hello := &std.FileContent{
+	hello := &std.File{
 		Path:    "/opt/e2e/hello.txt",
 		Content: "hello from tensile\n",
 	}
@@ -38,7 +38,7 @@ func run(ctx context.Context) error {
 		Path:   "/opt/e2e/link",
 		Target: "/opt/e2e/hello.txt",
 	}
-	unitFile := &std.FileContent{
+	unitFile := &std.File{
 		Path:    "/etc/systemd/system/e2e-dummy.service",
 		Content: unit,
 	}
@@ -50,7 +50,7 @@ func run(ctx context.Context) error {
 	}
 
 	q.Add(dir, hello, link, unitFile, service)
-	q.DependsOn(service, unitFile)
+	q.DependsOn(service, std.FileQueueIdentity(unitFile.Path))
 
 	work, err := q.Build()
 	if err != nil {

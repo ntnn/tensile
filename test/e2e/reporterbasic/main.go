@@ -23,7 +23,7 @@ func run(ctx context.Context) error {
 	q := queue.New()
 
 	dir := &std.Dir{Path: "/opt/e2e"}
-	file := &std.FileContent{
+	file := &std.File{
 		Path:    "/opt/e2e/reporter-file.txt",
 		Content: "hello from reporter\n",
 	}
@@ -31,11 +31,12 @@ func run(ctx context.Context) error {
 		Command: "echo hello reporter",
 	}
 
+	fileContent := (&std.FileContent{Path: file.Path}).Identity()
 	fileConsumer := &writeReport{
 		Path: "/opt/e2e/reporter-hash",
-		Dep:  file.Identity(),
+		Dep:  fileContent,
 		Read: func(wire tensile.Wire) (string, error) {
-			out, err := wire.Storage().Get[std.FileContentOutput](file.Identity())
+			out, err := wire.Storage().Get[std.FileContentOutput](fileContent.Identity())
 			if err != nil {
 				return "", err
 			}

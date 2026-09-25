@@ -20,7 +20,7 @@ func run(ctx context.Context) error {
 	q := queue.New()
 
 	// cron refuses to start with an empty /etc/crontabs
-	crontab := &std.FileContent{
+	crontab := &std.File{
 		Path:    "/etc/crontabs/root",
 		Content: "* * * * * true\n",
 	}
@@ -32,7 +32,7 @@ func run(ctx context.Context) error {
 	}
 
 	q.Add(crontab, service)
-	q.DependsOn(service, crontab)
+	q.DependsOn(service, std.FileQueueIdentity(crontab.Path))
 
 	work, err := q.Build()
 	if err != nil {

@@ -2,6 +2,13 @@ package queue
 
 import "github.com/ntnn/tensile"
 
+// NamedQueuer is the interface for values that provide a [NamedQueue].
+// [Queue.Add] adds the provided queue in place of the value.
+type NamedQueuer interface {
+	// Queue returns the [NamedQueue] to add in place of the value.
+	Queue() *NamedQueue
+}
+
 // NamedQueue is a [Queue] with an identity.
 //
 // It can be used to provide a set of [tensile.Node] with dependencies
