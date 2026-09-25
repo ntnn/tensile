@@ -33,12 +33,19 @@ type Conflictor interface {
 }
 
 // Depender is the interface to be satisfied by a [Node] when it depends
-// on other resources to be provided by other [Node]., e.g. a package
-// that must be installed or a file to be ensured.
+// on other resources to be provided by other [Node].
+// E.g. a package that must be installed or a file to be ensured.
 type Depender interface {
 	// DependsOn returns a list of resources the node depends on, e.g.
 	// packages or files.
 	DependsOn() ([]Identity, error)
+}
+
+// Requisite is the interface to be satisfied by a [Node] when it is
+// a dependency for other resources to be provided by other [Node].
+type Requisite interface {
+	// RequiredBy returns a list of resources the node is a requirement for.
+	RequiredBy() ([]Identity, error)
 }
 
 // Notifier is the interface to be satisfied by a [Node] when it
