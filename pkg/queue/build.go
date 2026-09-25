@@ -218,9 +218,23 @@ func (b *build) addNotifies(notifies []notification) error {
 
 // implicit adds the implicit edges between nodes as reported by the nodes themselves.
 // should be called after adding all nodes.
-//
-//nolint:cyclop // this is fine, the linter is just overzealous
 func (b *build) implicit() error {
+	if err := b.handleImplicitDeps(); err != nil {
+		return err
+	}
+
+	if err := b.handleImplicitReqs(); err != nil {
+		return err
+	}
+
+	if err := b.handleImplicitNotifications(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (b *build) handleImplicitDeps() error {
 	for identity, deps := range b.implicitDeps {
 		for _, dep := range deps {
 			resolved := b.resolve(dep)
@@ -237,7 +251,10 @@ func (b *build) implicit() error {
 			}
 		}
 	}
+	return nil
+}
 
+func (b *build) handleImplicitReqs() error {
 	for identity, reqs := range b.implicitReqs {
 		for _, req := range reqs {
 			resolved := b.resolve(req)
@@ -253,7 +270,10 @@ func (b *build) implicit() error {
 			}
 		}
 	}
+	return nil
+}
 
+func (b *build) handleImplicitNotifications() error {
 	for handler, notifiers := range b.handlers {
 		claimer, ok := b.claimed[handler]
 		if !ok {
@@ -269,7 +289,6 @@ func (b *build) implicit() error {
 			}
 		}
 	}
-
 	return nil
 }
 
