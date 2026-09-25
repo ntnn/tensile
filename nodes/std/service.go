@@ -45,10 +45,41 @@ func (s *Service) Identity() tensile.Identity {
 	return ServiceIdentity(s.Name)
 }
 
+const (
+	enabledField = "enabled"
+	runningField = "running"
+)
+
 // NeedsExecution implements [tensile.Executor].
+//
+//nolint:cyclop,nestif // valid concern, should refactor
 func (s *Service) NeedsExecution(c tensile.Wire) (bool, tensile.Diff, error) {
 	mgr, err := s.manager(c)
 	if err != nil {
+		if s.Manager == "" {
+			// If s.Manager is empty and an error was returned no
+			// manager claiming the service was found.
+			// This happens e.g. when a package is installed for the
+			// first time and the service the package installs is not
+			// yet known.
+			// Instead return needs=true and both as unknown.
+			var enabled, running *diff.FieldChange
+			if s.Enabled != nil {
+				enabled = &diff.FieldChange{
+					Field: enabledField,
+					Old:   "unknown",
+					New:   strconv.FormatBool(*s.Enabled),
+				}
+			}
+			if s.Running != nil {
+				running = &diff.FieldChange{
+					Field: runningField,
+					Old:   "unknown",
+					New:   strconv.FormatBool(*s.Running),
+				}
+			}
+			return true, diff.NewFieldChanges(enabled, running), nil
+		}
 		return false, nil, err
 	}
 
@@ -60,14 +91,14 @@ func (s *Service) NeedsExecution(c tensile.Wire) (bool, tensile.Diff, error) {
 	var enabled, running *diff.FieldChange
 	if s.Enabled != nil && status.Enabled != *s.Enabled {
 		enabled = &diff.FieldChange{
-			Field: "enabled",
+			Field: enabledField,
 			Old:   strconv.FormatBool(status.Enabled),
 			New:   strconv.FormatBool(*s.Enabled),
 		}
 	}
 	if s.Running != nil && status.Active != *s.Running {
 		running = &diff.FieldChange{
-			Field: "running",
+			Field: runningField,
 			Old:   strconv.FormatBool(status.Active),
 			New:   strconv.FormatBool(*s.Running),
 		}

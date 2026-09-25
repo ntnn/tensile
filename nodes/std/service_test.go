@@ -133,6 +133,25 @@ func TestService_Execute(t *testing.T) {
 	assert.True(t, applied.Enabled, "unmanaged field must keep current state")
 }
 
+func TestService_NeedsExecutionUndetectedService(t *testing.T) {
+	t.Parallel()
+
+	// no registered manager handles this name, e.g. the service is
+	// installed by a package in the same run
+	s := &Service{
+		Name:    "tensile-test-undetected-service",
+		Enabled: new(true),
+		Running: new(true),
+	}
+
+	needs, d, err := s.NeedsExecution(testWire(t))
+	require.NoError(t, err)
+	assert.True(t, needs, "unknown service must need execution")
+	require.NotNil(t, d)
+	assert.Contains(t, d.String(), "enabled: unknown -> true")
+	assert.Contains(t, d.String(), "running: unknown -> true")
+}
+
 func TestService_NeedsExecutionUnknownManager(t *testing.T) {
 	t.Parallel()
 
