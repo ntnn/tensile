@@ -24,6 +24,7 @@ var _ tensile.Identifier = (*File)(nil)
 var _ tensile.Validator = (*File)(nil)
 var _ tensile.Depender = (*File)(nil)
 var _ tensile.Executor = (*File)(nil)
+var _ queue.NamedQueuer = (*File)(nil)
 
 // FileState is the desired existence of a file.
 type FileState string
@@ -60,19 +61,23 @@ func (f *File) desired() FileState {
 	return f.State
 }
 
-// NewFile returns a named queue managing a file, its mode and ownership.
-func NewFile(file File) *queue.NamedQueue {
-	q := queue.NewNamed(FileQueueIdentity(file.Path))
-	q.Add(&file)
-	if file.desired() == FileAbsent {
+// Queue implements [queue.NamedQueuer].
+// The queue contains the [File] itself and, when the fields are set, [Chmod], [Chown] and [FileContent] nodes.
+func (f *File) Queue() *queue.NamedQueue {
+	q := queue.NewNamed(FileQueueIdentity(f.Path))
+	// wrapped in a Node so Add does not dissolve the File again
+	q.Add(tensile.NewNode(f))
+	if f.desired() == FileAbsent {
 		return q
 	}
-	q.Add(
-		Chmod{Path: file.Path, FileMode: file.FileMode},
-		Chown{Path: file.Path, Owner: file.Owner, Group: file.Group},
-	)
-	if file.Content != "" {
-		q.Add(&FileContent{Path: file.Path, Content: file.Content})
+	if f.FileMode != 0 {
+		q.Add(Chmod{Path: f.Path, FileMode: f.FileMode})
+	}
+	if f.Owner != "" || f.Group != "" {
+		q.Add(Chown{Path: f.Path, Owner: f.Owner, Group: f.Group})
+	}
+	if f.Content != "" {
+		q.Add(&FileContent{Path: f.Path, Content: f.Content})
 	}
 	return q
 }

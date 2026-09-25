@@ -165,11 +165,12 @@ func TestFile_Execute(t *testing.T) {
 }
 
 // workIdentities builds the queue and returns all yielded node identities.
-func workIdentities(t *testing.T, nq *queue.NamedQueue) []tensile.Identity {
+// workIdentities builds a queue from node and returns all yielded node identities.
+func workIdentities(t *testing.T, node tensile.Identifier) []tensile.Identity {
 	t.Helper()
 
 	q := queue.New()
-	q.Add(nq)
+	q.Add(node)
 	work, err := q.Build()
 	require.NoError(t, err)
 
@@ -182,13 +183,13 @@ func workIdentities(t *testing.T, nq *queue.NamedQueue) []tensile.Identity {
 	return identities
 }
 
-func TestNewFile(t *testing.T) {
+func TestFile_Queue(t *testing.T) {
 	t.Parallel()
 
-	t.Run("present adds file, chmod and chown", func(t *testing.T) {
+	t.Run("present adds file, chmod and chown when set", func(t *testing.T) {
 		t.Parallel()
 
-		identities := workIdentities(t, NewFile(File{Path: "/a/b/c"}))
+		identities := workIdentities(t, &File{Path: "/a/b/c", FileMode: 0o644, Owner: "root"})
 		assert.Contains(t, identities, FileIdentity("/a/b/c"))
 		assert.Contains(t, identities, Chmod{Path: "/a/b/c"}.Identity())
 		assert.Contains(t, identities, Chown{Path: "/a/b/c"}.Identity())
@@ -196,18 +197,26 @@ func TestNewFile(t *testing.T) {
 			"empty Content needs no FileContent node")
 	})
 
+	t.Run("zero mode and ownership add only the file node", func(t *testing.T) {
+		t.Parallel()
+
+		identities := workIdentities(t, &File{Path: "/a/b/c"})
+		assert.Equal(t, []tensile.Identity{FileIdentity("/a/b/c")}, identities,
+			"unset mode and ownership must not be managed")
+	})
+
 	t.Run("content adds a FileContent", func(t *testing.T) {
 		t.Parallel()
 
-		identities := workIdentities(t, NewFile(File{Path: "/a/b/c", Content: "content"}))
+		identities := workIdentities(t, &File{Path: "/a/b/c", Content: "content"})
 		assert.Contains(t, identities, (&FileContent{Path: "/a/b/c"}).Identity())
 	})
 
 	t.Run("absent adds only the file node", func(t *testing.T) {
 		t.Parallel()
 
-		identities := workIdentities(t, NewFile(File{Path: "/a/b/c", State: FileAbsent}))
+		identities := workIdentities(t, &File{Path: "/a/b/c", State: FileAbsent, FileMode: 0o644, Content: "content"})
 		assert.Equal(t, []tensile.Identity{FileIdentity("/a/b/c")}, identities,
-			"an absent file needs no chmod/chown")
+			"an absent file needs no chmod/chown/content")
 	})
 }
