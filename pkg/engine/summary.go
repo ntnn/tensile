@@ -128,7 +128,7 @@ func (s *Summary) Analyze(records []NodeSummary) {
 
 // String implements [fmt.Stringer].
 // It renders human-readable multi-line output.
-func (s Summary) String() string {
+func (s *Summary) String() string {
 	var b strings.Builder
 
 	fmt.Fprintf(&b, "run: %s, %d nodes\n", s.Duration(), s.Nodes)
@@ -173,7 +173,7 @@ func (s Summary) String() string {
 }
 
 // LogValue implements [slog.LogValuer].
-func (s Summary) LogValue() slog.Value {
+func (s *Summary) LogValue() slog.Value {
 	outcomes := make([]slog.Attr, 0, len(s.ByOutcome))
 	for _, outcome := range slices.Sorted(maps.Keys(s.ByOutcome)) {
 		outcomes = append(outcomes, slog.Int(string(outcome), s.ByOutcome[outcome]))
