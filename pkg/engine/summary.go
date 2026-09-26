@@ -154,14 +154,11 @@ func (s *Summary) String() string {
 
 	b.WriteString("order:\n")
 	for _, record := range s.Records {
-		if record.Outcome == OutcomeSkipped {
-			continue
-		}
+		fmt.Fprintf(&b, "  %s: %s\n", record.Identity, record.Outcome)
+
 		if record.Diff == nil {
-			fmt.Fprintf(&b, "  %s\n", record.Identity)
 			continue
 		}
-		fmt.Fprintf(&b, "  %s:\n", record.Identity)
 		for line := range strings.Lines(record.Diff.String()) {
 			b.WriteString("    ")
 			b.WriteString(strings.TrimSuffix(line, "\n"))
