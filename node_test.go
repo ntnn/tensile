@@ -106,6 +106,17 @@ func TestWhen_ConditionErrorPropagates(t *testing.T) {
 	require.ErrorIs(t, node.Validate(wire), errCond)
 }
 
+func TestNode_IsHandler(t *testing.T) {
+	t.Parallel()
+
+	assert.False(t, NewNode(&condNode{}).IsHandler())
+
+	handler := NewHandler(&condNode{})
+	assert.True(t, handler.IsHandler())
+	assert.True(t, NewNode(handler).IsHandler(), "NewNode must keep the handler flag")
+	assert.True(t, NewHandler(handler).IsHandler(), "NewHandler must pass a handler through")
+}
+
 func TestWhen_AppendsReads(t *testing.T) {
 	t.Parallel()
 

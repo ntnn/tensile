@@ -9,6 +9,9 @@ type Node struct {
 
 	// when gates the node, the zero value is always enabled
 	when Condition
+
+	// isHandler marks nodes wrapped by [NewHandler]
+	isHandler bool
 }
 
 // NewNode wraps an [Identifier] into a [Node].
@@ -69,6 +72,11 @@ func (n *Node) Identity() Identity {
 // LogValue just defers to the LogValue of the nodes identity.
 func (n *Node) LogValue() slog.Value {
 	return n.identity.LogValue()
+}
+
+// IsHandler returns true if the node is a handler.
+func (n *Node) IsHandler() bool {
+	return n.isHandler
 }
 
 // Validate calls .Validate on the wrapped node if it implements it.
