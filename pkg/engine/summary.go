@@ -34,15 +34,34 @@ var stageOrder = []Stage{
 type Outcome string
 
 const (
-	// OutcomeExecuted marks nodes that reached Execute.
-	OutcomeExecuted Outcome = "executed"
-	// OutcomeSkipped marks nodes that reported no need for execution.
-	OutcomeSkipped Outcome = "skipped"
 	// OutcomeNoop marks nodes skipped by [Options.Noop].
 	OutcomeNoop Outcome = "noop"
-	// OutcomeFailed marks nodes that returned an error.
+	// OutcomeSkipped marks nodes disabled by their condition.
+	OutcomeSkipped Outcome = "skipped by condition"
+	// OutcomeSatisfied marks nodes that reported no need for execution.
+	OutcomeSatisfied Outcome = "satisfied"
+	// OutcomeExecuted marks nodes that were executed.
+	OutcomeExecuted Outcome = "executed"
+	// OutcomeFailed marks nodes that returned an error, either during NeedsExecution or Execution.
 	OutcomeFailed Outcome = "failed"
+	// OutcomeNotNotified marks handlers that received no notifications.
+	OutcomeNotNotified Outcome = "handler not notified"
+	// OutcomeNotifiedSatisfied marks notified handlers that reported no need for execution.
+	OutcomeNotifiedSatisfied Outcome = "handler notified, satisfied"
+	// OutcomeHandlerExecuted marks handlers were notified and executed.
+	OutcomeHandlerExecuted Outcome = "handler executed"
 )
+
+// outcomeOrder is the order of outcomes for rendering.
+var outcomeOrder = []Outcome{
+	OutcomeSkipped,
+	OutcomeSatisfied,
+	OutcomeExecuted,
+	OutcomeFailed,
+	OutcomeNotNotified,
+	OutcomeNotifiedSatisfied,
+	OutcomeHandlerExecuted,
+}
 
 // NodeSummary records outcome and per-stage timing of one node
 // execution.
@@ -134,33 +153,24 @@ func (s *Summary) String() string {
 	fmt.Fprintf(&b, "run: %s, %d nodes\n", s.Duration(), s.Nodes)
 
 	b.WriteString("outcomes:\n")
-	for _, outcome := range slices.Sorted(maps.Keys(s.ByOutcome)) {
-		fmt.Fprintf(&b, "  %s: %d\n", outcome, s.ByOutcome[outcome])
-	}
-
-	b.WriteString("stage totals:\n")
-	for _, stage := range stageOrder {
-		fmt.Fprintf(&b, "  %s: %s\n", stage, s.StageTotals[stage])
-	}
-
-	b.WriteString("stage averages per kind:\n")
-	for _, kind := range slices.Sorted(maps.Keys(s.StageAvgByKind)) {
-		fmt.Fprintf(&b, "  %s:\n", kind)
-		stages := s.StageAvgByKind[kind]
-		for _, stage := range stageOrder {
-			fmt.Fprintf(&b, "    %s: %s\n", stage, stages[stage])
+	for _, outcome := range outcomeOrder {
+		if s.ByOutcome[outcome] == 0 {
+			continue
 		}
+		fmt.Fprintf(&b, "  %s: %d\n", outcome, s.ByOutcome[outcome])
 	}
 
 	b.WriteString("order:\n")
 	for _, record := range s.Records {
-		fmt.Fprintf(&b, "  %s: %s\n", record.Identity, record.Outcome)
+		fmt.Fprintf(&b, "  %s:\n", record.Identity)
+		fmt.Fprintf(&b, "    outcome: %s\n", record.Outcome)
 
 		if record.Diff == nil {
 			continue
 		}
+		b.WriteString("    diff:\n")
 		for line := range strings.Lines(record.Diff.String()) {
-			b.WriteString("    ")
+			b.WriteString("      ")
 			b.WriteString(strings.TrimSuffix(line, "\n"))
 			b.WriteByte('\n')
 		}
@@ -172,7 +182,10 @@ func (s *Summary) String() string {
 // LogValue implements [slog.LogValuer].
 func (s *Summary) LogValue() slog.Value {
 	outcomes := make([]slog.Attr, 0, len(s.ByOutcome))
-	for _, outcome := range slices.Sorted(maps.Keys(s.ByOutcome)) {
+	for _, outcome := range outcomeOrder {
+		if s.ByOutcome[outcome] == 0 {
+			continue
+		}
 		outcomes = append(outcomes, slog.Int(string(outcome), s.ByOutcome[outcome]))
 	}
 

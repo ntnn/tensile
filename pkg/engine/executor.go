@@ -47,8 +47,18 @@ func (e *Executor) Run() (NodeSummary, error) {
 	return e.summary, err
 }
 
+//nolint:cyclop // should refactor, esp. the `e.summary.stage(...)` isn't that nice
 func (e *Executor) run() error {
 	e.summary.Identity = e.Node.Identity()
+
+	enabled, err := e.Node.Enabled(e.Wire)
+	if err != nil {
+		return fmt.Errorf("failed to evaluate condition of node %s: %w", e.Node.Identity(), err)
+	}
+	if !enabled {
+		e.Logger.Debug("node disabled by condition, marking as done")
+		return e.finish(OutcomeSkipped, false)
+	}
 
 	if err := e.summary.stage(StageValidate, func() error {
 		return e.Node.Validate(e.Wire)
@@ -67,12 +77,20 @@ func (e *Executor) run() error {
 
 	if !e.needsExecution {
 		e.Logger.Debug("node does not need execution, marking as done")
-		return e.finish(OutcomeSkipped, false)
+		if e.Node.IsHandler() {
+			return e.finish(OutcomeNotifiedSatisfied, false)
+		}
+		return e.finish(OutcomeSatisfied, false)
+	}
+
+	executed := OutcomeExecuted
+	if e.Node.IsHandler() {
+		executed = OutcomeHandlerExecuted
 	}
 
 	if e.Noop {
 		e.Logger.Debug("noop is enabled, skipping execution")
-		return e.finish(OutcomeNoop, true)
+		return e.finish(executed, true)
 	}
 
 	if err := e.summary.stage(StageExecute, func() error {
@@ -89,7 +107,7 @@ func (e *Executor) run() error {
 	}
 
 	e.Logger.Debug("successfully executed node")
-	return e.finish(OutcomeExecuted, true)
+	return e.finish(executed, true)
 }
 
 func (e *Executor) finish(outcome Outcome, changed bool) error {

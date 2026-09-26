@@ -99,6 +99,7 @@ func (p *Parallel) Execute(ctx context.Context) error {
 
 	// Sort p.records to match the order in which they were marked done
 	order := p.work.DoneOrder()
+	p.records = append(p.records, notNotifiedRecords(p.work)...)
 	slices.SortFunc(
 		p.records,
 		func(a, b NodeSummary) int {

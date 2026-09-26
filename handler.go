@@ -11,5 +11,7 @@ func NewHandler(input Identifier) *Handler {
 	if handler, ok := input.(*Handler); ok {
 		return handler
 	}
-	return &Handler{Node: *NewNode(input)}
+	node := NewNode(input)
+	node.isHandler = true
+	return &Handler{Node: *node}
 }

@@ -106,6 +106,35 @@ func TestWhen_ConditionErrorPropagates(t *testing.T) {
 	require.ErrorIs(t, node.Validate(wire), errCond)
 }
 
+func TestNode_Enabled(t *testing.T) {
+	t.Parallel()
+
+	wire := &DefaultWire{}
+
+	enabled, err := NewNode(&condNode{}).Enabled(wire)
+	require.NoError(t, err)
+	assert.True(t, enabled, "nil condition must be enabled")
+
+	enabled, err = When(Cond(func(Wire) (bool, error) { return true, nil }), &condNode{}).Enabled(wire)
+	require.NoError(t, err)
+	assert.True(t, enabled)
+
+	enabled, err = When(Cond(func(Wire) (bool, error) { return false, nil }), &condNode{}).Enabled(wire)
+	require.NoError(t, err)
+	assert.False(t, enabled)
+}
+
+func TestNode_IsHandler(t *testing.T) {
+	t.Parallel()
+
+	assert.False(t, NewNode(&condNode{}).IsHandler())
+
+	handler := NewHandler(&condNode{})
+	assert.True(t, handler.IsHandler())
+	assert.True(t, NewNode(handler).IsHandler(), "NewNode must keep the handler flag")
+	assert.True(t, NewHandler(handler).IsHandler(), "NewHandler must pass a handler through")
+}
+
 func TestWhen_AppendsReads(t *testing.T) {
 	t.Parallel()
 

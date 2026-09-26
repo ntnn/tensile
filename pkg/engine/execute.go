@@ -38,3 +38,15 @@ func executeNode(ctx context.Context, opts Options, work *queue.Work, node *tens
 	}
 	return executor.Run()
 }
+
+func notNotifiedRecords(work *queue.Work) []NodeSummary {
+	dropped := work.NotNotified()
+	records := make([]NodeSummary, 0, len(dropped))
+	for _, node := range dropped {
+		records = append(records, NodeSummary{
+			Identity: node.Identity(),
+			Outcome:  OutcomeNotNotified,
+		})
+	}
+	return records
+}

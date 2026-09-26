@@ -60,13 +60,13 @@ func TestSummary_Analyze(t *testing.T) {
 				record("file", OutcomeExecuted, 10*time.Millisecond, 100*time.Millisecond),
 				record("file", OutcomeExecuted, 30*time.Millisecond, 300*time.Millisecond),
 				record("file", OutcomeFailed, 20*time.Millisecond, 200*time.Millisecond),
-				record("pkg", OutcomeSkipped, 40*time.Millisecond, 0),
+				record("pkg", OutcomeSatisfied, 40*time.Millisecond, 0),
 			},
 			wantNodes: 4,
 			wantByOutcome: map[Outcome]int{
-				OutcomeExecuted: 2,
-				OutcomeFailed:   1,
-				OutcomeSkipped:  1,
+				OutcomeExecuted:  2,
+				OutcomeFailed:    1,
+				OutcomeSatisfied: 1,
 			},
 			wantStageTotals: map[Stage]time.Duration{
 				StageValidate: 100 * time.Millisecond,

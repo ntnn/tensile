@@ -170,7 +170,7 @@ func TestWork_ChanYieldsContextErrorWhileWaiting(t *testing.T) {
 func TestWork_ChanSkipsHandlerWithoutExecutedNotifier(t *testing.T) {
 	t.Parallel()
 
-	work, notifierIdentity, _ := buildNotifiedWork(t)
+	work, notifierIdentity, handler := buildNotifiedWork(t)
 
 	items := work.Chan(t.Context())
 
@@ -181,6 +181,11 @@ func TestWork_ChanSkipsHandlerWithoutExecutedNotifier(t *testing.T) {
 
 	item, open := <-items
 	assert.False(t, open, "handler without executed notifier must be skipped: %+v", item)
+
+	dropped := work.NotNotified()
+	require.Len(t, dropped, 1)
+	assert.Equal(t, handler.Identity(), dropped[0].Identity())
+	assert.Equal(t, []tensile.Identity{notifierIdentity, handler.Identity()}, work.DoneOrder())
 }
 
 func TestWork_ChanYieldsHandlerAfterNotifierExecuted(t *testing.T) {
@@ -529,6 +534,10 @@ func TestQueue_NotifiedByNamedQueueSkippedWithoutExecution(t *testing.T) {
 
 	got, open := <-items
 	assert.False(t, open, "handler without executed member must be skipped: %+v", got)
+
+	dropped := work.NotNotified()
+	require.Len(t, dropped, 1)
+	assert.Equal(t, handler.Identity(), dropped[0].Identity())
 }
 
 func TestQueue_DeclaredDependencyOnNamedQueue(t *testing.T) {
