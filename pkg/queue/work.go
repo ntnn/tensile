@@ -38,6 +38,8 @@ type Work struct {
 	held map[string]tensile.Identity
 	// doneOrder is the order in which nodes were marked done.
 	doneOrder []tensile.Identity
+	// notNotified are handlers dropped because no notifier executed.
+	notNotified []*tensile.Node
 }
 
 // newWork returns a Work with initialized internals.
@@ -66,6 +68,13 @@ func (w *Work) DoneOrder() []tensile.Identity {
 	w.lock.Lock()
 	defer w.lock.Unlock()
 	return slices.Clone(w.doneOrder)
+}
+
+// NotNotified returns handlers dropped because no notifier executed.
+func (w *Work) NotNotified() []*tensile.Node {
+	w.lock.Lock()
+	defer w.lock.Unlock()
+	return slices.Clone(w.notNotified)
 }
 
 // Get returns the next node that is ready to be executed.
@@ -103,6 +112,8 @@ func (w *Work) get() *tensile.Node {
 		if w.isHandler(node) && !w.wasNotified(node) {
 			// No notifying node was executed, skip the handler.
 			w.done[node.Identity()] = false
+			w.doneOrder = append(w.doneOrder, node.Identity())
+			w.notNotified = append(w.notNotified, node)
 			continue
 		}
 
