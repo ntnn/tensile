@@ -160,20 +160,6 @@ func (s *Summary) String() string {
 		fmt.Fprintf(&b, "  %s: %d\n", outcome, s.ByOutcome[outcome])
 	}
 
-	b.WriteString("stage totals:\n")
-	for _, stage := range stageOrder {
-		fmt.Fprintf(&b, "  %s: %s\n", stage, s.StageTotals[stage])
-	}
-
-	b.WriteString("stage averages per kind:\n")
-	for _, kind := range slices.Sorted(maps.Keys(s.StageAvgByKind)) {
-		fmt.Fprintf(&b, "  %s:\n", kind)
-		stages := s.StageAvgByKind[kind]
-		for _, stage := range stageOrder {
-			fmt.Fprintf(&b, "    %s: %s\n", stage, stages[stage])
-		}
-	}
-
 	b.WriteString("order:\n")
 	for _, record := range s.Records {
 		fmt.Fprintf(&b, "  %s: %s\n", record.Identity, record.Outcome)
