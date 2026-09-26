@@ -55,8 +55,8 @@ func When(cond Condition, input Identifier) *Node {
 	return node
 }
 
-// enabled evaluates the when condition, nil means enabled.
-func (n *Node) enabled(wire Wire) (bool, error) {
+// Enabled evaluates the when condition, nil means enabled.
+func (n *Node) Enabled(wire Wire) (bool, error) {
 	if n.when.Cond == nil {
 		return true, nil
 	}
@@ -82,7 +82,7 @@ func (n *Node) IsHandler() bool {
 // Validate calls .Validate on the wrapped node if it implements it.
 // A disabled node validates nothing.
 func (n *Node) Validate(wire Wire) error {
-	enabled, err := n.enabled(wire)
+	enabled, err := n.Enabled(wire)
 	if err != nil {
 		return err
 	}
@@ -161,7 +161,7 @@ func (n *Node) Report(wire Wire) (any, bool, error) {
 
 // NeedsExecution calls .NeedsExecution on the wrapped node if it implements it.
 func (n *Node) NeedsExecution(wire Wire) (bool, Diff, error) {
-	enabled, err := n.enabled(wire)
+	enabled, err := n.Enabled(wire)
 	if err != nil {
 		return false, nil, err
 	}
@@ -176,7 +176,7 @@ func (n *Node) NeedsExecution(wire Wire) (bool, Diff, error) {
 
 // Execute calls .Execute on the wrapped node if it implements it.
 func (n *Node) Execute(wire Wire) (Diff, error) {
-	enabled, err := n.enabled(wire)
+	enabled, err := n.Enabled(wire)
 	if err != nil {
 		return nil, err
 	}
