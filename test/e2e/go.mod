@@ -60,4 +60,5 @@ require (
 	golang.org/x/crypto v0.54.0 // indirect
 	golang.org/x/sync v0.23.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
+	gopkg.in/ini.v1 v1.67.3 // indirect
 )
