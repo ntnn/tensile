@@ -8,7 +8,7 @@ type Node struct {
 	identity Identity
 
 	// when gates the node, the zero value is always enabled
-	when Condition
+	when []Condition
 
 	// isHandler marks nodes wrapped by [NewHandler]
 	isHandler bool
@@ -47,20 +47,27 @@ func Cond(fn func(Wire) (bool, error), reads ...Identity) Condition {
 }
 
 // When wraps input into a [Node] whose execution is gated by cond.
-// If the condition returns false the node's validation and execution is skipped.
+// It may be called multiple times to add multiple conditions for a single [Node].
+// If any condition returns false the node's validation and execution is skipped.
 // [Condition.Reads] are added to the node's dependencies.
 func When(cond Condition, input Identifier) *Node {
 	node := NewNode(input)
-	node.when = cond
+	node.when = append(node.when, cond)
 	return node
 }
 
 // Enabled evaluates the when condition, nil means enabled.
 func (n *Node) Enabled(wire Wire) (bool, error) {
-	if n.when.Cond == nil {
+	if len(n.when) == 0 {
 		return true, nil
 	}
-	return n.when.Cond(wire)
+	for _, cond := range n.when {
+		b, err := cond.Cond(wire)
+		if !b || err != nil {
+			return false, err
+		}
+	}
+	return true, nil
 }
 
 // Handler is a [Node] that is only executed when at least one of the
@@ -122,15 +129,20 @@ func (n *Node) Conflicts() ([]Identity, error) {
 
 // DependsOn calls .DependsOn on the wrapped node if it implements it.
 func (n *Node) DependsOn() ([]Identity, error) {
+	whenReads := []Identity{}
+	for _, when := range n.when {
+		whenReads = append(whenReads, when.Reads...)
+	}
+
 	depender, ok := n.wrapped.(Depender)
 	if !ok {
-		return n.when.Reads, nil
+		return whenReads, nil
 	}
 	deps, err := depender.DependsOn()
 	if err != nil {
 		return nil, err
 	}
-	return append(deps, n.when.Reads...), nil
+	return append(deps, whenReads...), nil
 }
 
 // RequiredBy calls .RequiredBy on the wrapped node if it implements it.
