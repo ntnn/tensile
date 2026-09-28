@@ -102,6 +102,15 @@ linters:
       - path: ^test/e2e/
         linters:
           - goconst
+      # some nodes are carbon copies of each other but use differnt values and functions.
+      # satisfying dupl for these would just lead to unreadable code
+      # with structs that just carry numerous function references.
+      # tripped by JSONField and YAMLField which are nearly identical in
+      # flow _except_ for every function/method they use (aside from two
+      # map operations).
+      - path: ^nodes/std/
+        linters:
+          - dupl
 
 formatters:
   enable:
