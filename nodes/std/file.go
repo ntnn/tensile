@@ -26,22 +26,14 @@ var _ tensile.Depender = (*File)(nil)
 var _ tensile.Executor = (*File)(nil)
 var _ queue.NamedQueuer = (*File)(nil)
 
-// FileState is the desired existence of a file.
-type FileState string
-
-// Desired existence states for [File].
-const (
-	FilePresent FileState = "present"
-	FileAbsent  FileState = "absent"
-)
-
 // File ensures a file is present or absent.
 type File struct {
 	Path string
 	// State is the desired existence.
-	// Defaults to [FilePresent].
-	// [FileAbsent] ignores all fields but Path.
-	State FileState
+	// Defaults to [tensile.Present].
+	// [tensile.Absent] ignores all fields but Path.
+	// [tensile.ReadOnly] is not supported.
+	State tensile.State
 
 	// Content is the managed file content.
 	// Empty means only existence is ensured, existing content is left alone.
@@ -53,12 +45,9 @@ type File struct {
 	Group    string
 }
 
-// desired returns the desired state, defaulting to [FilePresent].
-func (f *File) desired() FileState {
-	if f.State == "" {
-		return FilePresent
-	}
-	return f.State
+// desired returns the desired state, defaulting to [tensile.Present].
+func (f *File) desired() tensile.State {
+	return f.State.OrDefault()
 }
 
 // Queue implements [queue.NamedQueuer].
@@ -67,7 +56,7 @@ func (f *File) Queue() *queue.NamedQueue {
 	q := queue.NewNamed(FileQueueIdentity(f.Path))
 	// wrapped in a Node so Add does not dissolve the File again
 	q.Add(tensile.NewNode(f))
-	if f.desired() == FileAbsent {
+	if f.desired() == tensile.Absent {
 		return q
 	}
 	if f.FileMode != 0 {
@@ -92,8 +81,8 @@ func (f *File) Validate(_ tensile.Wire) error {
 	if f.Path == "" {
 		return errors.New("path is required")
 	}
-	switch f.State {
-	case "", FilePresent, FileAbsent:
+	switch f.State { //nolint:exhaustive // ReadOnly is unsupported, rejected by default
+	case "", tensile.Present, tensile.Absent:
 	default:
 		return fmt.Errorf("unknown state %q", f.State)
 	}
@@ -113,7 +102,7 @@ func (f *File) NeedsExecution(_ tensile.Wire) (bool, tensile.Diff, error) {
 		return false, nil, fmt.Errorf("checking file: %w", err)
 	}
 
-	if f.desired() == FileAbsent {
+	if f.desired() == tensile.Absent {
 		if !exists {
 			return false, nil, nil
 		}
@@ -127,7 +116,7 @@ func (f *File) NeedsExecution(_ tensile.Wire) (bool, tensile.Diff, error) {
 
 // Execute implements [tensile.Executor].
 func (f *File) Execute(_ tensile.Wire) (tensile.Diff, error) {
-	if f.desired() == FileAbsent {
+	if f.desired() == tensile.Absent {
 		if err := os.Remove(f.Path); err != nil && !os.IsNotExist(err) {
 			return nil, fmt.Errorf("removing file: %w", err)
 		}

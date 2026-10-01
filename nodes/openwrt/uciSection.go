@@ -33,8 +33,9 @@ type UCISection struct {
 	// Type is the section type, required unless [UCISection.State] is [UCIAbsent].
 	Type string
 	// State is the desired presence.
-	// Empty means [UCIPresent].
-	State UCIState
+	// Empty means [tensile.Present].
+	// [tensile.ReadOnly] is not supported.
+	State tensile.State
 
 	// run executes uci with args and returns combined output.
 	run func(ctx context.Context, args ...string) ([]byte, error)
@@ -48,12 +49,12 @@ func (s *UCISection) Validate(_ tensile.Wire) error {
 	if s.Section == "" {
 		return errors.New("section is required")
 	}
-	switch s.desired() {
-	case UCIPresent:
+	switch s.desired() { //nolint:exhaustive // ReadOnly is unsupported, rejected by default
+	case tensile.Present:
 		if s.Type == "" {
 			return errors.New("type is required when state is present")
 		}
-	case UCIAbsent:
+	case tensile.Absent:
 	default:
 		return fmt.Errorf("unknown state %q", s.State)
 	}
@@ -103,7 +104,7 @@ func (s *UCISection) NeedsExecution(c tensile.Wire) (bool, tensile.Diff, error) 
 		d.Old = sectionType
 	}
 
-	if s.desired() == UCIAbsent {
+	if s.desired() == tensile.Absent {
 		if !exists {
 			return false, nil, nil
 		}
@@ -122,7 +123,7 @@ func (s *UCISection) NeedsExecution(c tensile.Wire) (bool, tensile.Diff, error) 
 func (s *UCISection) Execute(c tensile.Wire) (tensile.Diff, error) {
 	ctx := c.Context()
 
-	if s.desired() == UCIAbsent {
+	if s.desired() == tensile.Absent {
 		out, err := s.uci(ctx, "delete", s.path())
 		if err != nil && !uciNotFound(out) {
 			return nil, fmt.Errorf("uci delete %q: %w: %s", s.path(), err, strings.TrimSpace(string(out)))
@@ -153,11 +154,8 @@ func (s *UCISection) path() string {
 	return s.Config + "." + s.Section
 }
 
-func (s *UCISection) desired() UCIState {
-	if s.State == "" {
-		return UCIPresent
-	}
-	return s.State
+func (s *UCISection) desired() tensile.State {
+	return s.State.OrDefault()
 }
 
 func (s *UCISection) uci(ctx context.Context, args ...string) ([]byte, error) {

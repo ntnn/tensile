@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/ntnn/tensile"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -35,7 +36,7 @@ func TestUCIOption_Validate(t *testing.T) {
 			option: UCIOption[string]{Config: "c", Section: "s", Option: "o"},
 		},
 		"valid absent": {
-			option: UCIOption[string]{Config: "c", Section: "s", Option: "o", State: UCIAbsent},
+			option: UCIOption[string]{Config: "c", Section: "s", Option: "o", State: tensile.Absent},
 		},
 		"missing config": {
 			option:  UCIOption[string]{Section: "s", Option: "o"},
@@ -78,7 +79,7 @@ func TestUCIOption_NeedsExecution_string(t *testing.T) {
 		want    bool
 		wantErr bool
 		value   string
-		state   UCIState
+		state   tensile.State
 		out     string
 		err     error
 	}{
@@ -99,11 +100,11 @@ func TestUCIOption_NeedsExecution_string(t *testing.T) {
 		},
 		"absent but exists": {
 			want:  true,
-			state: UCIAbsent,
+			state: tensile.Absent,
 			out:   "t.main.hello='world'\n",
 		},
 		"absent and missing": {
-			state: UCIAbsent,
+			state: tensile.Absent,
 			out:   "uci: Entry not found",
 			err:   errRun,
 		},
@@ -290,7 +291,7 @@ func TestUCIOption_Execute_absent(t *testing.T) {
 	fake := &fakeOption{}
 	option := &UCIOption[string]{
 		Config: "t", Section: "main", Option: "legacy",
-		State: UCIAbsent,
+		State: tensile.Absent,
 		run:   fake.run,
 	}
 
@@ -305,7 +306,7 @@ func TestUCIOption_Execute_deleteMissingIsNoop(t *testing.T) {
 	errRun := errors.New("exit status 1")
 	option := &UCIOption[string]{
 		Config: "t", Section: "main", Option: "legacy",
-		State: UCIAbsent,
+		State: tensile.Absent,
 		run: func(_ context.Context, _ ...string) ([]byte, error) {
 			return []byte("uci: Entry not found\n"), errRun
 		},

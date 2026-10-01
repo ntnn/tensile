@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/ntnn/tensile"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -17,7 +18,7 @@ func TestJSONField_Validate(t *testing.T) {
 		node    JSONField
 	}{
 		"valid":         {false, JSONField{Path: "/f", Key: "a", Value: 1}},
-		"valid report":  {false, JSONField{Path: "/f", Key: "a", State: JSONFieldReport}},
+		"valid report":  {false, JSONField{Path: "/f", Key: "a", State: tensile.ReadOnly}},
 		"missing path":  {true, JSONField{Key: "a"}},
 		"missing key":   {true, JSONField{Path: "/f"}},
 		"unknown state": {true, JSONField{Path: "/f", Key: "a", State: "gone"}},
@@ -83,22 +84,22 @@ func TestJSONField_NeedsExecution(t *testing.T) {
 		"absent with key present": {
 			true,
 			new(`{"a": 1}`),
-			JSONField{Key: "a", State: JSONFieldAbsent},
+			JSONField{Key: "a", State: tensile.Absent},
 		},
 		"absent with key absent": {
 			false,
 			new(`{"b": 1}`),
-			JSONField{Key: "a", State: JSONFieldAbsent},
+			JSONField{Key: "a", State: tensile.Absent},
 		},
 		"absent with missing file": {
 			false,
 			nil,
-			JSONField{Key: "a", State: JSONFieldAbsent},
+			JSONField{Key: "a", State: tensile.Absent},
 		},
 		"report never executes": {
 			false,
 			new(`{"a": 2}`),
-			JSONField{Key: "a", State: JSONFieldReport, Value: 1},
+			JSONField{Key: "a", State: tensile.ReadOnly, Value: 1},
 		},
 	}
 
@@ -174,12 +175,12 @@ func TestJSONField_Execute(t *testing.T) {
 		"remove key": {
 			"{\n  \"b\": 2\n}\n",
 			new(`{"a": 1, "b": 2}`),
-			JSONField{Key: "a", State: JSONFieldAbsent},
+			JSONField{Key: "a", State: tensile.Absent},
 		},
 		"remove nested key": {
 			"{\n  \"a\": {}\n}\n",
 			new(`{"a": {"b": 1}}`),
-			JSONField{Key: "a.b", State: JSONFieldAbsent},
+			JSONField{Key: "a.b", State: tensile.Absent},
 		},
 	}
 
@@ -228,22 +229,22 @@ func TestJSONField_Report(t *testing.T) {
 		"present": {
 			JSONFieldOutput{Key: "a", Present: true, Value: float64(1)},
 			new(`{"a": 1}`),
-			JSONField{Key: "a", State: JSONFieldReport},
+			JSONField{Key: "a", State: tensile.ReadOnly},
 		},
 		"nested present": {
 			JSONFieldOutput{Key: "a.b", Present: true, Value: "x"},
 			new(`{"a": {"b": "x"}}`),
-			JSONField{Key: "a.b", State: JSONFieldReport},
+			JSONField{Key: "a.b", State: tensile.ReadOnly},
 		},
 		"absent": {
 			JSONFieldOutput{Key: "a", Present: false},
 			new(`{"b": 1}`),
-			JSONField{Key: "a", State: JSONFieldReport},
+			JSONField{Key: "a", State: tensile.ReadOnly},
 		},
 		"missing file": {
 			JSONFieldOutput{Key: "a", Present: false},
 			nil,
-			JSONField{Key: "a", State: JSONFieldReport},
+			JSONField{Key: "a", State: tensile.ReadOnly},
 		},
 	}
 

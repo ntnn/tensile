@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/ntnn/tensile"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -20,7 +21,7 @@ func TestUCISection_Validate(t *testing.T) {
 			section: UCISection{Config: "c", Section: "s", Type: "t"},
 		},
 		"valid absent without type": {
-			section: UCISection{Config: "c", Section: "s", State: UCIAbsent},
+			section: UCISection{Config: "c", Section: "s", State: tensile.Absent},
 		},
 		"missing config": {
 			section: UCISection{Section: "s", Type: "t"},
@@ -62,7 +63,7 @@ func TestUCISection_NeedsExecution(t *testing.T) {
 	cases := map[string]struct {
 		want    bool
 		wantErr bool
-		state   UCIState
+		state   tensile.State
 		out     string
 		err     error
 	}{
@@ -80,11 +81,11 @@ func TestUCISection_NeedsExecution(t *testing.T) {
 		},
 		"absent but exists": {
 			want:  true,
-			state: UCIAbsent,
+			state: tensile.Absent,
 			out:   "settings\n",
 		},
 		"absent and missing": {
-			state: UCIAbsent,
+			state: tensile.Absent,
 			out:   "uci: Entry not found",
 			err:   errRun,
 		},

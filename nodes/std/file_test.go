@@ -65,8 +65,8 @@ func TestFile_Validate(t *testing.T) {
 		file    File
 	}{
 		"empty state":   {false, File{Path: "/a"}},
-		"present":       {false, File{Path: "/a", State: FilePresent}},
-		"absent":        {false, File{Path: "/a", State: FileAbsent}},
+		"present":       {false, File{Path: "/a", State: tensile.Present}},
+		"absent":        {false, File{Path: "/a", State: tensile.Absent}},
 		"unknown state": {true, File{Path: "/a", State: "gone"}},
 		"missing path":  {true, File{}},
 	}
@@ -90,14 +90,14 @@ func TestFile_NeedsExecution(t *testing.T) {
 	cases := map[string]struct {
 		expected bool
 		exists   bool
-		state    FileState
+		state    tensile.State
 	}{
 		"missing file":           {true, false, ""},
 		"existing file":          {false, true, ""},
-		"absent, missing file":   {false, false, FileAbsent},
-		"absent, existing file":  {true, true, FileAbsent},
-		"present, missing file":  {true, false, FilePresent},
-		"present, existing file": {false, true, FilePresent},
+		"absent, missing file":   {false, false, tensile.Absent},
+		"absent, existing file":  {true, true, tensile.Absent},
+		"present, missing file":  {true, false, tensile.Present},
+		"present, existing file": {false, true, tensile.Present},
 	}
 
 	for title, cas := range cases {
@@ -149,7 +149,7 @@ func TestFile_Execute(t *testing.T) {
 		path := filepath.Join(t.TempDir(), "file")
 		require.NoError(t, os.WriteFile(path, []byte("content"), 0o600))
 
-		_, err := (&File{Path: path, State: FileAbsent}).Execute(nil)
+		_, err := (&File{Path: path, State: tensile.Absent}).Execute(nil)
 		require.NoError(t, err)
 		assert.NoFileExists(t, path)
 	})
@@ -158,7 +158,7 @@ func TestFile_Execute(t *testing.T) {
 		t.Parallel()
 
 		path := filepath.Join(t.TempDir(), "file")
-		_, err := (&File{Path: path, State: FileAbsent}).Execute(nil)
+		_, err := (&File{Path: path, State: tensile.Absent}).Execute(nil)
 		require.NoError(t, err)
 		assert.NoFileExists(t, path)
 	})
@@ -215,7 +215,7 @@ func TestFile_Queue(t *testing.T) {
 	t.Run("absent adds only the file node", func(t *testing.T) {
 		t.Parallel()
 
-		identities := workIdentities(t, &File{Path: "/a/b/c", State: FileAbsent, FileMode: 0o644, Content: "content"})
+		identities := workIdentities(t, &File{Path: "/a/b/c", State: tensile.Absent, FileMode: 0o644, Content: "content"})
 		assert.Equal(t, []tensile.Identity{FileIdentity("/a/b/c")}, identities,
 			"an absent file needs no chmod/chown/content")
 	})

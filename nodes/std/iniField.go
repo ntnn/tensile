@@ -18,17 +18,6 @@ var _ tensile.Depender = (*INIField[string])(nil)
 var _ tensile.Executor = (*INIField[string])(nil)
 var _ tensile.Reporter = (*INIField[string])(nil)
 
-// INIFieldState is the desired state of a key in an INI file.
-type INIFieldState string
-
-// Desired states for [INIField].
-const (
-	INIFieldPresent INIFieldState = "present"
-	INIFieldAbsent  INIFieldState = "absent"
-	// INIFieldReport only lets the node report the current value.
-	INIFieldReport INIFieldState = "report"
-)
-
 // INIValue are the value types storable in an INI key.
 // INI stores only strings.
 // int is rendered as '<int>'.
@@ -49,11 +38,11 @@ type INIFieldOutput struct {
 }
 
 // INIField ensures a key in an INI file is present or absent.
-// A missing file is created on [INIFieldPresent].
+// A missing file is created on [tensile.Present].
 type INIField[T INIValue] struct {
 	// State is the desired state.
-	// Defaults to [INIFieldPresent].
-	State INIFieldState
+	// Defaults to [tensile.Present].
+	State tensile.State
 
 	Path string
 	// Section is the INI section, empty for the default section.
@@ -62,12 +51,9 @@ type INIField[T INIValue] struct {
 	Value   T
 }
 
-// desired returns the desired state, defaulting to [INIFieldPresent].
-func (i *INIField[T]) desired() INIFieldState {
-	if i.State == "" {
-		return INIFieldPresent
-	}
-	return i.State
+// desired returns the desired state, defaulting to [tensile.Present].
+func (i *INIField[T]) desired() tensile.State {
+	return i.State.OrDefault()
 }
 
 // value renders the declared value to the ini string.
@@ -108,12 +94,7 @@ func (i *INIField[T]) Validate(_ tensile.Wire) error {
 	if i.Key == "" {
 		return errors.New("key is required")
 	}
-	switch i.State {
-	case "", INIFieldPresent, INIFieldAbsent, INIFieldReport:
-	default:
-		return fmt.Errorf("unknown state %q", i.State)
-	}
-	return nil
+	return i.State.Valid()
 }
 
 // DependsOn implements [tensile.Depender].
@@ -126,7 +107,7 @@ func (i *INIField[T]) DependsOn() ([]tensile.Identity, error) {
 
 // NeedsExecution implements [tensile.Executor].
 func (i *INIField[T]) NeedsExecution(_ tensile.Wire) (bool, tensile.Diff, error) {
-	if i.desired() == INIFieldReport {
+	if i.desired() == tensile.ReadOnly {
 		return false, nil, nil
 	}
 
@@ -136,7 +117,7 @@ func (i *INIField[T]) NeedsExecution(_ tensile.Wire) (bool, tensile.Diff, error)
 	}
 	current, present := getINIValue(file, i.Section, i.Key)
 
-	if i.desired() == INIFieldAbsent {
+	if i.desired() == tensile.Absent {
 		if !present {
 			return false, nil, nil
 		}
@@ -170,11 +151,11 @@ func (i *INIField[T]) Execute(_ tensile.Wire) (tensile.Diff, error) {
 	}
 
 	switch i.desired() {
-	case INIFieldAbsent:
+	case tensile.Absent:
 		file.Section(i.Section).DeleteKey(i.Key)
-	case INIFieldPresent:
+	case tensile.Present:
 		file.Section(i.Section).Key(i.Key).SetValue(i.value())
-	case INIFieldReport:
+	case tensile.ReadOnly:
 		// unreachable, NeedsExecution reports false
 		return nil, nil //nolint:nilnil // nil Diff is valid
 	}

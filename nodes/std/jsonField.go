@@ -20,17 +20,6 @@ var _ tensile.Depender = (*JSONField)(nil)
 var _ tensile.Executor = (*JSONField)(nil)
 var _ tensile.Reporter = (*JSONField)(nil)
 
-// JSONFieldState is the desired state of a field in a JSON file.
-type JSONFieldState string
-
-// Desired states for [JSONField].
-const (
-	JSONFieldPresent JSONFieldState = "present"
-	JSONFieldAbsent  JSONFieldState = "absent"
-	// JSONFieldReport only lets the node report the current value.
-	JSONFieldReport JSONFieldState = "report"
-)
-
 // JSONFieldOutput is the output reported by [JSONField].
 type JSONFieldOutput struct {
 	Path    string
@@ -43,23 +32,20 @@ type JSONFieldOutput struct {
 // JSONField ensures a field in a JSON file is present or absent.
 // The top level of the file must be a JSON object.
 // Key is a dot-separated path into nested objects.
-// A missing file is created on [JSONFieldPresent].
+// A missing file is created on [tensile.Present].
 type JSONField struct {
 	// State is the desired state.
-	// Defaults to [JSONFieldPresent].
-	State JSONFieldState
+	// Defaults to [tensile.Present].
+	State tensile.State
 
 	Path  string
 	Key   string
 	Value any
 }
 
-// desired returns the desired state, defaulting to [JSONFieldPresent].
-func (j *JSONField) desired() JSONFieldState {
-	if j.State == "" {
-		return JSONFieldPresent
-	}
-	return j.State
+// desired returns the desired state, defaulting to [tensile.Present].
+func (j *JSONField) desired() tensile.State {
+	return j.State.OrDefault()
 }
 
 // Identity implements [tensile.Identifier].
@@ -75,12 +61,7 @@ func (j *JSONField) Validate(_ tensile.Wire) error {
 	if j.Key == "" {
 		return errors.New("key is required")
 	}
-	switch j.State {
-	case "", JSONFieldPresent, JSONFieldAbsent, JSONFieldReport:
-	default:
-		return fmt.Errorf("unknown state %q", j.State)
-	}
-	return nil
+	return j.State.Valid()
 }
 
 // DependsOn implements [tensile.Depender].
@@ -93,7 +74,7 @@ func (j *JSONField) DependsOn() ([]tensile.Identity, error) {
 
 // NeedsExecution implements [tensile.Executor].
 func (j *JSONField) NeedsExecution(_ tensile.Wire) (bool, tensile.Diff, error) {
-	if j.desired() == JSONFieldReport {
+	if j.desired() == tensile.ReadOnly {
 		return false, nil, nil
 	}
 
@@ -103,7 +84,7 @@ func (j *JSONField) NeedsExecution(_ tensile.Wire) (bool, tensile.Diff, error) {
 	}
 	current, present := getMapValue(doc, j.Key)
 
-	if j.desired() == JSONFieldAbsent {
+	if j.desired() == tensile.Absent {
 		if !present {
 			return false, nil, nil
 		}
@@ -141,13 +122,13 @@ func (j *JSONField) Execute(_ tensile.Wire) (tensile.Diff, error) {
 	}
 
 	switch j.desired() {
-	case JSONFieldAbsent:
+	case tensile.Absent:
 		deleteMapValue(doc, j.Key)
-	case JSONFieldPresent:
+	case tensile.Present:
 		if err := setMapValue(doc, j.Key, j.Value); err != nil {
 			return nil, err
 		}
-	case JSONFieldReport:
+	case tensile.ReadOnly:
 		// unreachable, NeedsExecution reports false
 		return nil, nil //nolint:nilnil // nil Diff is valid
 	}

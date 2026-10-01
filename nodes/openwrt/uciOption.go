@@ -44,8 +44,9 @@ type UCIOption[T UCIValue] struct {
 	Value   T
 
 	// State is the desired presence.
-	// Empty means [UCIPresent].
-	State UCIState
+	// Empty means [tensile.Present].
+	// [tensile.ReadOnly] is not supported.
+	State tensile.State
 
 	// run executes uci with args and returns combined output.
 	run func(ctx context.Context, args ...string) ([]byte, error)
@@ -62,8 +63,8 @@ func (o *UCIOption[T]) Validate(_ tensile.Wire) error {
 	if o.Option == "" {
 		return errors.New("option is required")
 	}
-	switch o.desired() {
-	case UCIPresent, UCIAbsent:
+	switch o.desired() { //nolint:exhaustive // ReadOnly is unsupported, rejected by default
+	case tensile.Present, tensile.Absent:
 	default:
 		return fmt.Errorf("unknown state %q", o.State)
 	}
@@ -103,7 +104,7 @@ func (o *UCIOption[T]) NeedsExecution(c tensile.Wire) (bool, tensile.Diff, error
 		return false, nil, err
 	}
 
-	if o.desired() == UCIAbsent {
+	if o.desired() == tensile.Absent {
 		if !exists {
 			return false, nil, nil
 		}
@@ -155,7 +156,7 @@ func joinLines(values []string) string {
 func (o *UCIOption[T]) Execute(c tensile.Wire) (tensile.Diff, error) {
 	ctx := c.Context()
 
-	if o.desired() == UCIAbsent {
+	if o.desired() == tensile.Absent {
 		return nil, o.delete(ctx)
 	}
 
@@ -245,11 +246,8 @@ func (o *UCIOption[T]) path() string {
 	return o.Config + "." + o.Section + "." + o.Option
 }
 
-func (o *UCIOption[T]) desired() UCIState {
-	if o.State == "" {
-		return UCIPresent
-	}
-	return o.State
+func (o *UCIOption[T]) desired() tensile.State {
+	return o.State.OrDefault()
 }
 
 func (o *UCIOption[T]) uci(ctx context.Context, args ...string) ([]byte, error) {

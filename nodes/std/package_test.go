@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/ntnn/tensile"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -46,9 +47,9 @@ func TestPackage_Validate(t *testing.T) {
 		pkg     Package
 	}{
 		"name only":     {false, Package{Name: "pkg"}},
-		"present":       {false, Package{Name: "pkg", State: PackagePresent}},
-		"absent":        {false, Package{Name: "pkg", State: PackageAbsent}},
-		"missing name":  {true, Package{State: PackagePresent}},
+		"present":       {false, Package{Name: "pkg", State: tensile.Present}},
+		"absent":        {false, Package{Name: "pkg", State: tensile.Absent}},
+		"missing name":  {true, Package{State: tensile.Present}},
 		"unknown state": {true, Package{Name: "pkg", State: "sideways"}},
 	}
 
@@ -70,13 +71,13 @@ func TestPackage_NeedsExecution(t *testing.T) {
 
 	cases := map[string]struct {
 		expected  bool
-		state     PackageState
+		state     tensile.State
 		installed bool
 	}{
-		"present not installed":     {true, PackagePresent, false},
-		"present installed":         {false, PackagePresent, true},
-		"absent installed":          {true, PackageAbsent, true},
-		"absent not installed":      {false, PackageAbsent, false},
+		"present not installed":     {true, tensile.Present, false},
+		"present installed":         {false, tensile.Present, true},
+		"absent installed":          {true, tensile.Absent, true},
+		"absent not installed":      {false, tensile.Absent, false},
 		"empty state not installed": {true, "", false},
 		"empty state installed":     {false, "", true},
 	}
@@ -109,11 +110,11 @@ func TestPackage_Execute(t *testing.T) {
 	t.Parallel()
 
 	cases := map[string]struct {
-		state       PackageState
+		state       tensile.State
 		wantInstall bool
 	}{
-		"present installs": {PackagePresent, true},
-		"absent removes":   {PackageAbsent, false},
+		"present installs": {tensile.Present, true},
+		"absent removes":   {tensile.Absent, false},
 	}
 
 	for title, cas := range cases {

@@ -56,7 +56,7 @@ func run(ctx context.Context) error {
 	obsolete := &openwrt.UCISection{
 		Config:  config,
 		Section: "obsolete",
-		State:   openwrt.UCIAbsent,
+		State:   tensile.Absent,
 	}
 
 	// one option per value type
@@ -95,7 +95,7 @@ func run(ctx context.Context) error {
 		Config:  config,
 		Section: section,
 		Option:  "legacy",
-		State:   openwrt.UCIAbsent,
+		State:   tensile.Absent,
 	}
 
 	// second config, committed only by the global handler

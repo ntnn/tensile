@@ -19,17 +19,6 @@ var _ tensile.Depender = (*YAMLField)(nil)
 var _ tensile.Executor = (*YAMLField)(nil)
 var _ tensile.Reporter = (*YAMLField)(nil)
 
-// YAMLFieldState is the desired state of a field in a YAML file.
-type YAMLFieldState string
-
-// Desired states for [YAMLField].
-const (
-	YAMLFieldPresent YAMLFieldState = "present"
-	YAMLFieldAbsent  YAMLFieldState = "absent"
-	// YAMLFieldReport only lets the node report the current value.
-	YAMLFieldReport YAMLFieldState = "report"
-)
-
 // YAMLFieldOutput is the output reported by [YAMLField].
 type YAMLFieldOutput struct {
 	Path    string
@@ -42,23 +31,20 @@ type YAMLFieldOutput struct {
 // YAMLField ensures a field in a YAML file is present or absent.
 // The top level of the file must be a YAML mapping.
 // Key is a dot-separated path into nested mappings.
-// A missing file is created on [YAMLFieldPresent].
+// A missing file is created on [tensile.Present].
 type YAMLField struct {
 	// State is the desired state.
-	// Defaults to [YAMLFieldPresent].
-	State YAMLFieldState
+	// Defaults to [tensile.Present].
+	State tensile.State
 
 	Path  string
 	Key   string
 	Value any
 }
 
-// desired returns the desired state, defaulting to [YAMLFieldPresent].
-func (y *YAMLField) desired() YAMLFieldState {
-	if y.State == "" {
-		return YAMLFieldPresent
-	}
-	return y.State
+// desired returns the desired state, defaulting to [tensile.Present].
+func (y *YAMLField) desired() tensile.State {
+	return y.State.OrDefault()
 }
 
 // Identity implements [tensile.Identifier].
@@ -74,12 +60,7 @@ func (y *YAMLField) Validate(_ tensile.Wire) error {
 	if y.Key == "" {
 		return errors.New("key is required")
 	}
-	switch y.State {
-	case "", YAMLFieldPresent, YAMLFieldAbsent, YAMLFieldReport:
-	default:
-		return fmt.Errorf("unknown state %q", y.State)
-	}
-	return nil
+	return y.State.Valid()
 }
 
 // DependsOn implements [tensile.Depender].
@@ -92,7 +73,7 @@ func (y *YAMLField) DependsOn() ([]tensile.Identity, error) {
 
 // NeedsExecution implements [tensile.Executor].
 func (y *YAMLField) NeedsExecution(_ tensile.Wire) (bool, tensile.Diff, error) {
-	if y.desired() == YAMLFieldReport {
+	if y.desired() == tensile.ReadOnly {
 		return false, nil, nil
 	}
 
@@ -102,7 +83,7 @@ func (y *YAMLField) NeedsExecution(_ tensile.Wire) (bool, tensile.Diff, error) {
 	}
 	current, present := getMapValue(doc, y.Key)
 
-	if y.desired() == YAMLFieldAbsent {
+	if y.desired() == tensile.Absent {
 		if !present {
 			return false, nil, nil
 		}
@@ -140,13 +121,13 @@ func (y *YAMLField) Execute(_ tensile.Wire) (tensile.Diff, error) {
 	}
 
 	switch y.desired() {
-	case YAMLFieldAbsent:
+	case tensile.Absent:
 		deleteMapValue(doc, y.Key)
-	case YAMLFieldPresent:
+	case tensile.Present:
 		if err := setMapValue(doc, y.Key, y.Value); err != nil {
 			return nil, err
 		}
-	case YAMLFieldReport:
+	case tensile.ReadOnly:
 		// unreachable, NeedsExecution reports false
 		return nil, nil //nolint:nilnil // nil Diff is valid
 	}

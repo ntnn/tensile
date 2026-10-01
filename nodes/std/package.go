@@ -18,15 +18,6 @@ func PackageIdentity(name string) tensile.Identity {
 	return tensile.AsIdentity("package", "name", name)
 }
 
-// PackageState is the desired presence of a package.
-type PackageState string
-
-// Desired presence states for [Package].
-const (
-	PackagePresent PackageState = "present"
-	PackageAbsent  PackageState = "absent"
-)
-
 // Package ensures a package is present or absent.
 //
 // Package deliberately does not manage package versions.
@@ -39,8 +30,9 @@ const (
 type Package struct {
 	Name string
 	// State is the desired presence.
-	// Empty means [PackagePresent].
-	State PackageState
+	// Empty means [tensile.Present].
+	// [tensile.ReadOnly] is not supported.
+	State tensile.State
 	// Manager selects a registered [PackageManager] by name.
 	// Empty means detection.
 	Manager string
@@ -51,8 +43,8 @@ func (p *Package) Validate(_ tensile.Wire) error {
 	if p.Name == "" {
 		return errors.New("name is required")
 	}
-	switch p.State {
-	case "", PackagePresent, PackageAbsent:
+	switch p.State { //nolint:exhaustive // ReadOnly is unsupported, rejected by default
+	case "", tensile.Present, tensile.Absent:
 	default:
 		return fmt.Errorf("unknown state %q", p.State)
 	}
@@ -92,7 +84,7 @@ func (p *Package) NeedsExecution(c tensile.Wire) (bool, tensile.Diff, error) {
 		return false, nil, fmt.Errorf("error checking package status: %w", err)
 	}
 
-	return installed != (p.desired() == PackagePresent), nil, nil
+	return installed != (p.desired() == tensile.Present), nil, nil
 }
 
 // Execute implements [tensile.Executor].
@@ -102,13 +94,13 @@ func (p *Package) Execute(c tensile.Wire) (tensile.Diff, error) {
 		return nil, err
 	}
 
-	switch p.desired() {
-	case PackagePresent:
+	switch p.desired() { //nolint:exhaustive // ReadOnly is unsupported, rejected by Validate
+	case tensile.Present:
 		if err := mgr.Install(c.Context(), p.Name); err != nil {
 			return nil, fmt.Errorf("error installing package: %w", err)
 		}
 		return nil, nil //nolint:nilnil // nil Diff is valid
-	case PackageAbsent:
+	case tensile.Absent:
 		if err := mgr.Remove(c.Context(), p.Name); err != nil {
 			return nil, fmt.Errorf("error removing package: %w", err)
 		}
@@ -118,11 +110,8 @@ func (p *Package) Execute(c tensile.Wire) (tensile.Diff, error) {
 	}
 }
 
-func (p *Package) desired() PackageState {
-	if p.State == "" {
-		return PackagePresent
-	}
-	return p.State
+func (p *Package) desired() tensile.State {
+	return p.State.OrDefault()
 }
 
 func (p *Package) manager(c tensile.Wire) (PackageManager, error) {

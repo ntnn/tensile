@@ -5,6 +5,7 @@ import (
 	"context"
 	"log"
 
+	"github.com/ntnn/tensile"
 	"github.com/ntnn/tensile/nodes/std"
 	"github.com/ntnn/tensile/pkg/engine"
 	"github.com/ntnn/tensile/pkg/queue"
@@ -26,9 +27,9 @@ func run(ctx context.Context) error {
 	install2 := &std.Package{Name: "jc"}
 	install3 := &std.Package{Name: "bc"}
 	// installed by the test beforehand, must be removed
-	remove := &std.Package{Name: "less", State: std.PackageAbsent}
+	remove := &std.Package{Name: "less", State: tensile.Absent}
 	// not installed, must stay absent as a no-op
-	absent := &std.Package{Name: "jq", State: std.PackageAbsent}
+	absent := &std.Package{Name: "jq", State: tensile.Absent}
 
 	q.Add(preinstalled, install, install2, install3, remove, absent)
 

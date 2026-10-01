@@ -2,15 +2,6 @@ package openwrt
 
 import "strings"
 
-// UCIState is the desired presence of a UCI entity.
-type UCIState string
-
-// Desired presence states for UCI nodes.
-const (
-	UCIPresent UCIState = "present"
-	UCIAbsent  UCIState = "absent"
-)
-
 // uciNotFound reports whether out is uci's missing-entry error.
 func uciNotFound(out []byte) bool {
 	return strings.Contains(string(out), "Entry not found")

@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/ntnn/tensile"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -18,7 +19,7 @@ func TestYAMLField_Validate(t *testing.T) {
 		node    YAMLField
 	}{
 		"valid":         {false, YAMLField{Path: "/f", Key: "a", Value: 1}},
-		"valid report":  {false, YAMLField{Path: "/f", Key: "a", State: YAMLFieldReport}},
+		"valid report":  {false, YAMLField{Path: "/f", Key: "a", State: tensile.ReadOnly}},
 		"missing path":  {true, YAMLField{Key: "a"}},
 		"missing key":   {true, YAMLField{Path: "/f"}},
 		"unknown state": {true, YAMLField{Path: "/f", Key: "a", State: "gone"}},
@@ -84,22 +85,22 @@ func TestYAMLField_NeedsExecution(t *testing.T) {
 		"absent with key present": {
 			true,
 			new("a: 1\n"),
-			YAMLField{Key: "a", State: YAMLFieldAbsent},
+			YAMLField{Key: "a", State: tensile.Absent},
 		},
 		"absent with key absent": {
 			false,
 			new("b: 1\n"),
-			YAMLField{Key: "a", State: YAMLFieldAbsent},
+			YAMLField{Key: "a", State: tensile.Absent},
 		},
 		"absent with missing file": {
 			false,
 			nil,
-			YAMLField{Key: "a", State: YAMLFieldAbsent},
+			YAMLField{Key: "a", State: tensile.Absent},
 		},
 		"report never executes": {
 			false,
 			new("a: 2\n"),
-			YAMLField{Key: "a", State: YAMLFieldReport, Value: 1},
+			YAMLField{Key: "a", State: tensile.ReadOnly, Value: 1},
 		},
 	}
 
@@ -183,12 +184,12 @@ func TestYAMLField_Execute(t *testing.T) {
 		"remove key": {
 			"b: 2\n",
 			new("a: 1\nb: 2\n"),
-			YAMLField{Key: "a", State: YAMLFieldAbsent},
+			YAMLField{Key: "a", State: tensile.Absent},
 		},
 		"remove nested key": {
 			"a: {}\n",
 			new("a:\n  b: 1\n"),
-			YAMLField{Key: "a.b", State: YAMLFieldAbsent},
+			YAMLField{Key: "a.b", State: tensile.Absent},
 		},
 	}
 
@@ -237,22 +238,22 @@ func TestYAMLField_Report(t *testing.T) {
 		"present": {
 			YAMLFieldOutput{Key: "a", Present: true, Value: 1},
 			new("a: 1\n"),
-			YAMLField{Key: "a", State: YAMLFieldReport},
+			YAMLField{Key: "a", State: tensile.ReadOnly},
 		},
 		"nested present": {
 			YAMLFieldOutput{Key: "a.b", Present: true, Value: "x"},
 			new("a:\n  b: x\n"),
-			YAMLField{Key: "a.b", State: YAMLFieldReport},
+			YAMLField{Key: "a.b", State: tensile.ReadOnly},
 		},
 		"absent": {
 			YAMLFieldOutput{Key: "a", Present: false},
 			new("b: 1\n"),
-			YAMLField{Key: "a", State: YAMLFieldReport},
+			YAMLField{Key: "a", State: tensile.ReadOnly},
 		},
 		"missing file": {
 			YAMLFieldOutput{Key: "a", Present: false},
 			nil,
-			YAMLField{Key: "a", State: YAMLFieldReport},
+			YAMLField{Key: "a", State: tensile.ReadOnly},
 		},
 	}
 

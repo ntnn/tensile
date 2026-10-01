@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/ntnn/tensile"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -18,7 +19,7 @@ func TestINIField_Validate(t *testing.T) {
 	}{
 		"valid":         {false, INIField[string]{Path: "/f", Key: "a", Value: "1"}},
 		"valid section": {false, INIField[string]{Path: "/f", Section: "s", Key: "a", Value: "1"}},
-		"valid report":  {false, INIField[string]{Path: "/f", Key: "a", State: INIFieldReport}},
+		"valid report":  {false, INIField[string]{Path: "/f", Key: "a", State: tensile.ReadOnly}},
 		"missing path":  {true, INIField[string]{Key: "a"}},
 		"missing key":   {true, INIField[string]{Path: "/f"}},
 		"unknown state": {true, INIField[string]{Path: "/f", Key: "a", State: "gone"}},
@@ -84,22 +85,22 @@ func TestINIField_NeedsExecution(t *testing.T) {
 		"absent with key present": {
 			true,
 			new("a = 1\n"),
-			INIField[string]{Key: "a", State: INIFieldAbsent},
+			INIField[string]{Key: "a", State: tensile.Absent},
 		},
 		"absent with key absent": {
 			false,
 			new("b = 1\n"),
-			INIField[string]{Key: "a", State: INIFieldAbsent},
+			INIField[string]{Key: "a", State: tensile.Absent},
 		},
 		"absent with missing file": {
 			false,
 			nil,
-			INIField[string]{Key: "a", State: INIFieldAbsent},
+			INIField[string]{Key: "a", State: tensile.Absent},
 		},
 		"report never executes": {
 			false,
 			new("a = 2\n"),
-			INIField[string]{Key: "a", State: INIFieldReport, Value: "1"},
+			INIField[string]{Key: "a", State: tensile.ReadOnly, Value: "1"},
 		},
 	}
 
@@ -168,12 +169,12 @@ func TestINIField_Execute(t *testing.T) {
 		"remove key": {
 			"b = 2\n",
 			new("a = 1\nb = 2\n"),
-			INIField[string]{Key: "a", State: INIFieldAbsent},
+			INIField[string]{Key: "a", State: tensile.Absent},
 		},
 		"remove key from section": {
 			"[s]\nb = 2\n",
 			new("[s]\na = 1\nb = 2\n"),
-			INIField[string]{Section: "s", Key: "a", State: INIFieldAbsent},
+			INIField[string]{Section: "s", Key: "a", State: tensile.Absent},
 		},
 	}
 
@@ -224,22 +225,22 @@ func TestINIField_Report(t *testing.T) {
 		"present": {
 			INIFieldOutput{Key: "a", Present: true, Value: "1"},
 			new("a = 1\n"),
-			INIField[string]{Key: "a", State: INIFieldReport},
+			INIField[string]{Key: "a", State: tensile.ReadOnly},
 		},
 		"present in section": {
 			INIFieldOutput{Section: "s", Key: "a", Present: true, Value: "x"},
 			new("[s]\na = x\n"),
-			INIField[string]{Section: "s", Key: "a", State: INIFieldReport},
+			INIField[string]{Section: "s", Key: "a", State: tensile.ReadOnly},
 		},
 		"absent": {
 			INIFieldOutput{Key: "a", Present: false},
 			new("b = 1\n"),
-			INIField[string]{Key: "a", State: INIFieldReport},
+			INIField[string]{Key: "a", State: tensile.ReadOnly},
 		},
 		"missing file": {
 			INIFieldOutput{Key: "a", Present: false},
 			nil,
-			INIField[string]{Key: "a", State: INIFieldReport},
+			INIField[string]{Key: "a", State: tensile.ReadOnly},
 		},
 	}
 
