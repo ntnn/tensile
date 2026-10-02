@@ -146,37 +146,20 @@ func (s *Summary) Analyze(records []NodeSummary) {
 }
 
 // String implements [fmt.Stringer].
-// It renders human-readable multi-line output.
+// It renders a one-line overview of the run.
 func (s *Summary) String() string {
 	var b strings.Builder
 
-	fmt.Fprintf(&b, "run: %s, %d nodes\n", s.Duration(), s.Nodes)
+	fmt.Fprintf(&b, "run: %s, %d nodes", s.Duration(), s.Nodes)
 
-	b.WriteString("outcomes:\n")
 	for _, outcome := range outcomeOrder {
 		if s.ByOutcome[outcome] == 0 {
 			continue
 		}
-		fmt.Fprintf(&b, "  %s: %d\n", outcome, s.ByOutcome[outcome])
+		fmt.Fprintf(&b, ", %s: %d", outcome, s.ByOutcome[outcome])
 	}
 
-	b.WriteString("order:\n")
-	for _, record := range s.Records {
-		fmt.Fprintf(&b, "  %s:\n", record.Identity)
-		fmt.Fprintf(&b, "    outcome: %s\n", record.Outcome)
-
-		if record.Diff == nil {
-			continue
-		}
-		b.WriteString("    diff:\n")
-		for line := range strings.Lines(record.Diff.String()) {
-			b.WriteString("      ")
-			b.WriteString(strings.TrimSuffix(line, "\n"))
-			b.WriteByte('\n')
-		}
-	}
-
-	return strings.TrimSuffix(b.String(), "\n")
+	return b.String()
 }
 
 // LogValue implements [slog.LogValuer].
