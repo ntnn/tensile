@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"flag"
 	"runtime"
 	"slices"
 	"time"
@@ -17,6 +18,12 @@ type ParallelOptions struct {
 	// Workers is the number of worker goroutines executing nodes.
 	// Defaults to [runtime.NumCPU].
 	Workers int
+}
+
+// AddFlags binds the flag-configurable options to fs.
+func (o *ParallelOptions) AddFlags(fs *flag.FlagSet) {
+	o.Options.AddFlags(fs)
+	fs.IntVar(&o.Workers, "workers", 0, "number of worker goroutines, 0 uses the number of CPUs")
 }
 
 // WithDefaults returns a ParallelOptions with default values.

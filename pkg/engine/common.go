@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"flag"
 	"log/slog"
 
 	"github.com/ntnn/tensile"
@@ -18,6 +19,11 @@ type Options struct {
 
 	// Backend stores reported node outputs.
 	Backend storage.Backend[tensile.Identity]
+}
+
+// AddFlags binds the flag-configurable options to fs.
+func (o *Options) AddFlags(fs *flag.FlagSet) {
+	fs.BoolVar(&o.Noop, "noop", false, "dry run, execute nothing")
 }
 
 // WithDefaults returns a Options with default values.
