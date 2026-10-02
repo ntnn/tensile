@@ -1,7 +1,9 @@
 package engine
 
 import (
+	"flag"
 	"fmt"
+	"io"
 	"log/slog"
 	"maps"
 	"slices"
@@ -196,4 +198,56 @@ func (s *Summary) LogValue() slog.Value {
 		slog.Attr{Key: "stageTotals", Value: slog.GroupValue(totals...)},
 		slog.Attr{Key: "stageAvgByKind", Value: slog.GroupValue(avgs...)},
 	)
+}
+
+// RenderOptions configure [Summary.Render].
+type RenderOptions struct {
+	// ShowSatisfied includes nodes that did not change anything in
+	// the rendered node order.
+	ShowSatisfied bool
+}
+
+// AddFlags binds the flag-configurable options to fs.
+func (o *RenderOptions) AddFlags(fs *flag.FlagSet) {
+	fs.BoolVar(&o.ShowSatisfied, "show-satisfied", false, "include unchanged nodes in the summary")
+}
+
+// Render writes a human-readable multi-line report to w.
+func (s *Summary) Render(w io.Writer, opts RenderOptions) error {
+	var b strings.Builder
+
+	fmt.Fprintf(&b, "run: %s, %d nodes\n", s.Duration(), s.Nodes)
+
+	b.WriteString("outcomes:\n")
+	for _, outcome := range outcomeOrder {
+		if s.ByOutcome[outcome] == 0 {
+			continue
+		}
+		fmt.Fprintf(&b, "  %s: %d\n", outcome, s.ByOutcome[outcome])
+	}
+
+	b.WriteString("order:\n")
+	for _, record := range s.Records {
+		if !opts.ShowSatisfied && record.Outcome == OutcomeSatisfied {
+			continue
+		}
+
+		fmt.Fprintf(&b, "  %s:\n", record.Identity)
+		fmt.Fprintf(&b, "    outcome: %s\n", record.Outcome)
+
+		if record.Diff == nil {
+			continue
+		}
+		b.WriteString("    diff:\n")
+		for line := range strings.Lines(record.Diff.String()) {
+			b.WriteString("      ")
+			b.WriteString(strings.TrimSuffix(line, "\n"))
+			b.WriteByte('\n')
+		}
+	}
+
+	if _, err := io.WriteString(w, b.String()); err != nil {
+		return fmt.Errorf("writing summary: %w", err)
+	}
+	return nil
 }
