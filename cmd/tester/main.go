@@ -5,34 +5,41 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"log"
-	"log/slog"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"syscall"
 
 	"github.com/ntnn/tensile/nodes/std"
-	"github.com/ntnn/tensile/pkg/engine"
+	"github.com/ntnn/tensile/pkg/app"
 	"github.com/ntnn/tensile/pkg/queue"
 )
 
 func main() {
-	if err := run(context.Background()); err != nil {
-		log.Fatal(err)
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	err := run(ctx)
+	cancel()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
 	}
 }
 
 func run(ctx context.Context) error {
-	fDebug := false
-	fNoop := false
-	flag.BoolVar(&fDebug, "debug", false, "enable debug logging")
-	flag.BoolVar(&fNoop, "noop", false, "check only, do not modify")
-	flag.Parse()
-
-	q := queue.New()
-
-	if fDebug {
-		slog.SetLogLoggerLevel(slog.LevelDebug)
+	q, fn, err := build()
+	if err != nil {
+		return err
 	}
+	defer fn()
+
+	a := app.New()
+	a.AddFlags(flag.CommandLine)
+	flag.Parse()
+	return a.Run(ctx, q)
+}
+
+func build() (*queue.Queue, func(), error) {
+	q := queue.New()
 
 	print1 := &std.Print{
 		Message: "Hello, %s!",
@@ -49,13 +56,18 @@ func run(ctx context.Context) error {
 
 	dir, err := os.MkdirTemp("", "tensile-tester-")
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
-	defer os.RemoveAll(dir) //nolint:errcheck
+	fn := func() { os.RemoveAll(dir) } //nolint:errcheck,gosec
 
 	config := filepath.Join(dir, "config")
 	if err := os.WriteFile(config, []byte("a=1\nb=2\nc=3\n"), 0o600); err != nil { //nolint:mnd // test fixture
-		return err
+		return nil, fn, err
+	}
+
+	satisfied := filepath.Join(dir, "satisfied")
+	if err := os.WriteFile(satisfied, []byte("done\n"), 0o600); err != nil { //nolint:mnd // test fixture
+		return nil, fn, err
 	}
 
 	q.Add(
@@ -68,27 +80,11 @@ func run(ctx context.Context) error {
 			Regexp: "^b=",
 			Line:   "b=6",
 		},
-	)
-
-	work, err := q.Build()
-	if err != nil {
-		return err
-	}
-
-	seq := engine.NewSequential(
-		work,
-		engine.Options{
-			Noop: fNoop,
+		&std.FileContent{
+			Path:    satisfied,
+			Content: "done\n",
 		},
 	)
 
-	if err := seq.Execute(ctx); err != nil {
-		return err
-	}
-
-	summary := seq.Summary()
-	slog.InfoContext(ctx, "run finished", "summary", summary)
-	fmt.Println(summary)
-
-	return nil
+	return q, fn, nil
 }
