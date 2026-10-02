@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"log/slog"
 	"os"
 
 	"github.com/ntnn/tensile/pkg/engine"
@@ -20,8 +19,8 @@ type App struct {
 	Parallel engine.ParallelOptions
 	// Render configures the summary rendering.
 	Render engine.RenderOptions
-	// Debug enables debug logging.
-	Debug bool
+	// Log configures the logger.
+	Log LogOptions
 	// Out receives the rendered summary.
 	Out io.Writer
 }
@@ -35,16 +34,20 @@ func New() *App {
 
 // AddFlags binds the flag-configurable options to fs.
 func (a *App) AddFlags(fs *flag.FlagSet) {
-	fs.BoolVar(&a.Debug, "debug", false, "enable debug logging")
 	a.Parallel.AddFlags(fs)
 	a.Render.AddFlags(fs)
+	a.Log.AddFlags(fs)
 }
 
 // Run builds q, executes it with the Parallel engine and renders the summary to Out.
 // The summary is rendered even when execution fails.
 func (a *App) Run(ctx context.Context, q *queue.Queue) error {
-	if a.Debug {
-		slog.SetLogLoggerLevel(slog.LevelDebug)
+	if a.Parallel.Logger == nil {
+		logger, err := a.Log.Logger(os.Stderr)
+		if err != nil {
+			return err
+		}
+		a.Parallel.Logger = logger
 	}
 
 	work, err := q.Build()
