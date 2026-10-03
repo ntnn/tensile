@@ -38,10 +38,12 @@ func (e *Executor) Run() (NodeSummary, error) {
 		Start:  time.Now(),
 		Stages: map[Stage]time.Duration{},
 	}
+	e.Logger.Info("executing node")
 	err := e.run()
 	e.summary.End = time.Now()
 	e.summary.Err = err
 	if err != nil {
+		e.Logger.Warn("error executing node", "error", err)
 		e.summary.Outcome = OutcomeFailed
 	}
 	return e.summary, err
@@ -51,6 +53,7 @@ func (e *Executor) Run() (NodeSummary, error) {
 func (e *Executor) run() error {
 	e.summary.Identity = e.Node.Identity()
 
+	e.Logger.Debug("checking if node is enabled")
 	enabled, err := e.Node.Enabled(e.Wire)
 	if err != nil {
 		return fmt.Errorf("failed to evaluate condition of node %s: %w", e.Node.Identity(), err)
@@ -59,13 +62,17 @@ func (e *Executor) run() error {
 		e.Logger.Debug("node disabled by condition, marking as done")
 		return e.finish(OutcomeSkipped, false)
 	}
+	e.Logger.Debug("node is enabled")
 
+	e.Logger.Debug("validating node")
 	if err := e.summary.stage(StageValidate, func() error {
 		return e.Node.Validate(e.Wire)
 	}); err != nil {
 		return fmt.Errorf("node validation failed: %w", err)
 	}
+	e.Logger.Debug("node validated")
 
+	e.Logger.Debug("checking if node needs execution")
 	if err := e.summary.stage(StageNeedsExecution, func() error {
 		var err error
 		e.needsExecution, e.diff, err = e.Node.NeedsExecution(e.Wire)
@@ -82,6 +89,7 @@ func (e *Executor) run() error {
 		}
 		return e.finish(OutcomeSatisfied, false)
 	}
+	e.Logger.Debug("node needs execution")
 
 	executed := OutcomeExecuted
 	if e.Node.IsHandler() {
@@ -93,6 +101,7 @@ func (e *Executor) run() error {
 		return e.finish(executed, true)
 	}
 
+	e.Logger.Debug("executing node")
 	if err := e.summary.stage(StageExecute, func() error {
 		diff, err := e.Node.Execute(e.Wire)
 		// To not override e.diff from NeedsExecution if it was returned
