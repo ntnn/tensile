@@ -133,8 +133,9 @@ func (zone *Zone) changes(wire tensile.Wire) ([]Record, []recordUpdate, []Record
 		return nil, nil, nil, fmt.Errorf("listing records: %w", err)
 	}
 
+	merged := MergeRecords(existingList)
 	existing := map[tensile.Identity]Record{}
-	for _, record := range existingList {
+	for _, record := range merged {
 		existing[RecordIdentity(zone.Domain, record.SubName, record.Type)] = record
 	}
 
@@ -160,7 +161,7 @@ func (zone *Zone) changes(wire tensile.Wire) ([]Record, []recordUpdate, []Record
 	}
 
 	remove := []Record{}
-	for _, record := range existing {
+	for _, record := range merged {
 		if _, ok := ignore[strings.ToLower(record.SubName)]; ok {
 			continue
 		}
@@ -170,5 +171,6 @@ func (zone *Zone) changes(wire tensile.Wire) ([]Record, []recordUpdate, []Record
 		}
 		remove = append(remove, record)
 	}
+
 	return create, update, remove, nil
 }

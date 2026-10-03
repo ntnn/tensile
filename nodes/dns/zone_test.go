@@ -239,6 +239,15 @@ func zoneCases() map[string]zoneCase {
 				{SubName: "DDNS", Type: "A", Records: []string{"9.9.9.9"}, TTL: 60},
 			},
 		},
+		"split remote record set merged": {
+			records: []Record{
+				{SubName: "www", Type: "A", Records: []string{"1.2.3.4", "5.6.7.8"}, TTL: 300},
+			},
+			remote: []Record{
+				{SubName: "www", Type: "A", Records: []string{"1.2.3.4"}, TTL: 300},
+				{SubName: "www", Type: "A", Records: []string{"5.6.7.8"}, TTL: 300},
+			},
+		},
 		"delete unmanaged record": {
 			records: []Record{
 				{SubName: "www", Type: "A", Records: []string{"1.2.3.4"}, TTL: 300},
