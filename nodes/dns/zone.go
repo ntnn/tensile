@@ -96,20 +96,26 @@ func (zone *Zone) Execute(wire tensile.Wire) (tensile.Diff, error) {
 		return nil, err
 	}
 
-	if err := zone.Service.Create(wire.Context(), zone.Domain, create); err != nil {
-		return nil, fmt.Errorf("creating records: %w", err)
+	if len(create) > 0 {
+		if err := zone.Service.Create(wire.Context(), zone.Domain, create); err != nil {
+			return nil, fmt.Errorf("creating records: %w", err)
+		}
 	}
 
-	records := make([]Record, len(update))
-	for i, upd := range update {
-		records[i] = upd.desired
-	}
-	if err := zone.Service.Update(wire.Context(), zone.Domain, records); err != nil {
-		return nil, fmt.Errorf("updating records: %w", err)
+	if len(update) > 0 {
+		records := make([]Record, len(update))
+		for i, upd := range update {
+			records[i] = upd.desired
+		}
+		if err := zone.Service.Update(wire.Context(), zone.Domain, records); err != nil {
+			return nil, fmt.Errorf("updating records: %w", err)
+		}
 	}
 
-	if err := zone.Service.Delete(wire.Context(), zone.Domain, remove); err != nil {
-		return nil, fmt.Errorf("deleting records: %w", err)
+	if len(remove) > 0 {
+		if err := zone.Service.Delete(wire.Context(), zone.Domain, remove); err != nil {
+			return nil, fmt.Errorf("deleting records: %w", err)
+		}
 	}
 
 	return nil, nil //nolint:nilnil // nil Diff is valid
