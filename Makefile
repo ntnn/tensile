@@ -1,4 +1,5 @@
 GO ?= go
+TEST_ARGS ?= -race
 
 TOOLS_DIR := $(CURDIR)/hack/tools
 
@@ -18,11 +19,11 @@ lint-fix: lint
 
 .PHONY: test
 test:
-	$(GO) test -race -v ./...
+	$(GO) test $(TEST_ARGS) ./...
 
 .PHONY: test-e2e
 test-e2e:
-	cd test/e2e && $(GO) test -race -count 1 -v ./...
+	cd test/e2e && $(GO) test -count 1 $(TEST_ARGS) ./...
 
 $(GOLANGCI_LINT):
 	mkdir -p $(TOOLS_DIR)
