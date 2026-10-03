@@ -40,6 +40,13 @@ func (record Record) Validate() error {
 	if len(record.Records) == 0 {
 		return errors.New("records are required")
 	}
+	entries := slices.Clone(record.Records)
+	slices.Sort(entries)
+	for i := 1; i < len(entries); i++ {
+		if entries[i] == entries[i-1] {
+			return fmt.Errorf("duplicate entry %q", entries[i])
+		}
+	}
 	return nil
 }
 

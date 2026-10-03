@@ -98,6 +98,16 @@ func TestZone_Validate(t *testing.T) {
 			},
 			expectedErr: "records are required",
 		},
+		"duplicate record entry": {
+			zone: Zone{
+				Domain:  "example.org",
+				Service: &mockService{},
+				Records: []Record{
+					{SubName: "www", Type: "A", Records: []string{"1.2.3.4", "1.2.3.4"}},
+				},
+			},
+			expectedErr: `duplicate entry "1.2.3.4"`,
+		},
 		"duplicate record": {
 			zone: Zone{
 				Domain:  "example.org",
