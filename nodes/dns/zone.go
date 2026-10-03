@@ -3,7 +3,7 @@ package dns
 import (
 	"errors"
 	"fmt"
-	"slices"
+	"strings"
 
 	"github.com/ntnn/tensile"
 	"github.com/ntnn/tensile/pkg/diff"
@@ -154,9 +154,14 @@ func (zone *Zone) changes(wire tensile.Wire) ([]Record, []recordUpdate, []Record
 		}
 	}
 
+	ignore := map[string]struct{}{}
+	for _, subname := range zone.IgnoreSubNames {
+		ignore[strings.ToLower(subname)] = struct{}{}
+	}
+
 	remove := []Record{}
 	for _, record := range existing {
-		if slices.Contains(zone.IgnoreSubNames, record.SubName) {
+		if _, ok := ignore[strings.ToLower(record.SubName)]; ok {
 			continue
 		}
 		identity := RecordIdentity(zone.Domain, record.SubName, record.Type)

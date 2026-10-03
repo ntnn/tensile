@@ -32,6 +32,11 @@ func TestRecord_Equal(t *testing.T) {
 			other:    Record{SubName: "www", Type: "A", Records: []string{"5.6.7.8", "1.2.3.4"}, TTL: 300},
 			expected: true,
 		},
+		"case insensitive subname and type": {
+			record:   base,
+			other:    Record{SubName: "WWW", Type: "a", Records: []string{"1.2.3.4", "5.6.7.8"}, TTL: 300},
+			expected: true,
+		},
 		"different subname": {
 			record:   base,
 			other:    Record{SubName: "mail", Type: "A", Records: []string{"1.2.3.4", "5.6.7.8"}, TTL: 300},

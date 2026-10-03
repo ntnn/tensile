@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/ntnn/tensile"
 	"github.com/ntnn/tensile/pkg/diff"
@@ -25,9 +26,9 @@ type Record struct {
 // RecordIdentity returns the identity of a record in a domain.
 func RecordIdentity(domain, subname, rtype string) tensile.Identity {
 	return tensile.AsIdentity("dnsRecord",
-		"domain", domain,
-		"subname", subname,
-		"type", rtype,
+		"domain", strings.ToLower(domain),
+		"subname", strings.ToLower(subname),
+		"type", strings.ToUpper(rtype),
 	)
 }
 
@@ -102,14 +103,16 @@ func line(entry string, ttl int) string {
 }
 
 // Equal returns true if the two records have the same properties.
+// SubName and Type are compared case-insensitively,
+// TTL is only considered if record's TTL greater than 0.
 // Records are compared after sorting.
 func (record Record) Equal(other Record) bool {
-	if record.SubName != other.SubName ||
-		record.Type != other.Type ||
+	if !strings.EqualFold(record.SubName, other.SubName) ||
+		!strings.EqualFold(record.Type, other.Type) ||
 		len(record.Records) != len(other.Records) {
 		return false
 	}
-	if record.TTL != 0 && record.TTL != other.TTL {
+	if record.TTL > 0 && record.TTL != other.TTL {
 		return false
 	}
 	a := slices.Clone(record.Records)

@@ -109,6 +109,17 @@ func TestZone_Validate(t *testing.T) {
 			},
 			expectedErr: "declared twice",
 		},
+		"duplicate record case variant": {
+			zone: Zone{
+				Domain:  "example.org",
+				Service: &mockService{},
+				Records: []Record{
+					{SubName: "www", Type: "A", Records: []string{"1.2.3.4"}},
+					{SubName: "WWW", Type: "a", Records: []string{"5.6.7.8"}},
+				},
+			},
+			expectedErr: "declared twice",
+		},
 		"same subname different type": {
 			zone: Zone{
 				Domain:  "example.org",
@@ -212,6 +223,20 @@ func zoneCases() map[string]zoneCase {
 			},
 			remote: []Record{
 				{SubName: "www", Type: "A", Records: []string{"1.2.3.4"}, TTL: 300},
+			},
+		},
+		"case variant remote record matches": {
+			records: []Record{
+				{SubName: "www", Type: "A", Records: []string{"1.2.3.4"}, TTL: 300},
+			},
+			remote: []Record{
+				{SubName: "WWW", Type: "a", Records: []string{"1.2.3.4"}, TTL: 300},
+			},
+		},
+		"case variant ignored subname kept": {
+			ignoreSubNames: []string{"ddns"},
+			remote: []Record{
+				{SubName: "DDNS", Type: "A", Records: []string{"9.9.9.9"}, TTL: 60},
 			},
 		},
 		"delete unmanaged record": {
