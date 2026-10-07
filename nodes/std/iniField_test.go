@@ -8,6 +8,7 @@ import (
 	"github.com/ntnn/tensile"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/ini.v1"
 )
 
 func TestINIField_Validate(t *testing.T) {
@@ -77,15 +78,28 @@ func TestINIField_NeedsExecution(t *testing.T) {
 			new("a = 1\n"),
 			INIField[string]{Section: "s", Key: "a", Value: "1"},
 		},
+		"inline comment stripped by default": {
+			false,
+			new("a = 1 # c\n"),
+			INIField[string]{Key: "a", Value: "1"},
+		},
 		"inline comment chars are value": {
 			false,
 			new("a = 1.1.1.1#dns a; b\n"),
-			INIField[string]{Key: "a", Value: "1.1.1.1#dns a; b"},
+			INIField[string]{
+				Key:         "a",
+				Value:       "1.1.1.1#dns a; b",
+				LoadOptions: ini.LoadOptions{IgnoreInlineComment: true},
+			},
 		},
 		"truncated at inline comment differs": {
 			true,
 			new("a = 1.1.1.1#dns\n"),
-			INIField[string]{Key: "a", Value: "1.1.1.1"},
+			INIField[string]{
+				Key:         "a",
+				Value:       "1.1.1.1",
+				LoadOptions: ini.LoadOptions{IgnoreInlineComment: true},
+			},
 		},
 		"key in other section": {
 			true,
@@ -169,7 +183,11 @@ func TestINIField_Execute(t *testing.T) {
 		"inline comment chars unquoted": {
 			"a = sh -c 'x; y' #z\n",
 			nil,
-			INIField[string]{Key: "a", Value: "sh -c 'x; y' #z"},
+			INIField[string]{
+				Key:         "a",
+				Value:       "sh -c 'x; y' #z",
+				LoadOptions: ini.LoadOptions{IgnoreInlineComment: true},
+			},
 		},
 		"keeps comment lines": {
 			"# c\nb = 2\na = 1\n",
