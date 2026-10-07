@@ -14,6 +14,16 @@ type handler interface {
 	Handles(ctx context.Context, name string) (bool, error)
 }
 
+// noManagerError reports that no registered manager handles a name.
+type noManagerError struct {
+	kind string
+	name string
+}
+
+func (e *noManagerError) Error() string {
+	return fmt.Sprintf("no registered %s handles %q", e.kind, e.name)
+}
+
 // registry stores named managers.
 // kind names the manager type in error and panic messages.
 type registry[T handler] struct {
@@ -75,5 +85,5 @@ func (r *registry[T]) detect(ctx context.Context, name string) (T, error) {
 			return manager, nil
 		}
 	}
-	return zero, fmt.Errorf("no registered %s handles %q", r.kind, name)
+	return zero, &noManagerError{kind: r.kind, name: name}
 }

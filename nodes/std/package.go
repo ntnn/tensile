@@ -73,8 +73,13 @@ func (p *Package) SerializesOn() []string {
 }
 
 // NeedsExecution implements [tensile.Executor].
+// If no registered [PackageManager] handles the package the package is
+// considered not installed.
 func (p *Package) NeedsExecution(c tensile.Wire) (bool, tensile.Diff, error) {
 	mgr, err := p.manager(c)
+	if _, ok := errors.AsType[*noManagerError](err); ok {
+		return p.desired() == tensile.Present, nil, nil
+	}
 	if err != nil {
 		return false, nil, err
 	}
