@@ -77,6 +77,16 @@ func TestINIField_NeedsExecution(t *testing.T) {
 			new("a = 1\n"),
 			INIField[string]{Section: "s", Key: "a", Value: "1"},
 		},
+		"inline comment chars are value": {
+			false,
+			new("a = 1.1.1.1#dns a; b\n"),
+			INIField[string]{Key: "a", Value: "1.1.1.1#dns a; b"},
+		},
+		"truncated at inline comment differs": {
+			true,
+			new("a = 1.1.1.1#dns\n"),
+			INIField[string]{Key: "a", Value: "1.1.1.1"},
+		},
 		"key in other section": {
 			true,
 			new("[o]\na = 1\n"),
@@ -155,6 +165,16 @@ func TestINIField_Execute(t *testing.T) {
 			"[s]\na = 1\n",
 			nil,
 			INIField[string]{Section: "s", Key: "a", Value: "1"},
+		},
+		"inline comment chars unquoted": {
+			"a = sh -c 'x; y' #z\n",
+			nil,
+			INIField[string]{Key: "a", Value: "sh -c 'x; y' #z"},
+		},
+		"keeps comment lines": {
+			"# c\nb = 2\na = 1\n",
+			new("# c\nb = 2\n"),
+			INIField[string]{Key: "a", Value: "1"},
 		},
 		"keeps other keys": {
 			"b = 2\na = 1\n",

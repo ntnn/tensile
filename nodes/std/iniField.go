@@ -206,7 +206,8 @@ func loadINIFile(path string) (*ini.File, error) {
 	if err != nil && !os.IsNotExist(err) {
 		return nil, fmt.Errorf("reading file: %w", err)
 	}
-	file, err := ini.Load(content)
+	// '#' and ';' are only comments at line start, e.g. systemd units
+	file, err := ini.LoadSources(ini.LoadOptions{IgnoreInlineComment: true}, content)
 	if err != nil {
 		return nil, fmt.Errorf("parsing file: %w", err)
 	}
