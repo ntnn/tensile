@@ -143,16 +143,33 @@ func TestSummary_Render(t *testing.T) {
 			Identity: tensile.AsIdentity("serviceRestart", "name", "b"),
 			Outcome:  OutcomeNotNotified,
 		},
+		{
+			Identity: tensile.AsIdentity("package", "name", "incus"),
+			Outcome:  OutcomeExecuted,
+			Diff: diff.NewFieldChanges(&diff.FieldChange{
+				Field: "incus",
+				Old:   "absent",
+				New:   "present",
+			}),
+		},
+		{
+			Identity: tensile.AsIdentity("package", "name", "swtpm"),
+			Outcome:  OutcomeFailed,
+			Err:      errors.New("boom"),
+		},
 	})
 
 	var out strings.Builder
 	require.NoError(t, summary.Render(&out, RenderOptions{}))
-	assert.Equal(t, `run: 1s, 6 nodes, satisfied: 1, executed: 2, failed: 1, handler not notified: 1, handler executed: 1
+	assert.Equal(t, `run: 1s, 8 nodes, satisfied: 1, executed: 3, failed: 2, handler not notified: 1, handler executed: 1
 /etc/a.conf
   file: failed: boom
 /etc/b.conf
   x: (absent) -> 1
   chown: changed
+packages
+  incus: absent -> present
+  swtpm: failed: boom
 serviceRestart[name="a"]
   changed
 `, out.String())

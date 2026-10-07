@@ -75,11 +75,11 @@ func TestPackage_NeedsExecution(t *testing.T) {
 		installed bool
 		wantDiff  string
 	}{
-		"present not installed":     {true, tensile.Present, false, "state: absent -> present"},
+		"present not installed":     {true, tensile.Present, false, "pkg: absent -> present"},
 		"present installed":         {false, tensile.Present, true, ""},
-		"absent installed":          {true, tensile.Absent, true, "state: present -> absent"},
+		"absent installed":          {true, tensile.Absent, true, "pkg: present -> absent"},
 		"absent not installed":      {false, tensile.Absent, false, ""},
-		"empty state not installed": {true, "", false, "state: absent -> present"},
+		"empty state not installed": {true, "", false, "pkg: absent -> present"},
 		"empty state installed":     {false, "", true, ""},
 	}
 

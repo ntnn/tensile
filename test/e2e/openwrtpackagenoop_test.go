@@ -25,8 +25,8 @@ func TestOpenWrtPackageNoop(t *testing.T) {
 
 			exit, out = env.RunScenario(t, "-noop")
 			require.Zero(t, exit, out)
-			assert.Contains(t, out, "package[name=\"tree\"]\n  state: absent -> present", "install must be planned")
-			assert.NotContains(t, out, "package[name=\"jq\"]", "absent must be satisfied")
+			assert.Contains(t, out, "packages\n  tree: absent -> present", "install must be planned")
+			assert.NotContains(t, out, "jq:", "absent must be satisfied")
 
 			exit, out = env.Exec(t, "which", "tree")
 			assert.NotZero(t, exit, "noop must not install tree: %s", out)

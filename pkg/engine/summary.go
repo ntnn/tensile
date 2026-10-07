@@ -209,9 +209,18 @@ func (o *RenderOptions) AddFlags(_ *flag.FlagSet) {}
 // pathKey is the identity key whose value groups records in [Summary.Render].
 const pathKey = "path"
 
+// Package records are grouped under packageGroup in [Summary.Render],
+// labeled by their packageNameKey value.
+const (
+	packageKind    = "package"
+	packageNameKey = "name"
+	packageGroup   = "packages"
+)
+
 // Render writes a human-readable multi-line report to w.
 // Records whose identity has a `path` pair are accumulated under that
-// path, all other records are listed under their identity.
+// path, package records under `packages` and all other records under
+// their identity.
 // Records without a diff are marked as changed, failed records list
 // their error.
 func (s *Summary) Render(w io.Writer, _ RenderOptions) error {
@@ -228,12 +237,8 @@ func (s *Summary) Render(w io.Writer, _ RenderOptions) error {
 			continue
 		}
 
-		path, grouped := record.Identity.Value(pathKey)
-		key := record.Identity.String()
-		if grouped {
-			key = path
-		}
-		groups[key] = append(groups[key], recordLines(record, grouped)...)
+		key, label := recordGroup(record.Identity)
+		groups[key] = append(groups[key], recordLines(record, label)...)
 	}
 
 	for _, key := range slices.Sorted(maps.Keys(groups)) {
@@ -252,13 +257,26 @@ func (s *Summary) Render(w io.Writer, _ RenderOptions) error {
 	return nil
 }
 
+// recordGroup returns the group key of id and the label naming id within
+// the group.
+// label is empty if the group key is the identity itself.
+func recordGroup(id tensile.Identity) (string, string) {
+	if path, ok := id.Value(pathKey); ok {
+		return path, id.Kind()
+	}
+	if name, ok := id.Value(packageNameKey); ok && id.Kind() == packageKind {
+		return packageGroup, name
+	}
+	return id.String(), ""
+}
+
 // recordLines returns the rendered lines of record.
-// grouped prefixes lines that do not name the node with its kind.
-func recordLines(record NodeSummary, grouped bool) []string {
+// label prefixes lines that do not name the node.
+func recordLines(record NodeSummary, label string) []string {
 	var lines []string
 	prefix := ""
-	if grouped {
-		prefix = record.Identity.Kind() + ": "
+	if label != "" {
+		prefix = label + ": "
 	}
 
 	if record.Err != nil {

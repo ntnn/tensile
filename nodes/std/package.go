@@ -103,7 +103,7 @@ func (p *Package) diff(installed bool) (bool, tensile.Diff, error) {
 		return false, nil, nil
 	}
 	return true, diff.NewFieldChanges(&diff.FieldChange{
-		Field: "state",
+		Field: p.Name,
 		Old:   string(current),
 		New:   string(p.desired()),
 	}), nil
