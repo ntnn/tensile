@@ -2,6 +2,8 @@ package std
 
 import (
 	"context"
+	"fmt"
+	"time"
 )
 
 // ServiceStatus is the observable state of a service.
@@ -39,4 +41,43 @@ func ServiceManagerByName(name string) (ServiceManager, error) {
 // that handles the named service.
 func DetectServiceManager(ctx context.Context, name string) (ServiceManager, error) {
 	return serviceManagers.detect(ctx, name)
+}
+
+// DefaultServiceTimeout bounds waiting for a service manager to report
+// the desired service state when no timeout is set.
+const DefaultServiceTimeout = 30 * time.Second
+
+// serviceWaitInterval is the delay between service status checks.
+const serviceWaitInterval = 500 * time.Millisecond
+
+// waitActive polls the service status until Active equals active.
+// Zero timeout means [DefaultServiceTimeout].
+func waitActive(ctx context.Context, mgr ServiceManager, name string, active bool, timeout time.Duration) error {
+	if timeout == 0 {
+		timeout = DefaultServiceTimeout
+	}
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	ticker := time.NewTicker(serviceWaitInterval)
+	defer ticker.Stop()
+
+	for {
+		status, err := mgr.Status(ctx, name)
+		// the deadline can expire during a status check
+		if ctx.Err() != nil {
+			return fmt.Errorf("waiting for service %q to be active=%t: %w", name, active, ctx.Err())
+		}
+		if err != nil {
+			return fmt.Errorf("error checking service status: %w", err)
+		}
+		if status.Active == active {
+			return nil
+		}
+
+		select {
+		case <-ctx.Done():
+		case <-ticker.C:
+		}
+	}
 }

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/ntnn/tensile"
 	"github.com/ntnn/tensile/pkg/diff"
@@ -27,6 +28,10 @@ type Service struct {
 	// Manager selects a registered [ServiceManager] by name.
 	// Empty means detection.
 	Manager string
+	// Timeout in seconds to wait for the [ServiceManager] to report the
+	// desired running state after applying it.
+	// Defaults to [DefaultServiceTimeout].
+	Timeout time.Duration
 }
 
 // Validate implements [tensile.Validator].
@@ -36,6 +41,9 @@ func (s *Service) Validate(_ tensile.Wire) error {
 	}
 	if s.Enabled == nil && s.Running == nil {
 		return errors.New("at least one of Enabled and Running is required")
+	}
+	if s.Timeout < 0 {
+		return errors.New("timeout must not be negative")
 	}
 	return nil
 }
@@ -131,6 +139,11 @@ func (s *Service) Execute(c tensile.Wire) (tensile.Diff, error) {
 
 	if err := mgr.Apply(c.Context(), s.Name, desired); err != nil {
 		return nil, fmt.Errorf("error applying service status: %w", err)
+	}
+	if s.Running != nil {
+		if err := waitActive(c.Context(), mgr, s.Name, *s.Running, s.Timeout); err != nil {
+			return nil, err
+		}
 	}
 	return nil, nil //nolint:nilnil // nil Diff is valid
 }
