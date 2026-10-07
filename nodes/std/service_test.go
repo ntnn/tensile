@@ -51,6 +51,7 @@ func TestService_Validate(t *testing.T) {
 		"name and running":  {false, Service{Name: "svc", Running: new(true)}},
 		"missing name":      {true, Service{Enabled: new(true)}},
 		"no state to apply": {true, Service{Name: "svc"}},
+		"negative timeout":  {true, Service{Name: "svc", Running: new(true), Timeout: -1}},
 	}
 
 	for title, cas := range cases {
@@ -111,12 +112,14 @@ func TestService_Execute(t *testing.T) {
 	t.Parallel()
 
 	var applied ServiceStatus
+	current := ServiceStatus{Enabled: true, Active: false}
 	RegisterServiceManager("fake-execute", &fakeServiceManager{
 		status: func(_ context.Context, _ string) (ServiceStatus, error) {
-			return ServiceStatus{Enabled: true, Active: false}, nil
+			return current, nil
 		},
 		apply: func(_ context.Context, _ string, desired ServiceStatus) error {
 			applied = desired
+			current = desired
 			return nil
 		},
 	})

@@ -3,6 +3,7 @@ package std
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/ntnn/tensile"
 )
@@ -30,12 +31,19 @@ type ServiceRestart struct {
 	// Manager selects a registered [ServiceManager] by name.
 	// Empty means detection.
 	Manager string
+	// Timeout in seconds to wait for the [ServiceManager] to report the
+	// desired running state after applying it.
+	// Defaults to [DefaultServiceTimeout].
+	Timeout time.Duration
 }
 
 // Validate implements [tensile.Validator].
 func (s *ServiceRestart) Validate(_ tensile.Wire) error {
 	if s.Name == "" {
 		return errors.New("name is required")
+	}
+	if s.Timeout < 0 {
+		return errors.New("timeout must not be negative")
 	}
 	return nil
 }
@@ -58,6 +66,9 @@ func (s *ServiceRestart) Execute(c tensile.Wire) (tensile.Diff, error) {
 	}
 	if err := mgr.Restart(c.Context(), s.Name); err != nil {
 		return nil, fmt.Errorf("error restarting service: %w", err)
+	}
+	if err := waitActive(c.Context(), mgr, s.Name, true, s.Timeout); err != nil {
+		return nil, err
 	}
 	return nil, nil //nolint:nilnil // nil Diff is valid
 }
