@@ -201,47 +201,47 @@ func (s *Summary) LogValue() slog.Value {
 }
 
 // RenderOptions configure [Summary.Render].
-type RenderOptions struct {
-	// ShowSatisfied includes nodes that did not change anything in
-	// the rendered node order.
-	ShowSatisfied bool
-}
+type RenderOptions struct{}
 
 // AddFlags binds the flag-configurable options to fs.
-func (o *RenderOptions) AddFlags(fs *flag.FlagSet) {
-	fs.BoolVar(&o.ShowSatisfied, "show-satisfied", false, "include unchanged nodes in the summary")
-}
+func (o *RenderOptions) AddFlags(_ *flag.FlagSet) {}
+
+// pathKey is the identity key whose value groups records in [Summary.Render].
+const pathKey = "path"
 
 // Render writes a human-readable multi-line report to w.
-func (s *Summary) Render(w io.Writer, opts RenderOptions) error {
+// Records whose identity has a `path` pair are accumulated under that
+// path, all other records are listed under their identity.
+// Records without a diff are marked as changed, failed records list
+// their error.
+func (s *Summary) Render(w io.Writer, _ RenderOptions) error {
 	var b strings.Builder
 
-	fmt.Fprintf(&b, "run: %s, %d nodes\n", s.Duration(), s.Nodes)
+	b.WriteString(s.String())
+	b.WriteByte('\n')
 
-	b.WriteString("outcomes:\n")
-	for _, outcome := range outcomeOrder {
-		if s.ByOutcome[outcome] == 0 {
+	groups := map[string][]string{}
+	for _, record := range s.Records {
+		switch record.Outcome { //nolint:exhaustive // only changes are rendered
+		case OutcomeExecuted, OutcomeHandlerExecuted, OutcomeFailed:
+		default:
 			continue
 		}
-		fmt.Fprintf(&b, "  %s: %d\n", outcome, s.ByOutcome[outcome])
+
+		path, grouped := record.Identity.Value(pathKey)
+		key := record.Identity.String()
+		if grouped {
+			key = path
+		}
+		groups[key] = append(groups[key], recordLines(record, grouped)...)
 	}
 
-	b.WriteString("order:\n")
-	for _, record := range s.Records {
-		if !opts.ShowSatisfied && record.Outcome == OutcomeSatisfied {
-			continue
-		}
-
-		fmt.Fprintf(&b, "  %s:\n", record.Identity)
-		fmt.Fprintf(&b, "    outcome: %s\n", record.Outcome)
-
-		if record.Diff == nil {
-			continue
-		}
-		b.WriteString("    diff:\n")
-		for line := range strings.Lines(record.Diff.String()) {
-			b.WriteString("      ")
-			b.WriteString(strings.TrimSuffix(line, "\n"))
+	for _, key := range slices.Sorted(maps.Keys(groups)) {
+		b.WriteString(key)
+		b.WriteByte('\n')
+		for _, line := range groups[key] {
+			b.WriteString("  ")
+			b.WriteString(line)
 			b.WriteByte('\n')
 		}
 	}
@@ -250,4 +250,31 @@ func (s *Summary) Render(w io.Writer, opts RenderOptions) error {
 		return fmt.Errorf("writing summary: %w", err)
 	}
 	return nil
+}
+
+// recordLines returns the rendered lines of record.
+// grouped prefixes lines that do not name the node with its kind.
+func recordLines(record NodeSummary, grouped bool) []string {
+	var lines []string
+	prefix := ""
+	if grouped {
+		prefix = record.Identity.Kind() + ": "
+	}
+
+	if record.Err != nil {
+		lines = append(lines, prefix+"failed: "+record.Err.Error())
+	}
+
+	var diff string
+	if record.Diff != nil {
+		diff = record.Diff.String()
+	}
+	for line := range strings.Lines(diff) {
+		lines = append(lines, strings.TrimSuffix(line, "\n"))
+	}
+
+	if len(lines) == 0 {
+		lines = append(lines, prefix+"changed")
+	}
+	return lines
 }

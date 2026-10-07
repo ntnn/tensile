@@ -1,11 +1,15 @@
 package engine
 
 import (
+	"errors"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/ntnn/tensile"
+	"github.com/ntnn/tensile/pkg/diff"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSummary_Analyze(t *testing.T) {
@@ -98,4 +102,58 @@ func TestSummary_Analyze(t *testing.T) {
 			assert.Equal(t, cas.wantStageAvgByKind, summary.StageAvgByKind)
 		})
 	}
+}
+
+func TestSummary_Render(t *testing.T) {
+	t.Parallel()
+
+	start := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	summary := Summary{
+		Start: start,
+		End:   start.Add(time.Second),
+	}
+	summary.Analyze([]NodeSummary{
+		{
+			Identity: tensile.AsIdentity("iniField", "path", "/etc/b.conf", "key", "x"),
+			Outcome:  OutcomeExecuted,
+			Diff: diff.NewFieldChanges(&diff.FieldChange{
+				Field: "x",
+				Old:   diff.Absent,
+				New:   "1",
+			}),
+		},
+		{
+			Identity: tensile.AsIdentity("package", "name", "satisfied"),
+			Outcome:  OutcomeSatisfied,
+		},
+		{
+			Identity: tensile.AsIdentity("chown", "path", "/etc/b.conf"),
+			Outcome:  OutcomeExecuted,
+		},
+		{
+			Identity: tensile.AsIdentity("serviceRestart", "name", "a"),
+			Outcome:  OutcomeHandlerExecuted,
+		},
+		{
+			Identity: tensile.AsIdentity("file", "path", "/etc/a.conf"),
+			Outcome:  OutcomeFailed,
+			Err:      errors.New("boom"),
+		},
+		{
+			Identity: tensile.AsIdentity("serviceRestart", "name", "b"),
+			Outcome:  OutcomeNotNotified,
+		},
+	})
+
+	var out strings.Builder
+	require.NoError(t, summary.Render(&out, RenderOptions{}))
+	assert.Equal(t, `run: 1s, 6 nodes, satisfied: 1, executed: 2, failed: 1, handler not notified: 1, handler executed: 1
+/etc/a.conf
+  file: failed: boom
+/etc/b.conf
+  x: (absent) -> 1
+  chown: changed
+serviceRestart[name="a"]
+  changed
+`, out.String())
 }
