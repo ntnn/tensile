@@ -6,6 +6,7 @@ tool github.com/ntnn/mindl
 
 require (
 	github.com/aymanbagabas/go-udiff v0.4.1
+	github.com/coreos/go-systemd/v22 v22.7.0
 	github.com/stretchr/testify v1.12.1
 	go.yaml.in/yaml/v3 v3.0.5
 	golang.org/x/sync v0.23.0

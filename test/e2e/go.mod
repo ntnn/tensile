@@ -5,6 +5,7 @@ go 1.27.0
 replace github.com/ntnn/tensile => ../..
 
 require (
+	github.com/coreos/go-systemd/v22 v22.7.0
 	github.com/moby/moby/api v1.55.0
 	github.com/ntnn/tensile v0.0.0-00010101000000-000000000000
 	github.com/stretchr/testify v1.12.1

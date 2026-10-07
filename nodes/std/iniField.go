@@ -15,6 +15,7 @@ import (
 var _ tensile.Identifier = (*INIField[string])(nil)
 var _ tensile.Validator = (*INIField[string])(nil)
 var _ tensile.Depender = (*INIField[string])(nil)
+var _ tensile.Serializer = (*INIField[string])(nil)
 var _ tensile.Executor = (*INIField[string])(nil)
 var _ tensile.Reporter = (*INIField[string])(nil)
 
@@ -37,6 +38,11 @@ type INIFieldOutput struct {
 	Value string
 }
 
+// INIFieldIdentity returns the identity of the node managing key in section of the INI file at path.
+func INIFieldIdentity(path, section, key string) tensile.Identity {
+	return tensile.AsIdentity("iniField", "path", path, "section", section, "key", key)
+}
+
 // INIField ensures a key in an INI file is present or absent.
 // A missing file is created on [tensile.Present].
 type INIField[T INIValue] struct {
@@ -49,6 +55,9 @@ type INIField[T INIValue] struct {
 	Section string
 	Key     string
 	Value   T
+
+	// LoadOptions configures parsing, empty uses the ini defaults.
+	LoadOptions ini.LoadOptions
 }
 
 // desired returns the desired state, defaulting to [tensile.Present].
@@ -83,7 +92,7 @@ func (i *INIField[T]) field() string {
 
 // Identity implements [tensile.Identifier].
 func (i *INIField[T]) Identity() tensile.Identity {
-	return tensile.AsIdentity("iniField", "path", i.Path, "section", i.Section, "key", i.Key)
+	return INIFieldIdentity(i.Path, i.Section, i.Key)
 }
 
 // Validate implements [tensile.Validator].
@@ -105,13 +114,18 @@ func (i *INIField[T]) DependsOn() ([]tensile.Identity, error) {
 	), nil
 }
 
+// SerializesOn implements [tensile.Serializer].
+func (i *INIField[T]) SerializesOn() []string {
+	return []string{FileSerializeKey(i.Path)}
+}
+
 // NeedsExecution implements [tensile.Executor].
 func (i *INIField[T]) NeedsExecution(_ tensile.Wire) (bool, tensile.Diff, error) {
 	if i.desired() == tensile.ReadOnly {
 		return false, nil, nil
 	}
 
-	file, err := loadINIFile(i.Path)
+	file, err := loadINIFile(i.Path, i.LoadOptions)
 	if err != nil {
 		return false, nil, err
 	}
@@ -145,7 +159,7 @@ func (i *INIField[T]) NeedsExecution(_ tensile.Wire) (bool, tensile.Diff, error)
 
 // Execute implements [tensile.Executor].
 func (i *INIField[T]) Execute(_ tensile.Wire) (tensile.Diff, error) {
-	file, err := loadINIFile(i.Path)
+	file, err := loadINIFile(i.Path, i.LoadOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -174,7 +188,7 @@ func (i *INIField[T]) Execute(_ tensile.Wire) (tensile.Diff, error) {
 
 // Report implements [tensile.Reporter].
 func (i *INIField[T]) Report(_ tensile.Wire) (any, error) {
-	file, err := loadINIFile(i.Path)
+	file, err := loadINIFile(i.Path, i.LoadOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -201,13 +215,12 @@ func getINIValue(file *ini.File, sectionName, key string) (string, bool) {
 }
 
 // loadINIFile parses the file, a missing file is an empty document.
-func loadINIFile(path string) (*ini.File, error) {
+func loadINIFile(path string, opts ini.LoadOptions) (*ini.File, error) {
 	content, err := os.ReadFile(path) //nolint:gosec // path is the managed file
 	if err != nil && !os.IsNotExist(err) {
 		return nil, fmt.Errorf("reading file: %w", err)
 	}
-	// '#' and ';' are only comments at line start, e.g. systemd units
-	file, err := ini.LoadSources(ini.LoadOptions{IgnoreInlineComment: true}, content)
+	file, err := ini.LoadSources(opts, content)
 	if err != nil {
 		return nil, fmt.Errorf("parsing file: %w", err)
 	}

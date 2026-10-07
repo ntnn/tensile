@@ -7,7 +7,7 @@ import (
 
 	"github.com/ntnn/tensile"
 	"github.com/ntnn/tensile/nodes/openwrt"
-	"github.com/ntnn/tensile/pkg/engine"
+	"github.com/ntnn/tensile/pkg/app"
 	"github.com/ntnn/tensile/pkg/queue"
 )
 
@@ -124,11 +124,5 @@ func run(ctx context.Context) error {
 	q.DependsOn(srvName, srv)
 	q.DependsOn(greet, other)
 
-	work, err := q.Build()
-	if err != nil {
-		return err
-	}
-
-	seq := engine.NewParallel(work, engine.ParallelOptions{})
-	return seq.Execute(ctx)
+	return app.New().Run(ctx, q)
 }

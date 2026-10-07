@@ -7,7 +7,7 @@ import (
 
 	"github.com/ntnn/tensile"
 	"github.com/ntnn/tensile/nodes/std"
-	"github.com/ntnn/tensile/pkg/engine"
+	"github.com/ntnn/tensile/pkg/app"
 	"github.com/ntnn/tensile/pkg/queue"
 )
 
@@ -33,15 +33,5 @@ func run(ctx context.Context) error {
 
 	q.Add(preinstalled, install, install2, install3, remove, absent)
 
-	work, err := q.Build()
-	if err != nil {
-		return err
-	}
-
-	par := engine.NewParallel(work, engine.ParallelOptions{})
-	if err := par.Execute(ctx); err != nil {
-		return err
-	}
-
-	return nil
+	return app.New().Run(ctx, q)
 }

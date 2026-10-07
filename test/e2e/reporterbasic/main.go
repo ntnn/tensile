@@ -9,7 +9,7 @@ import (
 
 	"github.com/ntnn/tensile"
 	"github.com/ntnn/tensile/nodes/std"
-	"github.com/ntnn/tensile/pkg/engine"
+	"github.com/ntnn/tensile/pkg/app"
 	"github.com/ntnn/tensile/pkg/queue"
 )
 
@@ -57,13 +57,7 @@ func run(ctx context.Context) error {
 
 	q.Add(dir, file, cmd, fileConsumer, cmdConsumer)
 
-	work, err := q.Build()
-	if err != nil {
-		return err
-	}
-
-	seq := engine.NewParallel(work, engine.ParallelOptions{})
-	return seq.Execute(ctx)
+	return app.New().Run(ctx, q)
 }
 
 // reportFileMode is the permission for written report artifacts.

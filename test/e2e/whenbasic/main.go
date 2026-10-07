@@ -11,7 +11,7 @@ import (
 
 	"github.com/ntnn/tensile"
 	"github.com/ntnn/tensile/nodes/std"
-	"github.com/ntnn/tensile/pkg/engine"
+	"github.com/ntnn/tensile/pkg/app"
 	"github.com/ntnn/tensile/pkg/queue"
 )
 
@@ -87,12 +87,7 @@ func runGated(ctx context.Context) error {
 
 	q.Add(dir, facts, enabledFile, enabled, disabledFile, disabled, consumer)
 
-	work, err := q.Build()
-	if err != nil {
-		return err
-	}
-
-	if err := engine.NewParallel(work, engine.ParallelOptions{}).Execute(ctx); err != nil {
+	if err := app.New().Run(ctx, q); err != nil {
 		return fmt.Errorf("gated queue failed: %w", err)
 	}
 
@@ -124,12 +119,7 @@ func runUndeclaredDep(ctx context.Context) error {
 
 	q.Add(facts, gated)
 
-	work, err := q.Build()
-	if err != nil {
-		return err
-	}
-
-	err = engine.NewParallel(work, engine.ParallelOptions{}).Execute(ctx)
+	err := app.New().Run(ctx, q)
 	if err == nil {
 		return errors.New("undeclared dependency read must fail")
 	}
