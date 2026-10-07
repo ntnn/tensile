@@ -42,6 +42,32 @@ func TestAsIdentity(t *testing.T) {
 	}
 }
 
+func TestIdentity_Value(t *testing.T) {
+	t.Parallel()
+
+	cases := map[string]struct {
+		key       string
+		wantValue string
+		wantOK    bool
+	}{
+		"first pair":  {"name", "nginx", true},
+		"second pair": {"manager", "apt", true},
+		"missing key": {"path", "", false},
+		"empty key":   {"", "", false},
+	}
+
+	id := tensile.AsIdentity("package", "name", "nginx", "manager", "apt")
+	for title, cas := range cases {
+		t.Run(title, func(t *testing.T) {
+			t.Parallel()
+
+			value, ok := id.Value(cas.key)
+			assert.Equal(t, cas.wantValue, value)
+			assert.Equal(t, cas.wantOK, ok)
+		})
+	}
+}
+
 func TestAsIdentity_panics(t *testing.T) {
 	t.Parallel()
 

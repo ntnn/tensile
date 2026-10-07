@@ -72,6 +72,19 @@ func (id Identity) Kind() string {
 	return id.kind
 }
 
+// Value returns the value of key and whether key is set.
+func (id Identity) Value(key string) (string, bool) {
+	for _, pair := range id.pairs {
+		if pair.key == "" {
+			break
+		}
+		if pair.key == key {
+			return pair.value, true
+		}
+	}
+	return "", false
+}
+
 // Identity implements [Identifier], returning itself.
 func (id Identity) Identity() Identity {
 	return id
