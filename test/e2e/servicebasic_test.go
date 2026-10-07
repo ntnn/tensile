@@ -31,6 +31,7 @@ func TestServiceBasic(t *testing.T) {
 	exit, out = env.Exec(t, "systemctl", "is-enabled", "e2e-dummy.service")
 	assert.Zero(t, exit, out)
 
-	exit, out = env.RunScenario(t, "-verify-noop")
-	assert.Zero(t, exit, "second run must not execute any node: %s", out)
+	exit, out = env.RunScenario(t)
+	require.Zero(t, exit, out)
+	assert.NotContains(t, out, "executed", "second run must not execute any node")
 }
