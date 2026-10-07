@@ -73,13 +73,14 @@ func TestPackage_NeedsExecution(t *testing.T) {
 		expected  bool
 		state     tensile.State
 		installed bool
+		wantDiff  string
 	}{
-		"present not installed":     {true, tensile.Present, false},
-		"present installed":         {false, tensile.Present, true},
-		"absent installed":          {true, tensile.Absent, true},
-		"absent not installed":      {false, tensile.Absent, false},
-		"empty state not installed": {true, "", false},
-		"empty state installed":     {false, "", true},
+		"present not installed":     {true, tensile.Present, false, "state: absent -> present"},
+		"present installed":         {false, tensile.Present, true, ""},
+		"absent installed":          {true, tensile.Absent, true, "state: present -> absent"},
+		"absent not installed":      {false, tensile.Absent, false, ""},
+		"empty state not installed": {true, "", false, "state: absent -> present"},
+		"empty state installed":     {false, "", true, ""},
 	}
 
 	for title, cas := range cases {
@@ -99,9 +100,15 @@ func TestPackage_NeedsExecution(t *testing.T) {
 				Manager: name,
 			}
 
-			needs, _, err := p.NeedsExecution(testWire(t))
+			needs, d, err := p.NeedsExecution(testWire(t))
 			require.NoError(t, err)
 			assert.Equal(t, cas.expected, needs)
+			if cas.wantDiff == "" {
+				assert.Nil(t, d, "no change must not report a diff")
+				return
+			}
+			require.NotNil(t, d)
+			assert.Equal(t, cas.wantDiff, d.String())
 		})
 	}
 }
