@@ -37,6 +37,11 @@ type INIFieldOutput struct {
 	Value string
 }
 
+// INIFieldIdentity returns the identity of the node managing key in section of the INI file at path.
+func INIFieldIdentity(path, section, key string) tensile.Identity {
+	return tensile.AsIdentity("iniField", "path", path, "section", section, "key", key)
+}
+
 // INIField ensures a key in an INI file is present or absent.
 // A missing file is created on [tensile.Present].
 type INIField[T INIValue] struct {
@@ -83,7 +88,7 @@ func (i *INIField[T]) field() string {
 
 // Identity implements [tensile.Identifier].
 func (i *INIField[T]) Identity() tensile.Identity {
-	return tensile.AsIdentity("iniField", "path", i.Path, "section", i.Section, "key", i.Key)
+	return INIFieldIdentity(i.Path, i.Section, i.Key)
 }
 
 // Validate implements [tensile.Validator].
