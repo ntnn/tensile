@@ -15,6 +15,7 @@ import (
 var _ tensile.Identifier = (*INIField[string])(nil)
 var _ tensile.Validator = (*INIField[string])(nil)
 var _ tensile.Depender = (*INIField[string])(nil)
+var _ tensile.Serializer = (*INIField[string])(nil)
 var _ tensile.Executor = (*INIField[string])(nil)
 var _ tensile.Reporter = (*INIField[string])(nil)
 
@@ -111,6 +112,11 @@ func (i *INIField[T]) DependsOn() ([]tensile.Identity, error) {
 		ParentDirIdentities(i.Path),
 		FileIdentity(i.Path),
 	), nil
+}
+
+// SerializesOn implements [tensile.Serializer].
+func (i *INIField[T]) SerializesOn() []string {
+	return []string{FileSerializeKey(i.Path)}
 }
 
 // NeedsExecution implements [tensile.Executor].

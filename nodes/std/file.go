@@ -15,6 +15,11 @@ func FileIdentity(path string) tensile.Identity {
 	return tensile.AsIdentity("file", "path", path)
 }
 
+// FileSerializeKey returns the [tensile.Serializer] key of nodes modifying the content of the file at path.
+func FileSerializeKey(path string) string {
+	return "file-" + path
+}
+
 // FileQueueIdentity returns the identity of the queue managing the file at path.
 func FileQueueIdentity(path string) tensile.Identity {
 	return tensile.AsIdentity("queue", "file", path)
