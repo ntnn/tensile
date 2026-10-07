@@ -52,9 +52,17 @@ func TestDir_NeedsExecutionMissing(t *testing.T) {
 	}
 	require.NoError(t, d.Validate(nil))
 
-	needs, _, err := d.NeedsExecution(nil)
+	needs, diff, err := d.NeedsExecution(nil)
 	require.NoError(t, err)
 	assert.True(t, needs, "a missing directory needs execution")
+	require.NotNil(t, diff)
+	expectedMode := "-rwxr-xr-x"
+	if runtime.GOOS == "windows" {
+		// windows only tracks the owner write bit
+		expectedMode = "--w-------"
+	}
+	assert.Equal(t, "dir: (absent) -> present\nmode: (absent) -> "+expectedMode, diff.String(),
+		"creation must report presence and mode")
 }
 
 func TestDir_NeedsExecutionMatchingMode(t *testing.T) {

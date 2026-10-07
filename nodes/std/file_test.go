@@ -91,13 +91,14 @@ func TestFile_NeedsExecution(t *testing.T) {
 		expected bool
 		exists   bool
 		state    tensile.State
+		wantDiff string
 	}{
-		"missing file":           {true, false, ""},
-		"existing file":          {false, true, ""},
-		"absent, missing file":   {false, false, tensile.Absent},
-		"absent, existing file":  {true, true, tensile.Absent},
-		"present, missing file":  {true, false, tensile.Present},
-		"present, existing file": {false, true, tensile.Present},
+		"missing file":           {true, false, "", "file: (absent) -> present"},
+		"existing file":          {false, true, "", ""},
+		"absent, missing file":   {false, false, tensile.Absent, ""},
+		"absent, existing file":  {true, true, tensile.Absent, "file: present -> (absent)"},
+		"present, missing file":  {true, false, tensile.Present, "file: (absent) -> present"},
+		"present, existing file": {false, true, tensile.Present, ""},
 	}
 
 	for title, cas := range cases {
@@ -113,6 +114,12 @@ func TestFile_NeedsExecution(t *testing.T) {
 			needs, diff, err := f.NeedsExecution(nil)
 			require.NoError(t, err)
 			assert.Equal(t, cas.expected, needs, diff)
+			if cas.wantDiff == "" {
+				assert.Nil(t, diff, "no change must not report a diff")
+				return
+			}
+			require.NotNil(t, diff)
+			assert.Equal(t, cas.wantDiff, diff.String())
 		})
 	}
 }

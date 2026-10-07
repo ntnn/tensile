@@ -38,12 +38,13 @@ func TestPruneUnmanagedFiles_NeedsExecution(t *testing.T) {
 		expected bool
 		files    []string
 		claimed  []string
+		wantDiff string
 	}{
-		"empty dir":            {false, nil, nil},
-		"all managed":          {false, []string{"a", "b"}, []string{"a", "b"}},
-		"unmanaged file":       {true, []string{"a", "b"}, []string{"a"}},
-		"nothing managed":      {true, []string{"a"}, nil},
-		"claim without a file": {false, nil, []string{"a"}},
+		"empty dir":            {false, nil, nil, ""},
+		"all managed":          {false, []string{"a", "b"}, []string{"a", "b"}, ""},
+		"unmanaged file":       {true, []string{"a", "b"}, []string{"a"}, "b: present -> (absent)"},
+		"nothing managed":      {true, []string{"a"}, nil, "a: present -> (absent)"},
+		"claim without a file": {false, nil, []string{"a"}, ""},
 	}
 
 	for title, cas := range cases {
@@ -63,6 +64,12 @@ func TestPruneUnmanagedFiles_NeedsExecution(t *testing.T) {
 			needs, diff, err := p.NeedsExecution(claimsWire(t, claimed...))
 			require.NoError(t, err)
 			assert.Equal(t, cas.expected, needs, diff)
+			if cas.wantDiff == "" {
+				assert.Nil(t, diff, "no change must not report a diff")
+				return
+			}
+			require.NotNil(t, diff)
+			assert.Equal(t, cas.wantDiff, diff.String())
 		})
 	}
 }

@@ -59,7 +59,11 @@ func (p *PruneUnmanagedFiles) NeedsExecution(wire tensile.Wire) (bool, tensile.D
 
 	changes := make([]*diff.FieldChange, len(unmanaged))
 	for i, path := range unmanaged {
-		changes[i] = &diff.FieldChange{Field: path, Old: path, New: diff.Absent}
+		changes[i] = &diff.FieldChange{
+			Field: filepath.Base(path),
+			Old:   string(tensile.Present),
+			New:   diff.Absent,
+		}
 	}
 	return true, diff.NewFieldChanges(changes...), nil
 }
