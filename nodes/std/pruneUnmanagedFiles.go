@@ -17,7 +17,7 @@ var _ tensile.Executor = (*PruneUnmanagedFiles)(nil)
 
 // PruneUnmanagedFilesIdentity returns the identity of the node pruning unmanaged files in dir.
 func PruneUnmanagedFilesIdentity(dir string) tensile.Identity {
-	return tensile.AsIdentity("pruneUnmanagedFiles", "dir", dir)
+	return tensile.AsIdentity("pruneUnmanagedFiles", "path", dir)
 }
 
 // PruneUnmanagedFiles removes direct entries of Dir whose [FileIdentity] is not claimed by any node.
