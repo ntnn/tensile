@@ -106,12 +106,20 @@ func (f *File) NeedsExecution(_ tensile.Wire) (bool, tensile.Diff, error) {
 		if !exists {
 			return false, nil, nil
 		}
-		return true, diff.NewFieldChanges(&diff.FieldChange{Field: "file", Old: f.Path, New: diff.Absent}), nil
+		return true, diff.NewFieldChanges(&diff.FieldChange{
+			Field: "file",
+			Old:   string(tensile.Present),
+			New:   diff.Absent,
+		}), nil
 	}
 	if exists {
 		return false, nil, nil
 	}
-	return true, diff.NewFieldChanges(&diff.FieldChange{Field: "file", Old: diff.Absent, New: f.Path}), nil
+	return true, diff.NewFieldChanges(&diff.FieldChange{
+		Field: "file",
+		Old:   diff.Absent,
+		New:   string(tensile.Present),
+	}), nil
 }
 
 // Execute implements [tensile.Executor].

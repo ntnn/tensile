@@ -84,7 +84,11 @@ func (d *Dir) Conflicts() ([]tensile.Identity, error) {
 func (d *Dir) needsExecution(_ tensile.Wire) (bool, *diff.FieldChange, error) {
 	info, err := os.Stat(d.Path)
 	if os.IsNotExist(err) {
-		return true, &diff.FieldChange{Field: "directory", Old: diff.Absent, New: d.FileMode.String()}, nil
+		return true, &diff.FieldChange{
+			Field: "dir",
+			Old:   diff.Absent,
+			New:   string(tensile.Present),
+		}, nil
 	}
 	if err != nil {
 		return false, nil, fmt.Errorf("error checking directory: %w", err)

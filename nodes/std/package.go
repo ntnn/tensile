@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/ntnn/tensile"
+	"github.com/ntnn/tensile/pkg/diff"
 )
 
 var _ tensile.Identifier = (*Package)(nil)
@@ -78,7 +79,7 @@ func (p *Package) SerializesOn() []string {
 func (p *Package) NeedsExecution(c tensile.Wire) (bool, tensile.Diff, error) {
 	mgr, err := p.manager(c)
 	if _, ok := errors.AsType[*noManagerError](err); ok {
-		return p.desired() == tensile.Present, nil, nil
+		return p.diff(false)
 	}
 	if err != nil {
 		return false, nil, err
@@ -89,7 +90,23 @@ func (p *Package) NeedsExecution(c tensile.Wire) (bool, tensile.Diff, error) {
 		return false, nil, fmt.Errorf("error checking package status: %w", err)
 	}
 
-	return installed != (p.desired() == tensile.Present), nil, nil
+	return p.diff(installed)
+}
+
+// diff compares the installation status to the desired state.
+func (p *Package) diff(installed bool) (bool, tensile.Diff, error) {
+	current := tensile.Absent
+	if installed {
+		current = tensile.Present
+	}
+	if current == p.desired() {
+		return false, nil, nil
+	}
+	return true, diff.NewFieldChanges(&diff.FieldChange{
+		Field: p.Name,
+		Old:   string(current),
+		New:   string(p.desired()),
+	}), nil
 }
 
 // Execute implements [tensile.Executor].
