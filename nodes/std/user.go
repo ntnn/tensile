@@ -33,11 +33,6 @@ func uidIdentity(uid int) tensile.Identity {
 	return tensile.AsIdentity("uid", "id", strconv.Itoa(uid))
 }
 
-// GroupMembershipIdentity returns the identity of the supplementary membership of user in group.
-func GroupMembershipIdentity(user, group string) tensile.Identity {
-	return tensile.AsIdentity("groupMembership", "user", user, "group", group)
-}
-
 // UserData is the output reported by [User].
 type UserData struct {
 	shadow.User
@@ -56,7 +51,7 @@ type User struct {
 	Group string
 	// Groups are the supplementary groups.
 	// Nil is unmanaged.
-	// Memberships claimed by other nodes are kept.
+	// Memberships claimed by other nodes, e.g. [GroupMembership], are kept.
 	Groups []string
 	// Home empty applies the tool default on creation and is unmanaged afterwards.
 	Home string
