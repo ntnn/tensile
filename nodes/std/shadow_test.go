@@ -15,6 +15,8 @@ type fakeShadow struct {
 	groups []shadow.Group
 	// nextID is the ID assigned when a spec leaves it unset.
 	nextID int
+	// removedHomes are the users deleted with removeHome.
+	removedHomes []string
 }
 
 func (f *fakeShadow) User(name string) (*shadow.User, error) {
@@ -71,7 +73,10 @@ func (f *fakeShadow) ApplyUser(_ context.Context, desired shadow.UserSpec) error
 	return nil
 }
 
-func (f *fakeShadow) DeleteUser(_ context.Context, name string, _ bool) error {
+func (f *fakeShadow) DeleteUser(_ context.Context, name string, removeHome bool) error {
+	if removeHome {
+		f.removedHomes = append(f.removedHomes, name)
+	}
 	f.users = slices.DeleteFunc(f.users, func(u shadow.User) bool { return u.Name == name })
 	return nil
 }

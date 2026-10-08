@@ -19,9 +19,6 @@ var (
 	_ tensile.Reporter   = (*Group)(nil)
 )
 
-// accountSerializeKey serializes nodes changing local accounts, the tools lock passwd and group.
-const accountSerializeKey = "account"
-
 // GroupIdentity returns the identity of the node managing the named group.
 func GroupIdentity(name string) tensile.Identity {
 	return tensile.AsIdentity("group", "name", name)
@@ -63,12 +60,9 @@ func (g *Group) Validate(_ tensile.Wire) error {
 	if err := g.State.Valid(); err != nil {
 		return err //nolint:wrapcheck // names the state
 	}
-	if g.shadow != nil {
-		return nil
-	}
-	svc, err := shadow.New(shadow.Options{})
+	svc, err := accountService(g.shadow)
 	if err != nil {
-		return fmt.Errorf("setting up account tools: %w", err)
+		return err
 	}
 	g.shadow = svc
 	return nil
@@ -102,7 +96,7 @@ func (g *Group) NeedsExecution(_ tensile.Wire) (bool, tensile.Diff, error) {
 			return false, nil, nil
 		}
 		return true, diff.NewFieldChanges(&diff.FieldChange{
-			Field: "state",
+			Field: stateField,
 			Old:   string(tensile.Present),
 			New:   string(tensile.Absent),
 		}), nil
@@ -119,7 +113,7 @@ func (g *Group) NeedsExecution(_ tensile.Wire) (bool, tensile.Diff, error) {
 		}
 		return true, diff.NewFieldChanges(
 			&diff.FieldChange{
-				Field: "state",
+				Field: stateField,
 				Old:   string(tensile.Absent),
 				New:   string(tensile.Present),
 			},
