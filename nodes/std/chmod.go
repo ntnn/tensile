@@ -13,6 +13,8 @@ var _ tensile.Executor = (*Chmod)(nil)
 
 // Chmod ensures a file has the specified permissions.
 // FileMode is interpreted as unix permission bits.
+//
+// Not implemented on windows.
 type Chmod struct {
 	Path     string
 	FileMode os.FileMode

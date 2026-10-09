@@ -1,9 +1,8 @@
 package std
 
 import (
-	"os"
-
 	"github.com/ntnn/tensile"
+	"github.com/ntnn/tensile/pkg/diff"
 )
 
 var _ tensile.Identifier = (*Chown)(nil)
@@ -27,18 +26,21 @@ func (c Chown) DependsOn() ([]tensile.Identity, error) {
 	return append(
 		ParentDirIdentities(c.Path),
 		FileIdentity(c.Path),
+		UserIdentity(c.Owner),
+		GroupIdentity(c.Group),
 	), nil
 }
 
 // NeedsExecution implements [tensile.Executor].
 func (c Chown) NeedsExecution(_ tensile.Wire) (bool, tensile.Diff, error) {
-	// TODO resolve owner and group names to numeric IDs
-	// TODO check if the current owner and group match the desired ones
-	return true, nil, nil
+	needs, ownerChange, groupChange, err := chownNeedsExecution(c.Path, c.Owner, c.Group)
+	if err != nil || !needs {
+		return false, nil, err
+	}
+	return true, diff.NewFieldChanges(ownerChange, groupChange), nil
 }
 
 // Execute implements [tensile.Executor].
 func (c Chown) Execute(_ tensile.Wire) (tensile.Diff, error) {
-	// TODO resolve owner and group names to numeric IDs
-	return nil, os.Chown(c.Path, -1, -1)
+	return nil, chownApply(c.Path, c.Owner, c.Group)
 }
