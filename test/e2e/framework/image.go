@@ -88,3 +88,10 @@ var Alpine = Image{
 	Entrypoint: sleepEntrypoint,
 	WaitCmd:    []string{"apk", "--version"},
 }
+
+// Busybox is a plain busybox container with busybox's adduser/groupadd applets.
+var Busybox = Image{
+	Ref:        "docker.io/library/busybox:latest",
+	Entrypoint: sleepEntrypoint,
+	WaitCmd:    []string{"true"},
+}
