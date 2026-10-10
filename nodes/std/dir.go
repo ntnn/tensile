@@ -109,16 +109,32 @@ func (d *Dir) NeedsExecution(wire tensile.Wire) (bool, tensile.Diff, error) {
 	if err != nil {
 		return false, nil, err
 	}
-	return dirNeeds || chmodNeeds, diff.NewFieldChanges(dirChange, chmodChange), nil
+	chownNeeds, ownerChange, groupChange, err := d.Chown.needsExecution(wire)
+	if err != nil {
+		return false, nil, err
+	}
+
+	changes := diff.NewFieldChanges(
+		dirChange,
+		chmodChange,
+		ownerChange,
+		groupChange,
+	)
+
+	return dirNeeds || chmodNeeds || chownNeeds, changes, nil
 }
 
 // Execute implements [tensile.Executor].
 func (d *Dir) Execute(s tensile.Wire) (tensile.Diff, error) {
+	// TODO(ntnn): delete files?
 	if err := os.MkdirAll(d.Path, d.FileMode.Perm()); err != nil {
 		return nil, fmt.Errorf("error creating directory: %w", err)
 	}
 	if _, err := d.Chmod.Execute(s); err != nil {
 		return nil, fmt.Errorf("error setting mode: %w", err)
+	}
+	if _, err := d.Chown.Execute(s); err != nil {
+		return nil, fmt.Errorf("error setting ownership: %w", err)
 	}
 	return nil, nil //nolint:nilnil // nil Diff is valid
 }

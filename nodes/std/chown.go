@@ -31,9 +31,13 @@ func (c Chown) DependsOn() ([]tensile.Identity, error) {
 	), nil
 }
 
+func (c Chown) needsExecution(_ tensile.Wire) (bool, *diff.FieldChange, *diff.FieldChange, error) {
+	return chownNeedsExecution(c.Path, c.Owner, c.Group)
+}
+
 // NeedsExecution implements [tensile.Executor].
-func (c Chown) NeedsExecution(_ tensile.Wire) (bool, tensile.Diff, error) {
-	needs, ownerChange, groupChange, err := chownNeedsExecution(c.Path, c.Owner, c.Group)
+func (c Chown) NeedsExecution(wire tensile.Wire) (bool, tensile.Diff, error) {
+	needs, ownerChange, groupChange, err := c.needsExecution(wire)
 	if err != nil || !needs {
 		return false, nil, err
 	}
