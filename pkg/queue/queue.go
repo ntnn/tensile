@@ -39,16 +39,29 @@ func New() *Queue {
 // the queue instead of adding the value.
 func (q *Queue) Add(nodes ...tensile.Identifier) {
 	for _, node := range nodes {
-		if nqr, ok := node.(NamedQueuer); ok {
-			q.addNamed(nqr.Queue())
-			continue
-		}
-		if nq, ok := node.(*NamedQueue); ok {
-			q.addNamed(nq)
-			continue
-		}
-		q.nodes = append(q.nodes, node)
+		q.add(node)
 	}
+}
+
+// AddSlice adds a values of a slice of type T to the queue.
+// A [NamedQueue] or the result of [NamedQueuer.Queue] is dissolved into
+// the queue instead of adding the value.
+func (q *Queue) AddSlice[T tensile.Identifier](slice []T) {
+	for _, node := range slice {
+		q.add(node)
+	}
+}
+
+func (q *Queue) add(node tensile.Identifier) {
+	if nqr, ok := node.(NamedQueuer); ok {
+		q.addNamed(nqr.Queue())
+		return
+	}
+	if nq, ok := node.(*NamedQueue); ok {
+		q.addNamed(nq)
+		return
+	}
+	q.nodes = append(q.nodes, node)
 }
 
 // addNamed dissolves the named queue, merging its intents and

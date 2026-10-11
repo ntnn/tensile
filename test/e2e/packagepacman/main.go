@@ -31,7 +31,10 @@ func run(ctx context.Context) error {
 	// not installed, must stay absent as a no-op
 	absent := &std.Package{Name: "jq", State: tensile.Absent}
 
-	q.Add(preinstalled, install, install2, install3, remove, absent)
+	q.Add(preinstalled, install, install2)
+
+	pkgs := []*std.Package{install3, remove, absent}
+	q.AddSlice(pkgs)
 
 	return app.New().Run(ctx, q)
 }
