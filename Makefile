@@ -3,7 +3,7 @@ TEST_ARGS ?= -race
 
 TOOLS_DIR := $(CURDIR)/hack/tools
 
-GOLANGCI_LINT_VER := 2.14.0
+GOLANGCI_LINT_VER := 2.15.0
 GOLANGCI_LINT := $(TOOLS_DIR)/golangci-lint-$(GOLANGCI_LINT_VER)
 
 check: lint test test-e2e
