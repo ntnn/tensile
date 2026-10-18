@@ -17,6 +17,7 @@ import (
 
 	"github.com/ntnn/tensile"
 	"github.com/ntnn/tensile/pkg/diff"
+	"github.com/ntnn/tensile/pkg/queue"
 )
 
 var (
@@ -48,13 +49,20 @@ type Download struct {
 	// Mutually exclusive with Checksum.
 	ChecksumURL string
 
-	// TODO(ntnn): embed chmod/chown
+	Chown
+	Chmod
+
 	// TODO(ntnn): reporting
 }
 
 // DownloadIdentity returns the identity of the node downloading from downloadURL to path.
 func DownloadIdentity(downloadURL string, path string) tensile.Identity {
 	return tensile.AsIdentity("download", "url", downloadURL, "path", path)
+}
+
+// DownloadQueueIdentity returns the identity of the named queue for a Download node.
+func DownloadQueueIdentity(path string) tensile.Identity {
+	return tensile.AsIdentity("queue", "download", path)
 }
 
 // Identity implements [tensile.Identifier].
@@ -109,6 +117,25 @@ func hashFromChecksum(checksum string) (crypto.Hash, error) {
 	}
 }
 
+func (d *Download) Queue() *queue.NamedQueue {
+	q := queue.NewNamed(DownloadQueueIdentity(d.output()))
+
+	q.Add(tensile.NewNode(d))
+	if d.state() == tensile.Absent {
+		return q
+	}
+
+	chown := d.Chown
+	chown.Path = d.output()
+	q.Add(&chown)
+
+	chmod := d.Chmod
+	chmod.Path = d.output()
+	q.Add(&chmod)
+
+	return q
+}
+
 // Validate implements [tensile.Validator].
 func (d *Download) Validate(_ tensile.Wire) error {
 	if d.URL == "" {
@@ -129,6 +156,7 @@ func (d *Download) Validate(_ tensile.Wire) error {
 	if err := d.state().Valid(); err != nil {
 		return err
 	}
+
 	return nil
 }
 
