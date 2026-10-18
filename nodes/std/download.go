@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto"
+	"encoding/base64"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -308,8 +309,24 @@ func (d *Download) expectedChecksum(ctx context.Context) (crypto.Hash, string, e
 		}
 		return algorithm, checksum, nil
 	default:
-		// TODO(ntnn): implement content-digest heast
-		return 0, "", nil
+		// Try Content-Digest header
+		resp, err := headRequest(ctx, d.URL)
+		if err != nil {
+			return 0, "", fmt.Errorf("getting Content-Digest: %w", err)
+		}
+		defer resp.Body.Close()
+
+		digestHeader := resp.Header.Get("Content-Digest")
+		if digestHeader == "" {
+			return 0, "", nil // no Content-Digest header
+		}
+
+		algorithm, checksum, err := parseContentDigest(digestHeader)
+		if err != nil {
+			return 0, "", fmt.Errorf("parsing Content-Digest header: %w", err)
+		}
+
+		return algorithm, checksum, nil
 	}
 }
 
@@ -334,6 +351,25 @@ func download(ctx context.Context, from string, to io.Writer) error {
 	}
 
 	return nil
+}
+
+func headRequest(ctx context.Context, location string) (*http.Response, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodHead, location, nil)
+	if err != nil {
+		return nil, fmt.Errorf("building request: %w", err)
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("getting url: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		resp.Body.Close()
+		return nil, fmt.Errorf("url returned %d", resp.StatusCode)
+	}
+
+	return resp, nil
 }
 
 func (d *Download) checksumFromURL(ctx context.Context) (string, error) {
@@ -374,4 +410,46 @@ func (d *Download) checksumFromURL(ctx context.Context) (string, error) {
 			return parts[0], nil
 		}
 	}
+}
+
+func hashFromDigestName(name string) (crypto.Hash, error) {
+	switch name {
+	case "md5":
+		return crypto.MD5, nil
+	case "sha-1", "sha1":
+		return crypto.SHA1, nil
+	case "sha-256", "sha256":
+		return crypto.SHA256, nil
+	case "sha-512", "sha512":
+		return crypto.SHA512, nil
+	default:
+		return 0, fmt.Errorf("unknown digest algorithm %q", name)
+	}
+}
+
+// parseContentDigest parses the Content-Digest header value.
+func parseContentDigest(headerValue string) (crypto.Hash, string, error) {
+	// Header format: sha-256=abcdef... or multiple comma-separated
+	for part := range strings.SplitSeq(headerValue, ",") {
+		part = strings.TrimSpace(part)
+		name, value, ok := strings.Cut(part, "=")
+		if !ok {
+			continue
+		}
+
+		algorithm, err := hashFromDigestName(strings.TrimSpace(name))
+		if err != nil {
+			continue
+		}
+
+		// Digest is base64url encoded
+		raw, err := base64.RawURLEncoding.DecodeString(strings.TrimSpace(value))
+		if err != nil {
+			return 0, "", fmt.Errorf("decoding digest: %w", err)
+		}
+
+		return algorithm, hex.EncodeToString(raw), nil
+	}
+
+	return 0, "", errors.New("no supported digest found in Content-Digest header")
 }
