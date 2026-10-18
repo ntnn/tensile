@@ -248,6 +248,15 @@ func (d *Download) Execute(wire tensile.Wire) (tensile.Diff, error) {
 			}
 		}
 
+		localHash := diff.Absent
+		if algorithm != 0 {
+			var err error
+			localHash, err = computeFileHash(path, algorithm)
+			if err != nil && !errors.Is(err, os.ErrNotExist) {
+				return nil, fmt.Errorf("calculating current hash: %w", err)
+			}
+		}
+
 		// move to final destination
 		if err := os.Rename(tmpPath, path); err != nil {
 			return nil, fmt.Errorf("rename: %w", err)
@@ -255,8 +264,8 @@ func (d *Download) Execute(wire tensile.Wire) (tensile.Diff, error) {
 		tmpPath = "" // prevent deferred cleanup
 		return diff.NewFieldChanges(&diff.FieldChange{
 			Field: "file",
-			Old:   diff.Absent, // TODO(ntnn): calculate old hash
-			New:   string(tensile.Present),
+			Old:   localHash,
+			New:   expected,
 		}), nil
 
 	default:
