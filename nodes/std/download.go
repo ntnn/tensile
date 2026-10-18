@@ -1,6 +1,7 @@
 package std
 
 import (
+	"bytes"
 	"context"
 	"crypto"
 	"encoding/hex"
@@ -203,9 +204,80 @@ func (d *Download) NeedsExecution(wire tensile.Wire) (bool, tensile.Diff, error)
 }
 
 // Execute implements [tensile.Executor].
-func (d *Download) Execute(_ tensile.Wire) (tensile.Diff, error) {
-	// implementation
-	return nil, nil //nolint:nilnil
+func (d *Download) Execute(wire tensile.Wire) (tensile.Diff, error) {
+	switch d.state() {
+	case tensile.Absent:
+		if err := os.Remove(d.output()); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return nil, fmt.Errorf("remove: %w", err)
+		}
+		return diff.NewFieldChanges(&diff.FieldChange{
+			Field: "file",
+			Old:   string(tensile.Present),
+			New:   diff.Absent,
+		}), nil
+
+	case tensile.ReadOnly:
+		return nil, nil //nolint:nilnil
+
+	case tensile.Present:
+		path := d.output()
+
+		// ensure parent dir exists
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil { //nolint:mnd,gosec
+			return nil, fmt.Errorf("mkdir: %w", err)
+		}
+
+		// download to temp file
+		tmpFile, err := os.CreateTemp(filepath.Dir(path), ".download-*")
+		if err != nil {
+			return nil, fmt.Errorf("create temp: %w", err)
+		}
+		tmpPath := tmpFile.Name()
+		defer func() {
+			// TODO(ntnn): Add a TempDir to wire that is cleaned up after a run.
+			// Similar to testing.T.TempDir
+			if tmpPath != "" {
+				os.Remove(tmpPath)
+			}
+		}()
+
+		if err := download(wire.Context(), d.URL, tmpFile); err != nil {
+			tmpFile.Close()
+			return nil, fmt.Errorf("downloading file: %w", err)
+		}
+		if err := tmpFile.Close(); err != nil {
+			return nil, fmt.Errorf("close temp: %w", err)
+		}
+
+		// verify checksum before moving
+		expected, err := d.expectedChecksum(wire.Context())
+		if err != nil {
+			return nil, err
+		}
+		if expected != "" {
+			localHash, err := computeFileHash(tmpPath, d.algorithm()) // TODO(ntnn): determine hash from remote
+			if err != nil {
+				return nil, err
+			}
+			if !strings.EqualFold(localHash, expected) {
+				return nil, fmt.Errorf("checksum mismatch on downloaded file: expected %s, got %s", expected, localHash)
+			}
+		}
+
+		// move to final destination
+		if err := os.Rename(tmpPath, path); err != nil {
+			return nil, fmt.Errorf("rename: %w", err)
+		}
+		tmpPath = "" // prevent deferred cleanup
+		return diff.NewFieldChanges(&diff.FieldChange{
+			Field: "file",
+			Old:   diff.Absent, // TODO(ntnn): calculate old hash
+			New:   string(tensile.Present),
+		}), nil
+
+	default:
+		return nil, errors.New("unreachable")
+	}
 }
 
 func computeFileHash(path string, hash crypto.Hash) (string, error) {
@@ -235,25 +307,33 @@ func (d *Download) expectedChecksum(ctx context.Context) (string, error) {
 	}
 }
 
-func (d *Download) checksumFromURL(ctx context.Context) (string, error) {
-	req, err := http.NewRequestWithContext(ctx, "GET", d.ChecksumURL, nil)
+func download(ctx context.Context, from string, to io.Writer) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, from, nil)
 	if err != nil {
-		return "", fmt.Errorf("building request to get checksum file: %w", err)
+		return fmt.Errorf("building request: %w", err)
 	}
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("getting ChecksumURL: %w", err)
+		return fmt.Errorf("getting url: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("ChecksumURL returned %d", resp.StatusCode)
+		return fmt.Errorf("url returned %d", resp.StatusCode)
 	}
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("read ChecksumURL body: %w", err)
+	if _, err := io.Copy(to, resp.Body); err != nil {
+		return fmt.Errorf("copy body to buffer: %w", err)
+	}
+
+	return nil
+}
+
+func (d *Download) checksumFromURL(ctx context.Context) (string, error) {
+	buf := &bytes.Buffer{}
+	if err := download(ctx, d.ChecksumURL, buf); err != nil {
+		return "", fmt.Errorf("error downloading checksum file: %w", err)
 	}
 
 	u, err := url.Parse(d.URL)
@@ -266,7 +346,15 @@ func (d *Download) checksumFromURL(ctx context.Context) (string, error) {
 		return "", fmt.Errorf("URL does not end in a filename to match from ChecksumURL: %q", d.URL)
 	}
 
-	for _, line := range strings.Split(string(body), "\n") {
+	for {
+		line, err := buf.ReadString('\n')
+		if errors.Is(err, io.EOF) {
+			return "", fmt.Errorf("file at ChecksumURL %q does not contain hash for filename %q", d.ChecksumURL, filename)
+		}
+		if err != nil {
+			return "", fmt.Errorf("error reading line from buffered checksum file: %w", err)
+		}
+
 		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
@@ -280,6 +368,4 @@ func (d *Download) checksumFromURL(ctx context.Context) (string, error) {
 			return parts[0], nil
 		}
 	}
-
-	return "", fmt.Errorf("file at ChecksumURL %q does not contain hash for filename %q", d.ChecksumURL, filename)
 }
