@@ -28,8 +28,13 @@ var (
 	_ queue.NamedQueuer  = (*Download)(nil)
 )
 
+const downloadField = "download"
+
 // Download ensures a remote file is downloaded and optionally verified.
 type Download struct {
+	Chown
+	Chmod
+
 	// State is the desired existence.
 	// Defaults to [tensile.Present].
 	State tensile.State
@@ -49,20 +54,17 @@ type Download struct {
 	// Mutually exclusive with Checksum.
 	ChecksumURL string
 
-	Chown
-	Chmod
-
 	// TODO(ntnn): reporting
 }
 
 // DownloadIdentity returns the identity of the node downloading from downloadURL to path.
 func DownloadIdentity(downloadURL string, path string) tensile.Identity {
-	return tensile.AsIdentity("download", "url", downloadURL, "path", path)
+	return tensile.AsIdentity(downloadField, "url", downloadURL, "path", path)
 }
 
 // DownloadQueueIdentity returns the identity of the named queue for a Download node.
 func DownloadQueueIdentity(path string) tensile.Identity {
-	return tensile.AsIdentity("queue", "download", path)
+	return tensile.AsIdentity("queue", downloadField, path)
 }
 
 // Identity implements [tensile.Identifier].
@@ -96,12 +98,13 @@ func (d *Download) output() string {
 
 	name := filepath.Base(u.Path)
 	if name == "" || name == "." {
-		name = "download"
+		name = downloadField
 	}
 
 	return d.Output + name
 }
 
+//nolint:mnd
 func hashFromChecksum(checksum string) (crypto.Hash, error) {
 	switch len(checksum) {
 	case 32:
@@ -117,6 +120,7 @@ func hashFromChecksum(checksum string) (crypto.Hash, error) {
 	}
 }
 
+// Queue implements [queue.NamedQueuer].
 func (d *Download) Queue() *queue.NamedQueue {
 	q := queue.NewNamed(DownloadQueueIdentity(d.output()))
 
@@ -146,11 +150,11 @@ func (d *Download) Validate(_ tensile.Wire) error {
 	}
 
 	if d.Output == "" {
-		return errors.New("Output is required")
+		return errors.New("output is required")
 	}
 
 	if d.Checksum != "" && d.ChecksumURL != "" {
-		return errors.New("Checksum and ChecksumURL are mutually exclusive")
+		return errors.New("checksum and checksumurl are mutually exclusive")
 	}
 
 	if err := d.state().Valid(); err != nil {
@@ -161,6 +165,8 @@ func (d *Download) Validate(_ tensile.Wire) error {
 }
 
 // NeedsExecution implements [tensile.Executor].
+//
+//nolint:cyclop
 func (d *Download) NeedsExecution(wire tensile.Wire) (bool, tensile.Diff, error) {
 	path := d.output()
 
@@ -174,7 +180,7 @@ func (d *Download) NeedsExecution(wire tensile.Wire) (bool, tensile.Diff, error)
 			return false, nil, fmt.Errorf("stat: %w", err)
 		}
 		return true, diff.NewFieldChanges(&diff.FieldChange{
-			Field: "file",
+			Field: downloadField,
 			Old:   string(tensile.Present),
 			New:   diff.Absent,
 		}), nil
@@ -188,7 +194,7 @@ func (d *Download) NeedsExecution(wire tensile.Wire) (bool, tensile.Diff, error)
 		_, err := os.Stat(path)
 		if errors.Is(err, os.ErrNotExist) {
 			return true, diff.NewFieldChanges(&diff.FieldChange{
-				Field: "file",
+				Field: downloadField,
 				Old:   diff.Absent,
 				New:   string(tensile.Present),
 			}), nil
@@ -206,7 +212,7 @@ func (d *Download) NeedsExecution(wire tensile.Wire) (bool, tensile.Diff, error)
 		if expected == "" {
 			// no checksum: fall back to reporting change
 			return true, diff.NewFieldChanges(&diff.FieldChange{
-				Field: "file",
+				Field: downloadField,
 				Old:   string(tensile.Present),
 				New:   "assuming update, no checksum configured",
 			}), nil
@@ -232,6 +238,8 @@ func (d *Download) NeedsExecution(wire tensile.Wire) (bool, tensile.Diff, error)
 }
 
 // Execute implements [tensile.Executor].
+//
+//nolint:cyclop,gocognit
 func (d *Download) Execute(wire tensile.Wire) (tensile.Diff, error) {
 	switch d.state() {
 	case tensile.Absent:
@@ -239,7 +247,7 @@ func (d *Download) Execute(wire tensile.Wire) (tensile.Diff, error) {
 			return nil, fmt.Errorf("remove: %w", err)
 		}
 		return diff.NewFieldChanges(&diff.FieldChange{
-			Field: "file",
+			Field: downloadField,
 			Old:   string(tensile.Present),
 			New:   diff.Absent,
 		}), nil
@@ -262,15 +270,25 @@ func (d *Download) Execute(wire tensile.Wire) (tensile.Diff, error) {
 		}
 		tmpPath := tmpFile.Name()
 		defer func() {
+			if err := tmpFile.Close(); err != nil && !errors.Is(err, os.ErrClosed) {
+				wire.Logger().WarnContext(wire.Context(), "error closing temporary file",
+					"tmpfile", tmpFile.Name(),
+					"error", err,
+				)
+			}
 			// TODO(ntnn): Add a TempDir to wire that is cleaned up after a run.
 			// Similar to testing.T.TempDir
 			if tmpPath != "" {
-				os.Remove(tmpPath)
+				if err := os.Remove(tmpPath); err != nil {
+					wire.Logger().WarnContext(wire.Context(), "error deleting temporary file",
+						"tmpfile", tmpPath,
+						"error", err,
+					)
+				}
 			}
 		}()
 
 		if err := download(wire.Context(), d.URL, tmpFile); err != nil {
-			tmpFile.Close()
 			return nil, fmt.Errorf("downloading file: %w", err)
 		}
 		if err := tmpFile.Close(); err != nil {
@@ -307,7 +325,7 @@ func (d *Download) Execute(wire tensile.Wire) (tensile.Diff, error) {
 		}
 		tmpPath = "" // prevent deferred cleanup
 		return diff.NewFieldChanges(&diff.FieldChange{
-			Field: "file",
+			Field: downloadField,
 			Old:   localHash,
 			New:   expected,
 		}), nil
@@ -318,11 +336,11 @@ func (d *Download) Execute(wire tensile.Wire) (tensile.Diff, error) {
 }
 
 func computeFileHash(path string, hash crypto.Hash) (string, error) {
-	f, err := os.Open(path)
+	f, err := os.Open(path) //nolint:gosec // passing the variable is by design
 	if err != nil {
 		return "", fmt.Errorf("open: %w", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	h := hash.New()
 	if _, err := io.Copy(h, f); err != nil {
@@ -357,7 +375,7 @@ func (d *Download) expectedChecksum(ctx context.Context) (crypto.Hash, string, e
 		if err != nil {
 			return 0, "", fmt.Errorf("getting Content-Digest: %w", err)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		digestHeader := resp.Header.Get("Content-Digest")
 		if digestHeader == "" {
@@ -383,7 +401,7 @@ func download(ctx context.Context, from string, to io.Writer) error {
 	if err != nil {
 		return fmt.Errorf("getting url: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("url returned %d", resp.StatusCode)
@@ -408,13 +426,14 @@ func headRequest(ctx context.Context, location string) (*http.Response, error) {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		return nil, fmt.Errorf("url returned %d", resp.StatusCode)
 	}
 
 	return resp, nil
 }
 
+//nolint:cyclop
 func (d *Download) checksumFromURL(ctx context.Context) (string, error) {
 	buf := &bytes.Buffer{}
 	if err := download(ctx, d.ChecksumURL, buf); err != nil {
@@ -446,7 +465,7 @@ func (d *Download) checksumFromURL(ctx context.Context) (string, error) {
 		}
 		// hashsum format: <hash>  <filename> or <hash> <filename>
 		parts := strings.Fields(line)
-		if len(parts) < 2 {
+		if len(parts) < 2 { //nolint:mnd
 			continue
 		}
 		if parts[1] == filename {
