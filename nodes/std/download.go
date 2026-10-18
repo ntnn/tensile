@@ -44,10 +44,6 @@ type Download struct {
 	// ChecksumURL is a URL to a hashsum file containing the expected hash.
 	// Mutually exclusive with Checksum.
 	ChecksumURL string
-
-	// Algorithm specifies the hash algorithm.
-	// Defaults to "sha256" or is detected from hash length.
-	Algorithm string
 }
 
 // DownloadIdentity returns the identity of the node downloading from downloadURL to path.
@@ -82,26 +78,18 @@ func (d *Download) output() string {
 	return d.Output + name
 }
 
-func (d *Download) validateAlgorithm() error {
-	switch d.Algorithm {
-	case "", "sha256", "sha512", "sha1", "md5":
-		return nil
-	}
-	return fmt.Errorf("unknown Algorithm %q", d.Algorithm)
-}
-
-func (d *Download) algorithm() crypto.Hash {
-	switch d.Algorithm {
-	case "sha1":
-		return crypto.SHA1
-	case "sha256":
-		return crypto.SHA256
-	case "sha512":
-		return crypto.SHA512
-	case "md5":
-		return crypto.MD5
+func hashFromChecksum(checksum string) (crypto.Hash, error) {
+	switch len(checksum) {
+	case 32:
+		return crypto.MD5, nil
+	case 40:
+		return crypto.SHA1, nil
+	case 64:
+		return crypto.SHA256, nil
+	case 128:
+		return crypto.SHA512, nil
 	default:
-		return crypto.SHA256
+		return 0, fmt.Errorf("unable to detect hash algorithm from checksum length %d", len(checksum))
 	}
 }
 
@@ -120,10 +108,6 @@ func (d *Download) Validate(_ tensile.Wire) error {
 
 	if d.Checksum != "" && d.ChecksumURL != "" {
 		return errors.New("Checksum and ChecksumURL are mutually exclusive")
-	}
-
-	if err := d.validateAlgorithm(); err != nil {
-		return err
 	}
 
 	if err := d.state().Valid(); err != nil {
@@ -170,7 +154,7 @@ func (d *Download) NeedsExecution(wire tensile.Wire) (bool, tensile.Diff, error)
 		}
 
 		// file exists, check checksum if provided
-		expected, err := d.expectedChecksum(wire.Context())
+		algorithm, expected, err := d.expectedChecksum(wire.Context())
 		if err != nil {
 			return false, nil, err
 		}
@@ -184,7 +168,7 @@ func (d *Download) NeedsExecution(wire tensile.Wire) (bool, tensile.Diff, error)
 			}), nil
 		}
 
-		localHash, err := computeFileHash(path, d.algorithm())
+		localHash, err := computeFileHash(path, algorithm)
 		if err != nil {
 			return false, nil, err
 		}
@@ -250,12 +234,12 @@ func (d *Download) Execute(wire tensile.Wire) (tensile.Diff, error) {
 		}
 
 		// verify checksum before moving
-		expected, err := d.expectedChecksum(wire.Context())
+		algorithm, expected, err := d.expectedChecksum(wire.Context())
 		if err != nil {
 			return nil, err
 		}
 		if expected != "" {
-			localHash, err := computeFileHash(tmpPath, d.algorithm()) // TODO(ntnn): determine hash from remote
+			localHash, err := computeFileHash(tmpPath, algorithm)
 			if err != nil {
 				return nil, err
 			}
@@ -295,15 +279,28 @@ func computeFileHash(path string, hash crypto.Hash) (string, error) {
 	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
-func (d *Download) expectedChecksum(ctx context.Context) (string, error) {
+func (d *Download) expectedChecksum(ctx context.Context) (crypto.Hash, string, error) {
 	switch {
 	case d.Checksum != "":
-		return strings.TrimSpace(d.Checksum), nil
+		checksum := strings.TrimSpace(d.Checksum)
+		algorithm, err := hashFromChecksum(checksum)
+		if err != nil {
+			return 0, "", err
+		}
+		return algorithm, checksum, nil
 	case d.ChecksumURL != "":
-		return d.checksumFromURL(ctx)
+		checksum, err := d.checksumFromURL(ctx)
+		if err != nil {
+			return 0, "", err
+		}
+		algorithm, err := hashFromChecksum(checksum)
+		if err != nil {
+			return 0, "", err
+		}
+		return algorithm, checksum, nil
 	default:
 		// TODO(ntnn): implement content-digest heast
-		return "", nil
+		return 0, "", nil
 	}
 }
 
