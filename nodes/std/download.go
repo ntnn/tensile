@@ -22,7 +22,9 @@ import (
 var (
 	_ tensile.Identifier = (*Download)(nil)
 	_ tensile.Validator  = (*Download)(nil)
+	_ tensile.Depender   = (*Download)(nil)
 	_ tensile.Executor   = (*Download)(nil)
+	_ queue.NamedQueuer  = (*Download)(nil)
 )
 
 // Download ensures a remote file is downloaded and optionally verified.
@@ -58,6 +60,16 @@ func DownloadIdentity(downloadURL string, path string) tensile.Identity {
 // Identity implements [tensile.Identifier].
 func (d *Download) Identity() tensile.Identity {
 	return DownloadIdentity(d.URL, d.output())
+}
+
+// Conflicts implements [tensile.Conflictor].
+func (d *Download) Conflicts() ([]tensile.Identity, error) {
+	return []tensile.Identity{FileIdentity(d.output())}, nil
+}
+
+// DependsOn implements [tensile.Depender].
+func (d *Download) DependsOn() ([]tensile.Identity, error) {
+	return ParentDirIdentities(d.output()), nil
 }
 
 func (d *Download) state() tensile.State {
