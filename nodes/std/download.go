@@ -45,6 +45,9 @@ type Download struct {
 	// ChecksumURL is a URL to a hashsum file containing the expected hash.
 	// Mutually exclusive with Checksum.
 	ChecksumURL string
+
+	// TODO(ntnn): embed chmod/chown
+	// TODO(ntnn): reporting
 }
 
 // DownloadIdentity returns the identity of the node downloading from downloadURL to path.
