@@ -1,7 +1,7 @@
 package std
 
 import (
-	"bytes"
+	"bufio"
 	"context"
 	"crypto"
 	"encoding/base64"
@@ -435,10 +435,16 @@ func headRequest(ctx context.Context, location string) (*http.Response, error) {
 
 //nolint:cyclop
 func (d *Download) checksumFromURL(ctx context.Context) (string, error) {
-	buf := &bytes.Buffer{}
-	if err := download(ctx, d.ChecksumURL, buf); err != nil {
-		return "", fmt.Errorf("error downloading checksum file: %w", err)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, d.ChecksumURL, nil)
+	if err != nil {
+		return "", fmt.Errorf("building request: %w", err)
 	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("getting url: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
 
 	u, err := url.Parse(d.URL)
 	if err != nil {
@@ -450,8 +456,9 @@ func (d *Download) checksumFromURL(ctx context.Context) (string, error) {
 		return "", fmt.Errorf("URL does not end in a filename to match from ChecksumURL: %q", d.URL)
 	}
 
+	reader := bufio.NewReader(resp.Body)
 	for {
-		line, err := buf.ReadString('\n')
+		line, err := reader.ReadString('\n')
 		if errors.Is(err, io.EOF) {
 			return "", fmt.Errorf("file at ChecksumURL %q does not contain hash for filename %q", d.ChecksumURL, filename)
 		}
