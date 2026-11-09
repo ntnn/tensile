@@ -10,7 +10,7 @@ require (
 	github.com/moby/sys/user v0.5.0
 	github.com/stretchr/testify v1.12.1
 	go.yaml.in/yaml/v3 v3.0.6
-	golang.org/x/sync v0.24.0
+	golang.org/x/sync v0.25.0
 	gopkg.in/ini.v1 v1.67.3
 )
 
