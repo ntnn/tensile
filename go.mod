@@ -5,7 +5,7 @@ go 1.27.0
 tool github.com/ntnn/mindl
 
 require (
-	github.com/aymanbagabas/go-udiff v0.4.1
+	github.com/aymanbagabas/go-udiff v0.4.2
 	github.com/coreos/go-systemd/v22 v22.7.0
 	github.com/moby/sys/user v0.5.0
 	github.com/stretchr/testify v1.12.1
